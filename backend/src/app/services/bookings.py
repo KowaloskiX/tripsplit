@@ -11,6 +11,7 @@ import json
 import logging
 import mimetypes
 import os
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,7 @@ from app.core.domain.bookings import (
     format_money,
     is_real_eic,
     is_valid_run_id,
+    priced_purchase_url,
     refund_minor,
     repriced_minor,
     run_id_for,
@@ -71,7 +73,14 @@ from app.repositories.trips import (
 )
 from app.services.escrow import EscrowService, card_vault
 from app.services.resplit import MemberShare, resplit_shares
-from app.services.supplier_prices import Clock, SupplierPrices, offer_of, passengers_of
+from app.services.supplier_prices import (
+    Clock,
+    SupplierPrices,
+    offer_of,
+    party_of,
+    passengers_of,
+    travellers_of,
+)
 from app.services.travellers import TravellerService
 from app.suppliers.call_log import CALL_LOG, CallLog, SupplierCall, recorded_for_trip
 from app.suppliers.ports import BookingRef, DisruptionKind, DisruptionNotice, Offer, OfferRef
@@ -347,8 +356,20 @@ def _write_approval(run_dir: Path, approved: bool) -> None:
     os.replace(temporary, run_dir / APPROVAL_FILE)
 
 
-def _party_size(booking: Booking, members: list[TripMember]) -> int:
-    return len(passengers_of(booking, members)) or len(members)
+_EXCEPTION_REPR = re.compile(r"^\w*(?:Error|Exception)\(['\"]?")
+_REASON_MAX_CHARS = 200
+
+
+def readable_reason(reason: str) -> str:
+    """An agent's failure reason for the group chat: a raw exception repr (`Error('Page.goto:
+    ...\nCall log: ...')`) loses its wrapper and Playwright's call log, and is capped."""
+    first = reason.replace("\\n", "\n").split("\n", 1)[0].strip()
+    unwrapped = _EXCEPTION_REPR.sub("", first)
+    if unwrapped != first:  # only a repr's own closing quote and parenthesis go
+        first = unwrapped.rstrip("'\")").strip()
+    if len(first) > _REASON_MAX_CHARS:
+        first = first[: _REASON_MAX_CHARS - 1].rstrip() + "…"
+    return first or "the supplier site did not respond as expected"
 
 
 def _what_is_bought(booking: Booking, travellers: int) -> str:
@@ -649,7 +670,7 @@ class BookingService:
         )
         if not moved:
             return Err(BookingError.BOOKING_NOT_STARTABLE)
-        party = _party_size(booking, members)
+        party = party_of(trip, booking, members)
         money = format_money(booking.amount_minor, trip.currency)
         await self._say(
             trip,
@@ -689,7 +710,7 @@ class BookingService:
     async def _launch(
         self, trip: Trip, booking: Booking, members: list[TripMember]
     ) -> Result[BookingWithRun, BookingError]:
-        party = _party_size(booking, members)
+        party = party_of(trip, booking, members)
         attempt = len(await self.runs.for_booking(identifier_of(booking))) + 1
         run_id = run_id_for(to_text(identifier_of(booking)), attempt)
         # Claimed before the run exists, so a listing meanwhile does not take it for an orphan.
@@ -724,7 +745,7 @@ class BookingService:
                 await self._finish(
                     run_id,
                     None,
-                    failure_reason=f"TripSplit Pay could not issue a card ({issued.error}).",
+                    failure_reason=f"Razor Trip Pay could not issue a card ({issued.error}).",
                 )
                 _WATCHED.discard(run_id)
                 return Ok(BookingWithRun(booking=booking, run=run))
@@ -732,7 +753,7 @@ class BookingService:
             vault.update(card_vault(issued.value.secrets))
         spec = LaunchSpec(
             run_id=run_id,
-            url=booking.supplier_url,
+            url=priced_purchase_url(booking.supplier_url, booking.amount_minor, party),
             goal=self._goal_for(booking, party, trip.currency),
             vault=vault,
             max_steps=self.max_steps,
@@ -777,9 +798,8 @@ class BookingService:
         train starts again at `passenger_1`. The contact is always the organizer.
         """
         organizer = await self.users.get_by_id(trip.organizer_id)
-        passengers = passengers_of(booking, members)
-        details = await self.travellers.details_for(passengers)
-        vault: dict[str, str] = {"passengers": str(len(passengers))}
+        travellers = await travellers_of(self.travellers, trip, booking, members)
+        vault: dict[str, str] = {"passengers": str(len(travellers))}
         if organizer is not None:
             vault["email"] = organizer.email
         if is_real_eic(booking.supplier_url):
@@ -787,8 +807,7 @@ class BookingService:
         lead = next((member for member in members if member.role is MemberRole.ORGANIZER), None)
         if lead is not None:
             vault["first_name"], vault["last_name"] = split_name(lead.display_name)
-        for index, member in enumerate(passengers, start=1):
-            traveller = details[member.user_id]
+        for index, traveller in enumerate(travellers, start=1):
             key = f"passenger_{index}"
             vault[f"{key}_first_name"], vault[f"{key}_last_name"] = split_name(traveller.full_name)
             if traveller.date_of_birth is not None:
@@ -878,7 +897,7 @@ class BookingService:
         if booking is None or trip is None or booking.status is not BookingStatus.RUNNING:
             return
         await self.bookings.update(booking, {"status": BookingStatus.AWAITING_APPROVAL})
-        travellers = _party_size(booking, await self.members.for_trip(run.trip_id))
+        travellers = party_of(trip, booking, await self.members.for_trip(run.trip_id))
         money = format_money(booking.amount_minor, trip.currency)
         await self._say(
             trip,
@@ -985,7 +1004,8 @@ class BookingService:
             await self._say(
                 trip,
                 EventKind.MESSAGE,
-                f"I need a human to finish {booking.title} on {booking.supplier}: {reason}",
+                f"I need a human to finish {booking.title} on {booking.supplier}: "
+                f"{readable_reason(reason)}",
                 booking,
                 run_id=run_id,
                 outcome=AgentOutcome.HANDOFF.value,
@@ -994,7 +1014,8 @@ class BookingService:
             await self._say(
                 trip,
                 EventKind.BOOKING_FAILED,
-                f"I could not book {booking.title} on {booking.supplier}: {reason}",
+                f"I could not book {booking.title} on {booking.supplier}: "
+                f"{readable_reason(reason)}",
                 booking,
                 run_id=run_id,
             )
@@ -1115,7 +1136,7 @@ class BookingService:
                     await self._say(
                         trip,
                         EventKind.MESSAGE,
-                        f"TripSplit Pay could not fund the card for {booking.title} "
+                        f"Razor Trip Pay could not fund the card for {booking.title} "
                         f"({activated.error}). Nothing was paid.",
                         booking,
                     )
@@ -1221,16 +1242,14 @@ class BookingService:
                     trip,
                     booking,
                     BookingStatus.FAILED,
-                    f"TripSplit Pay refused the payout ({paid.error}); nothing was bought.",
+                    f"Razor Trip Pay refused the payout ({paid.error}); nothing was bought.",
                     "",
                 )
                 return Ok(BookingWithRun(booking=booking, run=None))
         members = await self.members.for_trip(identifier_of(trip))
-        passengers = passengers_of(booking, members)
-        details = await self.travellers.details_for(passengers)
         bought = await adapter.purchase(
             offer_of(booking),
-            [details[passenger.user_id] for passenger in passengers],
+            await travellers_of(self.travellers, trip, booking, members),
             price_minor=booking.amount_minor,
             hold_ref=booking.hold_ref,
         )
@@ -1330,7 +1349,7 @@ class BookingService:
             await self._say(
                 trip,
                 EventKind.MESSAGE,
-                f"TripSplit Pay could not pay {booking.supplier} for {booking.title} "
+                f"Razor Trip Pay could not pay {booking.supplier} for {booking.title} "
                 f"({paid.error}) — settle it with the supplier.",
                 booking,
             )
@@ -1398,7 +1417,7 @@ class BookingService:
                 BookingRef(
                     offer=offer_of(booking),
                     confirmation_ref=booking.confirmation_ref,
-                    party_size=_party_size(booking, members),
+                    party_size=party_of(trip, booking, members),
                     hold_ref=booking.hold_ref,
                 )
             )
@@ -1429,7 +1448,7 @@ class BookingService:
         for target in targets:
             quote = await adapter.quote(
                 OfferRef(offer.supplier_id, offer.offer_ref, offer.supplier_data),
-                _party_size(target, members),
+                party_of(trip, target, members),
             )
             if quote is None:
                 return None

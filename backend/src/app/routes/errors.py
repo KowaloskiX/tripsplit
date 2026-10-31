@@ -42,6 +42,7 @@ _TRIP_STATUS: dict[TripError, int] = {
     TripError.BOOKING_STARTED: status.HTTP_409_CONFLICT,
     TripError.INVALID_DEADLINE: status.HTTP_422_UNPROCESSABLE_CONTENT,
     TripError.ATTRACTION_NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    TripError.OPTION_NOT_FOUND: status.HTTP_404_NOT_FOUND,
 }
 
 _TRIP_MESSAGE: dict[TripError, str] = {
@@ -55,6 +56,7 @@ _TRIP_MESSAGE: dict[TripError, str] = {
     TripError.BOOKING_STARTED: "Too late to leave: the agent has already started booking.",
     TripError.INVALID_DEADLINE: "The pay-by deadline must be in the future.",
     TripError.ATTRACTION_NOT_FOUND: "No such attraction on this trip.",
+    TripError.OPTION_NOT_FOUND: "No such option in the latest search.",
 }
 
 

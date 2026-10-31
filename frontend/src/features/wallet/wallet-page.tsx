@@ -44,7 +44,7 @@ export function WalletBalance({
             are simulated, nothing real is charged.
           </p>
           <p className="text-xs">
-            Funds held by TripSplit Pay (simulated licensed partner) — TripSplit itself never holds
+            Funds held by Razor Trip Pay (simulated licensed partner) — TripSplit itself never holds
             your money.
           </p>
         </div>

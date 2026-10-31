@@ -1,4 +1,4 @@
-# TripSplit — from group chat to tickets
+# Razor Trip — from group chat to tickets
 
 An agent joins a group of friends, proposes ready-made trip packages, collects votes and each
 person's share, books the train, the stay and the activities, and keeps an eye on the trip until

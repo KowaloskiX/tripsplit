@@ -2,7 +2,7 @@
 does for TripSplit, in the partner's own vocabulary — users with a KYC level, e-money wallets,
 pay-ins, wallet-to-wallet transfers, payouts, refunds and single-use virtual cards.
 
-TripSplit never holds client money: it instructs the partner and mirrors the outcome. Swapping
+Razor Trip never holds client money: it instructs the partner and mirrors the outcome. Swapping
 the simulated `FakePartner` for a real provider is one adapter behind this Protocol.
 
 Every money call carries an idempotency key: replaying it returns the first result and moves

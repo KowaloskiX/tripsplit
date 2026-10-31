@@ -1072,6 +1072,51 @@ export type MessageResponse = {
 };
 
 /**
+ * OptionResponse
+ *
+ * One pickable option: a transport (one item, or out + back), a stay or an activity.
+ */
+export type OptionResponse = {
+    /**
+     * Items
+     */
+    items: Array<ProposalItemResponse>;
+    kind: BookingKind;
+    /**
+     * Km From Centre
+     */
+    km_from_centre?: number | null;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Option Id
+     */
+    option_id: string;
+    /**
+     * Over Budget
+     */
+    over_budget: boolean;
+    /**
+     * Per Person Minor
+     */
+    per_person_minor: number;
+    /**
+     * Rating
+     */
+    rating?: number | null;
+    /**
+     * Stars
+     */
+    stars?: number | null;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
+};
+
+/**
  * OrganizationSummary
  */
 export type OrganizationSummary = {
@@ -1936,6 +1981,30 @@ export type TripBookingsResponse = {
 };
 
 /**
+ * TripOptionsResponse
+ *
+ * Every option the latest research found (transport cheapest first, stays by price).
+ */
+export type TripOptionsResponse = {
+    /**
+     * Activities
+     */
+    activities: Array<OptionResponse>;
+    /**
+     * Stays
+     */
+    stays: Array<OptionResponse>;
+    /**
+     * Transport
+     */
+    transport: Array<OptionResponse>;
+    /**
+     * Travellers
+     */
+    travellers: number;
+};
+
+/**
  * TripResponse
  */
 export type TripResponse = {
@@ -2005,6 +2074,28 @@ export type TripResponse = {
      */
     total_minor: number;
     transport_mode: TransportMode | null;
+};
+
+/**
+ * TripSelectionRequest
+ *
+ * The chat flow's picks, by `option_id` from `GET /trips/{id}/options`. Activities are a
+ * comma-separated list ("a0,a3"; empty = none) — input fields stay scalars (see
+ * `tests/test_injection_contract.py`).
+ */
+export type TripSelectionRequest = {
+    /**
+     * Activity Option Ids
+     */
+    activity_option_ids?: string;
+    /**
+     * Stay Option Id
+     */
+    stay_option_id?: string | null;
+    /**
+     * Transport Option Id
+     */
+    transport_option_id: string;
 };
 
 /**
@@ -3676,6 +3767,48 @@ export type TripsPostMessageResponses = {
 
 export type TripsPostMessageResponse = TripsPostMessageResponses[keyof TripsPostMessageResponses];
 
+export type ProposalsOptionsData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/options';
+};
+
+export type ProposalsOptionsErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProposalsOptionsError = ProposalsOptionsErrors[keyof ProposalsOptionsErrors];
+
+export type ProposalsOptionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripOptionsResponse;
+};
+
+export type ProposalsOptionsResponse = ProposalsOptionsResponses[keyof ProposalsOptionsResponses];
+
 export type TripsSetPayByData = {
     body: SetPayByRequest;
     path: {
@@ -3759,6 +3892,48 @@ export type ProposalsGenerateResponses = {
 };
 
 export type ProposalsGenerateResponse = ProposalsGenerateResponses[keyof ProposalsGenerateResponses];
+
+export type ProposalsSelectData = {
+    body: TripSelectionRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/selection';
+};
+
+export type ProposalsSelectErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProposalsSelectError = ProposalsSelectErrors[keyof ProposalsSelectErrors];
+
+export type ProposalsSelectResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type ProposalsSelectResponse = ProposalsSelectResponses[keyof ProposalsSelectResponses];
 
 export type ProposalsVoteData = {
     body: CastVoteRequest;

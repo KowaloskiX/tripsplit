@@ -8,4 +8,3 @@ export {
   type QuickSegment,
 } from "./model";
 export { QuickPlan, type QuickPlanProps } from "./quick-plan";
-export { QuickPlanFlow } from "./quick-plan-flow";

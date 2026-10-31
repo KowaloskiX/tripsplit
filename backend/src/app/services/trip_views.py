@@ -12,6 +12,7 @@ from typing import Any
 from beanie import PydanticObjectId
 
 from app.core.domain.bookings import refund_minor
+from app.core.domain.packages import is_over_budget, per_person
 from app.core.domain.suppliers import TravellerField
 from app.core.domain.trips import (
     BookingKind,
@@ -24,8 +25,18 @@ from app.core.domain.trips import (
 )
 from app.core.domain.trust import OfferLink, Provenance
 from app.db.identifiers import identifier_of, to_text
-from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember
+from app.models.trips import (
+    Contribution,
+    Proposal,
+    ProposalItem,
+    Trip,
+    TripEvent,
+    TripMember,
+    TripOption,
+    TripOptions,
+)
 from app.models.trust import TrustLink, TrustProvenance
+from app.services.trip_options import option_label
 from app.services.wallet import PotView
 
 
@@ -195,6 +206,89 @@ def member_view(member: TripMember, missing: frozenset[TravellerField] = frozens
     )
 
 
+def proposal_item_view(item: ProposalItem) -> ProposalItemView:
+    return ProposalItemView(
+        kind=item.kind,
+        mode=item.mode,
+        title=item.title,
+        supplier=item.supplier,
+        supplier_url=item.supplier_url,
+        price_minor=item.price_minor,
+        details=item.details,
+        starts_at=item.starts_at,
+        segments=tuple(
+            SegmentView(
+                carrier=segment.carrier,
+                number=segment.number,
+                origin=segment.origin,
+                destination=segment.destination,
+                departs_at=segment.departs_at,
+                arrives_at=segment.arrives_at,
+            )
+            for segment in item.segments
+        ),
+        links=links_view(item.links),
+        images=tuple(item.images),
+        provenance=provenance_view(item.provenance),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class OptionView:
+    """One pickable option (see `TripOptions`): its items, price for the group and per person
+    and — for a stay — what the supplier says about it (None = unknown)."""
+
+    option_id: str
+    kind: BookingKind
+    label: str
+    items: tuple[ProposalItemView, ...]
+    total_minor: int
+    per_person_minor: int
+    over_budget: bool
+    rating: float | None = None
+    stars: float | None = None
+    km_from_centre: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class TripOptionsView:
+    travellers: int
+    transport: tuple[OptionView, ...]
+    stays: tuple[OptionView, ...]
+    activities: tuple[OptionView, ...]
+
+
+def _number(value: Any) -> float | None:
+    return float(value) if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+
+def option_view(option: TripOption, travellers: int, budget: int | None) -> OptionView:
+    total = sum(item.price_minor for item in option.items)
+    share = per_person(total, travellers)
+    data = option.items[0].supplier_data if option.items else {}
+    return OptionView(
+        option_id=option.option_id,
+        kind=option.items[0].kind if option.items else BookingKind.ACTIVITY,
+        label=option_label(option.items),
+        items=tuple(proposal_item_view(item) for item in option.items),
+        total_minor=total,
+        per_person_minor=share,
+        over_budget=is_over_budget(share, budget),
+        rating=_number(data.get("rating")),
+        stars=_number(data.get("stars")),
+        km_from_centre=_number(data.get("km_from_centre")),
+    )
+
+
+def trip_options_view(options: TripOptions, travellers: int, budget: int | None) -> TripOptionsView:
+    return TripOptionsView(
+        travellers=travellers,
+        transport=tuple(option_view(o, travellers, budget) for o in options.transport),
+        stays=tuple(option_view(o, travellers, budget) for o in options.stays),
+        activities=tuple(option_view(o, travellers, budget) for o in options.activities),
+    )
+
+
 def proposal_view(
     proposal: Proposal, *, votes: int, voted_by_me: bool, chosen: bool
 ) -> ProposalView:
@@ -202,33 +296,7 @@ def proposal_view(
         id=to_text(identifier_of(proposal)),
         title=proposal.title,
         summary=proposal.summary,
-        items=tuple(
-            ProposalItemView(
-                kind=item.kind,
-                mode=item.mode,
-                title=item.title,
-                supplier=item.supplier,
-                supplier_url=item.supplier_url,
-                price_minor=item.price_minor,
-                details=item.details,
-                starts_at=item.starts_at,
-                segments=tuple(
-                    SegmentView(
-                        carrier=segment.carrier,
-                        number=segment.number,
-                        origin=segment.origin,
-                        destination=segment.destination,
-                        departs_at=segment.departs_at,
-                        arrives_at=segment.arrives_at,
-                    )
-                    for segment in item.segments
-                ),
-                links=links_view(item.links),
-                images=tuple(item.images),
-                provenance=provenance_view(item.provenance),
-            )
-            for item in proposal.items
-        ),
+        items=tuple(proposal_item_view(item) for item in proposal.items),
         total_minor=proposal.total_minor,
         per_person_minor=proposal.per_person_minor,
         over_budget=proposal.over_budget,

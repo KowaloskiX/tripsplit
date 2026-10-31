@@ -35,6 +35,7 @@ from app.core.domain.suppliers import (
     mode_noun,
     quote_is_fresh,
 )
+from app.core.domain.travellers import TravellerDetails, with_guests
 from app.core.domain.trips import BookingStatus, EventActor, EventKind, TripStatus
 from app.db.client import Database
 from app.db.documents import utc_now
@@ -80,6 +81,28 @@ def passengers_of(booking: Booking, members: list[TripMember]) -> list[TripMembe
         return members
     by_user = {member.user_id: member for member in members}
     return [by_user[user_id] for user_id in booking.passenger_user_ids if user_id in by_user]
+
+
+def party_of(trip: Trip, booking: Booking, members: list[TripMember]) -> int:
+    """How many travel on THIS purchase. A purchase for the whole group covers the trip's
+    `group_size` even when fewer have joined (the organizer books for friends who are not
+    members) — the same count the package was priced for (`proposals`). One part of a split
+    purchase carries exactly its own passengers."""
+    passengers = passengers_of(booking, members)
+    if passengers and len(passengers) < len(members):
+        return len(passengers)
+    return max(trip.group_size, len(passengers))
+
+
+async def travellers_of(
+    travellers: TravellerService, trip: Trip, booking: Booking, members: list[TripMember]
+) -> list[TravellerDetails]:
+    """The details of everybody on THIS purchase: its members, then the organizer's guests
+    up to `party_of` (see `with_guests`)."""
+    passengers = passengers_of(booking, members)
+    details = await travellers.details_for(passengers)
+    listed = [details[member.user_id] for member in passengers]
+    return with_guests(listed, party_of(trip, booking, members))
 
 
 def _when(moment: datetime) -> str:
@@ -197,7 +220,7 @@ class SupplierPrices:
             adapter = self.adapter_of(part)
             if adapter is None or not self._needs_quote(part, adapter):
                 continue
-            party = len(passengers_of(part, members)) or len(members)
+            party = party_of(trip, part, members)
             try:
                 quote = await adapter.quote(offer_of(part), party)
             except SupplierUnavailableError:
@@ -254,7 +277,7 @@ class SupplierPrices:
     async def _requote(
         self, trip: Trip, booking: Booking, adapter: SupplierAdapter, members: list[TripMember]
     ) -> BookingError | None:
-        party = len(passengers_of(booking, members)) or len(members)
+        party = party_of(trip, booking, members)
         try:
             quote = await adapter.quote(offer_of(booking), party)
         except SupplierUnavailableError:
@@ -288,11 +311,9 @@ class SupplierPrices:
                 booking,
                 expired_at=booking.hold_expires_at.isoformat(),
             )
-        passengers = passengers_of(booking, members)
-        details = await self.travellers.details_for(passengers)
         try:
             hold = await adapter.hold(
-                offer_of(booking), [details[member.user_id] for member in passengers]
+                offer_of(booking), await travellers_of(self.travellers, trip, booking, members)
             )
         except SupplierUnavailableError:
             logger.warning("supplier %s unavailable for a hold", booking.supplier_id)

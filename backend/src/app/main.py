@@ -83,7 +83,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await database.dispose()
 
     app = FastAPI(
-        title="TripSplit API",
+        title="Razor Trip API",
         version="0.0.0",
         lifespan=lifespan,
         # Outside dev/test Swagger and the schema are disabled: in production they are a

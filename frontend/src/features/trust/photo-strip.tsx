@@ -78,11 +78,6 @@ export function PhotoStrip({
           {image ? <Photo image={image} example={example} /> : <Fallback label="No photo yet" />}
         </span>
       ))}
-      {example && (
-        <span className="ticket-mono pointer-events-none absolute top-2 left-2 rounded-full border border-dashed border-white/80 bg-black/45 px-2 py-0.5 text-[10px] uppercase tracking-wider text-white">
-          Example photo
-        </span>
-      )}
     </div>
   );
 }

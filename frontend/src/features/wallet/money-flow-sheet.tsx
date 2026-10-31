@@ -7,7 +7,7 @@ const STEPS = [
   {
     icon: Wallet,
     title: "Your wallet",
-    text: "BLIK or card tops up your e-money wallet at TripSplit Pay, our (simulated) licensed payment partner. Above 1 000 zł in total it asks for a quick ID check.",
+    text: "BLIK or card tops up your e-money wallet at Razor Trip Pay, our (simulated) licensed payment partner. Above 1 000 zł in total it asks for a quick ID check.",
   },
   {
     icon: Landmark,
@@ -34,7 +34,7 @@ export function MoneyFlowSheet({
       open={open}
       onClose={onClose}
       title="How your money moves"
-      description="TripSplit never holds your money — a licensed partner does. In this demo the partner is simulated."
+      description="Razor Trip never holds your money — a licensed partner does. In this demo the partner is simulated."
     >
       <ol className="space-y-2">
         {STEPS.map((step, index) => (

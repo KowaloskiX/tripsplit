@@ -7,13 +7,14 @@ import {
   Scripts,
   useRouterState,
 } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { RouteFocus } from "@/components/ui/route-announcer";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionNav } from "@/features/auth";
 import { LandingFooter, Wordmark } from "@/features/brand";
 import { THEME_INIT_SCRIPT, ThemeToggle } from "@/features/theme";
 import { HeaderWalletChip } from "@/features/wallet";
+import { cn } from "@/lib/utils";
 import appCss from "@/styles/app.css?url";
 
 const MAIN_REGION_ID = "main-content";
@@ -23,7 +24,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "tripsplit: from group chat to tickets" },
+      { title: "Razor Trip: from group chat to tickets" },
       {
         name: "description",
         content:
@@ -88,14 +89,41 @@ function RootLayout(): ReactNode {
   );
 }
 
+function useScrolled(threshold = 8): boolean {
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const read = (): void => setScrolled(window.scrollY > threshold);
+    read();
+    window.addEventListener("scroll", read, { passive: true });
+    return () => window.removeEventListener("scroll", read);
+  }, [threshold]);
+  return scrolled;
+}
+
 function SiteHeader(): ReactNode {
-  // Black in both themes: a `.dark` subtree gets the night palette whatever the page uses.
+  const onLanding = useRouterState({ select: (state) => state.location.pathname === "/" });
+  const scrolled = useScrolled();
+  // Over the landing footage the bar is see-through with light text (a `.dark` subtree);
+  // everywhere else, and once the page scrolls, it floats as a frosted rounded bar.
+  const overVideo = onLanding && !scrolled;
   return (
-    <header className="vt-header sticky top-0 z-30 border-b border-line bg-bg/95 text-ink backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
+    <header
+      className={cn(
+        "vt-header top-0 z-30 px-3 pt-3 sm:px-4",
+        onLanding ? "fixed inset-x-0" : "sticky",
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex max-w-6xl items-center justify-between gap-3 rounded-[var(--radius-panel)] border px-4 py-2.5 text-ink transition-[background-color,border-color,box-shadow] duration-300 sm:px-5",
+          overVideo
+            ? "dark border-transparent bg-transparent"
+            : "border-line bg-surface/95 shadow-card backdrop-blur-xl backdrop-saturate-150",
+        )}
+      >
         <Link
           to="/"
-          aria-label="tripsplit home"
+          aria-label="Razor Trip home"
           className="rounded-full transition duration-150 hover:opacity-75"
         >
           <Wordmark />

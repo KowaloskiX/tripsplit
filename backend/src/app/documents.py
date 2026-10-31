@@ -12,7 +12,15 @@ from app.models.bookings import AgentRun, Booking
 from app.models.itinerary import Itinerary, TripAttractions
 from app.models.organizations import Membership, Organization
 from app.models.travellers import TravellerProfile
-from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember, Vote
+from app.models.trips import (
+    Contribution,
+    Proposal,
+    Trip,
+    TripEvent,
+    TripMember,
+    TripOptions,
+    Vote,
+)
 from app.models.wallet import Wallet, WalletTransaction
 from app.payments.fake_partner_models import PARTNER_DOCUMENTS
 
@@ -24,6 +32,7 @@ DOCUMENT_MODELS: tuple[type[Any], ...] = (
     Trip,
     TripMember,
     Proposal,
+    TripOptions,
     Vote,
     Contribution,
     TripEvent,

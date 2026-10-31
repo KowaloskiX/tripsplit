@@ -33,8 +33,11 @@ export function ContributionsTable({
   const allPaid = total > 0 && paid === total;
   // The last share landing while we watch: a short, classy celebration.
   const celebrate = useArrivedAt(allPaid, true, 2600);
-  // Whole units while counting, so the figure does not flicker between widths.
-  const format = (minor: number): string => formatMoney(Math.round(minor / 100) * 100, currency);
+  const paidMinor = contributions.reduce((sum, c) => sum + c.paid_minor, 0);
+  // Whole units while counting, so the figure does not flicker between widths; the exact
+  // amount once it lands (otherwise "6/6 paid" reads 4 442.00 of 4 442.32).
+  const format = (minor: number): string =>
+    formatMoney(minor === paidMinor ? minor : Math.round(minor / 100) * 100, currency);
 
   return (
     <div className="space-y-3">
@@ -56,11 +59,7 @@ export function ContributionsTable({
           </span>
         )}
         <p className="ticket-mono text-xs text-muted">
-          <CountUp
-            value={contributions.reduce((sum, c) => sum + c.paid_minor, 0)}
-            format={format}
-          />{" "}
-          of{" "}
+          <CountUp value={paidMinor} format={format} /> of{" "}
           {formatMoney(
             contributions.reduce((sum, c) => sum + c.amount_minor, 0),
             currency,

@@ -22,3 +22,6 @@ test-results/
 frontend/e2e/__screens__/
 # agent artifacts (screenshots, live frames, replay cache)
 backend/var/
+
+# Source footage (the web copies live in frontend/public/media)
+/*.mp4

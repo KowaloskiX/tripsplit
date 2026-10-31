@@ -7,6 +7,7 @@ from functools import lru_cache
 
 from app.core.config import PkpTransportKind, Settings
 from app.core.domain.result import Err
+from app.core.domain.trips import TransportMode
 from app.db.documents import utc_now
 from app.suppliers.demo_rail import BASE_PATH as DEMO_RAIL_PATH
 from app.suppliers.demo_rail import DemoRailSupplier
@@ -97,7 +98,10 @@ def _adapter(
     pkp_real_checkout: bool = False,
 ) -> SupplierAdapter | None:
     if supplier_id in SIM_CAPABILITIES:
-        return sim_supplier(supplier_id, utc_now)
+        # In a demo the agent buys the simulated trains on our fake rail site too.
+        site = f"{demo_rail_url}{DEMO_RAIL_PATH}" if demo_rail_url is not None else None
+        rail = SIM_CAPABILITIES[supplier_id][1].mode is TransportMode.RAIL
+        return sim_supplier(supplier_id, utc_now, purchase_site=site if rail else None)
     if supplier_id in (TICKETS, SIGHTS):
         # In a demo the agent buys attraction tickets on our own demo ticket shop.
         return AttractionSupplier(supplier_id, site_url=demo_rail_url, clock=utc_now)

@@ -38,7 +38,8 @@ export default defineConfig({
       cwd: "../backend",
       url: `${API_URL}/api/health`,
       env: {
-        SUPPLIERS: "demo_rail,sim_stay,sim_activity",
+        // sim_flight: an API supplier, so `chat-flow.spec.ts` books without the browser agent.
+        SUPPLIERS: "demo_rail,sim_flight,sim_stay,sim_activity",
         DEMO_SUPPLIER_URL: API_URL,
         RESEARCHER: "catalog",
         MONGODB_DATABASE: process.env.E2E_MONGODB_DATABASE ?? "app_e2e",

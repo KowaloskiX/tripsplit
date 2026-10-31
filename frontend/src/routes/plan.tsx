@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { z } from "zod";
 
 import { sessionQueryOptions } from "@/features/auth";
-import { QuickPlanFlow } from "@/features/quick-plan";
+import { ChatFlow } from "@/features/chat-flow";
 
 export const Route = createFileRoute("/plan")({
   // The brief creates a trip for the signed-in user; the session is a browser cookie.
@@ -20,8 +20,8 @@ function PlanPage(): ReactNode {
   const { trip } = Route.useSearch();
   const navigate = useNavigate();
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:py-28">
-      <QuickPlanFlow
+    <div className="mx-auto w-full max-w-3xl px-4 pt-6 sm:px-6">
+      <ChatFlow
         tripId={trip}
         onTrip={(tripId) => navigate({ to: "/plan", search: { trip: tripId } })}
         onOpenRoom={(tripId) => navigate({ to: "/t/$tripId", params: { tripId } })}

@@ -86,7 +86,7 @@ def card_vault(secrets: CardSecrets) -> dict[str, str]:
         "card_number": secrets.pan,
         "card_expiry": f"{secrets.exp_month:02d}/{secrets.exp_year % 100:02d}",
         "card_cvc": secrets.cvc,
-        "card_holder": "TripSplit Pay trip card",
+        "card_holder": "Razor Trip Pay trip card",
     }
 
 
@@ -181,8 +181,8 @@ class EscrowService:
                 trip_oid,
                 EventKind.ESCROW_OPENED,
                 EventActor.AGENT,
-                "TripSplit Pay (our simulated licensed payment partner) opened the trip escrow: "
-                "your shares are held there, never by TripSplit, and paid to suppliers only "
+                "Razor Trip Pay (our simulated licensed payment partner) opened the trip escrow: "
+                "your shares are held there, never by Razor Trip, and paid to suppliers only "
                 f"once everyone has paid. Pay by {trip.pay_by:%a %d %b, %H:%M} UTC — otherwise "
                 "every paid share goes back automatically.",
                 payload={"escrow_wallet_id": wallet_id, "pay_by": trip.pay_by.isoformat()},
@@ -269,7 +269,7 @@ class EscrowService:
         await self._say_paid(
             trip,
             booking,
-            f"TripSplit Pay paid {format_money(booking.amount_minor, trip.currency)} from the "
+            f"Razor Trip Pay paid {format_money(booking.amount_minor, trip.currency)} from the "
             f"trip escrow to {booking.supplier} (payout {paid.value.id}).",
         )
         return Ok(paid.value.id)
@@ -485,7 +485,7 @@ class EscrowService:
             trip_oid,
             EventKind.FUNDING_EXPIRED,
             EventActor.AGENT,
-            "Not everyone paid by the deadline, so nothing was booked. TripSplit Pay returned "
+            "Not everyone paid by the deadline, so nothing was booked. Razor Trip Pay returned "
             f"every paid share from the trip escrow ({format_money(refunded, trip.currency)}"
             f"{who}) to your wallets. Start a new trip whenever you are ready.",
             payload={"refunded_minor": refunded},
