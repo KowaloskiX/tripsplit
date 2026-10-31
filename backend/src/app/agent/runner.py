@@ -1,0 +1,318 @@
+"""The loop: observe -> decide -> act -> recover, until done / handoff / step cap.
+
+Two entry points:
+  - `run(RunRequest)` — called by a service (in a worker thread or subprocess).
+  - `main()` — the `agent-run` CLI for development and recon:
+        uv run agent-run --url https://www.saucedemo.com --goal "..." --run-id demo
+
+Per step the runner writes `runs/<run_id>/NN.png`, `status.json` (milestone, step, cost) and,
+on Chromium, a continuously refreshed `live.jpg`. A caller streams those to the UI.
+"""
+
+import argparse
+import contextlib
+import json
+import os
+import time
+from dataclasses import asdict, dataclass, field
+from typing import Any
+
+from app.agent import trajectory as traj_mod
+from app.agent.act import act
+from app.agent.browser import Browser
+from app.agent.observe import observe, render_for_planner
+from app.agent.paths import run_dir
+from app.agent.planner import Planner
+from app.agent.recover import auto_dismiss, detect_block
+from app.agent.skills import notes_for
+from app.agent.vault import Vault
+
+RESULT_MARKER = "__AGENT_RESULT__ "
+
+# Checkout phases after which navigating back to the cart/login only restarts a loop.
+_ADVANCED_MILESTONES = ("delivery", "address", "payment", "review", "summary")
+_REGRESSIVE_URL_HINTS = ("koszyk", "logowanie", "login", "/cart", "basket")
+
+
+@dataclass
+class RunRequest:
+    url: str
+    goal: str
+    run_id: str
+    stop_before_pay: bool = True
+    max_steps: int = 40
+    headless: bool = True
+    engine: str | None = None
+    vault: dict[str, Any] = field(default_factory=dict)
+    # Non-secret preferences (class, seat, cancellation policy...) shown to the planner in
+    # plain text so it picks the matching option.
+    preferences: dict[str, str] = field(default_factory=dict)
+    use_trajectory: bool = True
+
+
+@dataclass
+class RunResult:
+    run_id: str
+    url: str
+    goal: str
+    outcome: str = "unknown"  # done | handoff | stuck | max_steps | error | unknown
+    reason: str = ""
+    steps: int = 0
+    artifacts_dir: str = ""
+    milestones: list[str] = field(default_factory=list)
+    planner_calls: int = 0
+    tokens: dict[str, int] = field(default_factory=dict)
+    cost_usd: float = 0.0
+    cache_hits: int = 0
+
+
+def _cost_usd(tokens: dict[str, int]) -> float:
+    """Rough USD estimate from token counts. Prices per 1M tokens, env-configurable."""
+    price_in = float(os.getenv("PRICE_IN_PER_M", "1.25"))
+    price_out = float(os.getenv("PRICE_OUT_PER_M", "10"))
+    return round(tokens.get("in", 0) / 1e6 * price_in + tokens.get("out", 0) / 1e6 * price_out, 5)
+
+
+def _write_json(path: str, payload: Any) -> None:
+    with contextlib.suppress(Exception), open(path, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False)
+
+
+def run(req: RunRequest) -> RunResult:
+    if req.engine:
+        os.environ["ENGINE"] = req.engine
+    artifacts = run_dir(req.run_id)
+    os.makedirs(artifacts, exist_ok=True)
+    result = RunResult(run_id=req.run_id, url=req.url, goal=req.goal, artifacts_dir=artifacts)
+
+    vault = Vault(req.vault or None)
+    planner = Planner()
+    browser = Browser(headless=req.headless)
+    browser.live_frame_path = os.path.join(artifacts, "live.jpg")
+    prefs_text = "; ".join(f"{k}: {v}" for k, v in req.preferences.items() if v)
+
+    history: list[dict[str, Any]] = []
+    trace: list[dict[str, Any]] = []
+    milestones: list[str] = []
+    last_milestone = None
+    prev_sig, repeats = None, 0
+    last_notes = ""
+
+    traj = traj_mod.load(req.url) if req.use_trajectory else None
+    ti, cache_hits, replay_on, recorded = 0, 0, bool(traj), []
+    if traj:
+        print(f"[cache] loaded trajectory: {len(traj)} steps")
+
+    def status(step: int, reason: str) -> None:
+        _write_json(
+            os.path.join(artifacts, "status.json"),
+            {
+                "milestone": last_milestone,
+                "reached": milestones,
+                "step": step,
+                "reason": reason,
+                "outcome": result.outcome,
+                "cache_hits": cache_hits,
+                "planner_calls": planner.calls,
+                "tokens": planner.tokens["total"],
+                "cost_usd": _cost_usd(planner.tokens),
+            },
+        )
+
+    try:
+        browser.start()
+        browser.goto(req.url)
+
+        for step in range(1, req.max_steps + 1):
+            # RECOVER (pre): clear overlays, then check for human-only gates.
+            auto_dismiss(browser.page)
+            blocked, reason = detect_block(browser.page)
+            if blocked:
+                browser.screenshot(os.path.join(artifacts, f"{step:02d}-handoff.png"))
+                print(f"[step {step}] HANDOFF -> {reason}")
+                result.outcome, result.reason, result.steps = "handoff", reason, step
+                break
+
+            # OBSERVE
+            try:
+                state = observe(browser.page)
+            except Exception as exc:
+                print(f"  [observe error] {exc!r:.120} — settling & retrying")
+                browser.settle()
+                continue
+            shot = os.path.join(artifacts, f"{step:02d}.png")
+            browser.screenshot(shot)
+            png = None
+            with contextlib.suppress(Exception), open(shot, "rb") as fh:
+                png = fh.read()
+
+            # DECIDE
+            notes = notes_for(state.get("url", ""))
+            if notes and notes != last_notes:
+                print(f"[skill] loaded site playbook for {state.get('url', '')[:60]}")
+                last_notes = notes
+            page_render = render_for_planner(state)
+            action = None
+            from_cache = False
+            if replay_on and traj and ti < len(traj):
+                cand = traj_mod.action_from_cache(traj[ti], state["elements"])
+                if cand is not None:
+                    action, from_cache, ti = cand, True, ti + 1
+                    cache_hits += 1
+                else:
+                    replay_on = False
+                    print(f"[cache] miss at step {step} -> self-heal via planner")
+            if action is None:
+                action = planner.next_action(
+                    req.goal,
+                    req.stop_before_pay,
+                    page_render,
+                    vault.planner_keys(),
+                    history,
+                    screenshot_png=png,
+                    site_notes=notes,
+                    preferences=prefs_text,
+                )
+            safe = {k: v for k, v in action.items() if k != "text" or "{{" in str(v)}
+            print(f"[step {step}]{' [cache]' if from_cache else ''} {json.dumps(safe)}")
+            history.append(safe)
+            trace.append(
+                {"step": step, "url": state.get("url", ""), "render": page_render, "action": safe}
+            )
+            if action.get("action") not in ("done", "handoff"):
+                recorded.append(traj_mod.record_step(action, state["elements"]))
+
+            milestone = action.get("milestone")
+            if milestone and milestone != last_milestone:
+                last_milestone = milestone
+                milestones.append(milestone)
+                print(f"[milestone] {milestone}")
+            status(step, action.get("reason") or "")
+
+            # Loop guard: nudge on 3x identical, hard-stop on 5x.
+            sig = (
+                action.get("action"),
+                action.get("ref"),
+                str(action.get("text"))[:40],
+                action.get("x"),
+                action.get("y"),
+                action.get("direction"),
+            )
+            repeats = repeats + 1 if sig == prev_sig else 0
+            prev_sig = sig
+            if repeats == 2:
+                history.append(
+                    {
+                        "note": "You repeated the same action 3x with no visible progress — a "
+                        "consent banner may be blocking the page; dismiss it or pick a different "
+                        "visible control."
+                    }
+                )
+            if repeats >= 4:
+                browser.screenshot(os.path.join(artifacts, f"{step:02d}-stuck.png"))
+                result.outcome, result.steps = "stuck", step
+                result.reason = f"Repeated the same action without visible progress ({sig})."
+                break
+
+            # Regressive-navigation guard.
+            if action.get("action") == "goto" and any(
+                m in _ADVANCED_MILESTONES for m in milestones
+            ):
+                target = (action.get("url") or "").lower()
+                if any(k in target for k in _REGRESSIVE_URL_HINTS):
+                    print(f"[guard] blocked regressive goto -> {target[:70]}")
+                    if recorded and recorded[-1].get("action") == "goto":
+                        recorded.pop()
+                    history.append(
+                        {
+                            "note": "Do NOT navigate back to the cart or login page — you are "
+                            "already past that step. Finish the current step in place."
+                        }
+                    )
+                    browser.settle()
+                    continue
+
+            if action.get("action") == "done":
+                browser.screenshot(os.path.join(artifacts, f"{step:02d}-done.png"))
+                result.outcome, result.reason, result.steps = "done", action.get("reason", ""), step
+                break
+            if action.get("action") == "handoff":
+                browser.screenshot(os.path.join(artifacts, f"{step:02d}-handoff.png"))
+                result.outcome, result.steps = "handoff", step
+                result.reason = action.get("reason", "")
+                break
+
+            # ACT
+            try:
+                act(browser, action, vault)
+            except Exception as exc:
+                print(f"  [act error] {exc!r:.160} — re-observing")
+        else:
+            result.outcome, result.steps = "max_steps", req.max_steps
+            result.reason = "Hit the step cap without reaching a terminal state."
+    except Exception as exc:
+        result.outcome, result.reason = "error", repr(exc)[:300]
+    finally:
+        browser.close()
+
+    result.milestones = milestones
+    result.planner_calls = planner.calls
+    result.tokens = dict(planner.tokens)
+    result.cost_usd = _cost_usd(planner.tokens)
+    result.cache_hits = cache_hits
+    status(result.steps, result.reason)
+    _write_json(os.path.join(artifacts, "trace.json"), trace)
+    _write_json(os.path.join(artifacts, "result.json"), asdict(result))
+    if req.use_trajectory and result.outcome == "done" and recorded:
+        with contextlib.suppress(Exception):
+            path = traj_mod.save(req.url, recorded)
+            if path:
+                print(f"[cache] saved trajectory: {len(recorded)} steps -> {path}")
+    print(
+        f"[tokens] planner calls={planner.calls} total={planner.tokens['total']} "
+        f"~${result.cost_usd}  [artifacts] {artifacts}/"
+    )
+    return result
+
+
+def main() -> None:
+    from dotenv import load_dotenv
+
+    load_dotenv("../.env")
+    load_dotenv()
+    ap = argparse.ArgumentParser(description="Run the booking agent on a supplier URL.")
+    ap.add_argument("--url", required=True)
+    ap.add_argument("--goal", required=True)
+    ap.add_argument("--run-id", default=f"cli-{int(time.time())}")
+    ap.add_argument("--pay", action="store_true", help="do NOT stop before the final pay click")
+    ap.add_argument("--max-steps", type=int, default=40)
+    ap.add_argument("--headful", action="store_true", help="show the browser window")
+    ap.add_argument("--engine", choices=["camoufox", "chromium", "firefox"])
+    ap.add_argument("--vault", help="path to a JSON file with vault values (never committed)")
+    ap.add_argument("--no-cache", action="store_true", help="ignore the trajectory cache")
+    ap.add_argument("--json", action="store_true", help="emit a machine-readable result line")
+    args = ap.parse_args()
+
+    vault: dict[str, Any] = {}
+    if args.vault:
+        with open(args.vault, encoding="utf-8") as fh:
+            vault = json.load(fh)
+    result = run(
+        RunRequest(
+            url=args.url,
+            goal=args.goal,
+            run_id=args.run_id,
+            stop_before_pay=not args.pay,
+            max_steps=args.max_steps,
+            headless=not args.headful,
+            engine=args.engine,
+            vault=vault,
+            use_trajectory=not args.no_cache,
+        )
+    )
+    if args.json:
+        print(RESULT_MARKER + json.dumps(asdict(result)))
+
+
+if __name__ == "__main__":
+    main()

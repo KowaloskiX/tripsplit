@@ -1,0 +1,79 @@
+[project]
+name = "app"
+version = "0.0.0"
+description = "TripSplit backend (FastAPI + booking agent)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic[email]>=2.9",
+    "pydantic-settings>=2.6",
+    "pwdlib[argon2]>=0.3.0",
+    "limits[async-redis]>=5.8.0",
+    "beanie>=2.1.0",
+    # The booking agent (app.agent): a stealth browser driven by an LLM planner with vision.
+    "camoufox[geoip]>=0.4.0",
+    "playwright>=1.44.0",
+    "openai>=1.40.0",
+    "python-dotenv>=1.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "import-linter>=2.1",
+    "testcontainers[mongodb,redis]>=4.15.0",
+    "pytest-cov>=7.1.0",
+]
+
+[project.scripts]
+dump-openapi = "scripts.dump_openapi:main"
+ensure-indexes = "scripts.ensure_indexes:main"
+strict-queries = "scripts.strict_queries:main"
+agent-run = "app.agent.runner:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/app", "scripts"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+src = ["src", "tests", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ASYNC", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# These files embed JavaScript (page observation / gate detection) and the planner's system
+# prompt as string literals. Wrapping JS or a prompt to 100 columns changes nothing for the
+# reader and risks breaking the code it carries — a genuine E501 false positive.
+"src/app/agent/observe.py" = ["E501"]
+"src/app/agent/recover.py" = ["E501"]
+"src/app/agent/planner.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+files = ["src", "tests", "scripts"]
+
+# The agent is a port of a field-tested hackathon harness written without annotations. It is
+# infrastructure at the edge (Playwright + OpenAI), exercised by live runs rather than by the
+# type checker. Typing it is a follow-up, not a precondition — hence the exemption.
+[[tool.mypy.overrides]]
+module = "app.agent.*"
+ignore_errors = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+pythonpath = ["src"]
+testpaths = ["tests"]
