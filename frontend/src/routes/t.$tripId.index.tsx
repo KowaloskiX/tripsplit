@@ -8,6 +8,7 @@ import { TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
+import { BookingStage } from "@/features/mission-control";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
@@ -91,7 +92,11 @@ function RoomPage(): ReactNode {
                   Full screen
                 </Link>
               </div>
-              <TripBookings tripId={tripId} />
+              {/* Mission control appears above the bookings once a `mission` prop is passed
+                  (MissionControlData); without one this is the plain booking UI. */}
+              <BookingStage>
+                <TripBookings tripId={tripId} />
+              </BookingStage>
             </section>
           )}
           {/* While the group pays, the shares are the stage card; afterwards the bookings are.
