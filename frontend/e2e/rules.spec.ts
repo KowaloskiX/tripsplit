@@ -1,6 +1,13 @@
 import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 
-import { createTrip, demoControls, driveToPaying, parseMoneyMinor, registerUser } from "./helpers";
+import {
+  createTrip,
+  demoControls,
+  driveToPaying,
+  parseMoneyMinor,
+  payMyShare,
+  registerUser,
+} from "./helpers";
 
 // Three users register (argon2 on purpose is slow) and the rooms poll: on a busy machine the
 // default 30 s is too tight.
@@ -27,7 +34,7 @@ test("a booking cannot start while a share is unpaid, and the UI says why", asyn
   const tripId = await createTrip(page, { title: "Unpaid shares", groupSize: 3 });
   await driveToPaying(page, 3);
 
-  await page.getByRole("button", { name: /^Pay my share · / }).click();
+  await payMyShare(page);
   await expect(page.getByText("1/3 paid")).toBeVisible();
   await expect(
     page.getByText("Your share is paid. The agent books as soon as everyone else has paid too."),

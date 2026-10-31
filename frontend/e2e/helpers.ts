@@ -87,6 +87,17 @@ export async function demoControls(page: Page): Promise<Locator> {
 }
 
 /** Fills the signed-in member's own traveller details (needed before an agent books). */
+/** "Pay my share" goes through the wallet: a fresh user tops up the shortfall by (dummy) BLIK
+ * and the share is paid once the dummy bank confirms. */
+export async function payMyShare(page: Page): Promise<void> {
+  await page.getByRole("button", { name: /^Pay my share · / }).click();
+  const sheet = page.getByRole("dialog", { name: "Pay my share" });
+  await sheet.getByLabel("BLIK code").fill("123456");
+  await sheet.getByRole("button", { name: /^Top up .* & pay$/ }).click();
+  await sheet.getByRole("button", { name: "Done" }).click({ timeout: 15_000 });
+  await expect(sheet).toHaveCount(0);
+}
+
 export async function fillMyTravellerDetails(page: Page, fullName: string): Promise<void> {
   const form = page.getByRole("form", { name: "Your traveller details" });
   if (!(await form.isVisible())) {

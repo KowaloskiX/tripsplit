@@ -9,6 +9,7 @@ import {
   FAST,
   fillMyTravellerDetails,
   parseMoneyMinor,
+  payMyShare,
   registerUser,
 } from "./helpers";
 
@@ -49,10 +50,11 @@ test.describe("a group trip from chat to tickets", () => {
     // While a share is unpaid nothing can be started.
     await expect(page.getByRole("button", { name: "Start booking" })).toHaveCount(0);
 
-    await page.getByRole("button", { name: /^Pay my share · / }).click();
+    await payMyShare(page);
     await expect(page.getByText(`1/${GROUP} paid`)).toBeVisible();
     await (await demoControls(page)).getByRole("button", { name: "Everyone else pays" }).click();
-    await expect(page.getByText(`${GROUP}/${GROUP} paid`)).toBeVisible();
+    // .first(): the all-paid celebration stamp briefly repeats the count.
+    await expect(page.getByText(`${GROUP}/${GROUP} paid`).first()).toBeVisible();
     await expect(
       page.getByText("Everyone paid — the organizer can start the bookings"),
     ).toBeVisible();

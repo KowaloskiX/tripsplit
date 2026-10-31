@@ -9,6 +9,7 @@ import {
   FAST,
   fillMyTravellerDetails,
   generatePackages,
+  payMyShare,
   registerUser,
   seedGroup,
   voteAndClose,
@@ -65,9 +66,10 @@ test("screenshots of every stage at phone and desktop sizes", async ({ page }) =
   await voteAndClose(page, 6);
   await shoot(page, "05-room-paying");
 
-  await page.getByRole("button", { name: /^Pay my share · / }).click();
+  await payMyShare(page);
   await (await demoControls(page)).getByRole("button", { name: "Everyone else pays" }).click();
-  await expect(page.getByText("6/6 paid")).toBeVisible();
+  // .first(): the 6/6 celebration stamp briefly repeats the count.
+  await expect(page.getByText("6/6 paid").first()).toBeVisible();
   await shoot(page, "06-room-booking");
 
   await page.goto(`/t/${tripId}/bookings`);
