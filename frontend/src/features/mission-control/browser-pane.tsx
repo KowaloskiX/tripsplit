@@ -85,9 +85,12 @@ export function BrowserPane({ browser, live, className }: BrowserPaneProps): Rea
   return (
     <section
       aria-label="The agent's browser"
-      className={cn("flex min-w-0 flex-col gap-3 rounded-[28px] bg-surface p-3", className)}
+      className={cn(
+        "flex min-w-0 flex-col gap-3 rounded-[var(--radius-panel)] bg-surface p-3",
+        className,
+      )}
     >
-      <div className="flex flex-1 flex-col overflow-hidden rounded-[20px] ring-1 ring-line">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-xl ring-1 ring-line">
         <div className="flex items-center gap-2 bg-surface-sunken px-3 py-2">
           <span aria-hidden className="flex gap-1.5">
             <span className="size-2.5 rounded-full bg-[#ff5f57]" />

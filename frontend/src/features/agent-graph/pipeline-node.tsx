@@ -128,7 +128,7 @@ export function PipelineNode({ node, state, last, children }: PipelineNodeProps)
       </div>
       <div
         className={cn(
-          "mb-4 rounded-[24px] border px-4 py-3.5 transition duration-150 sm:px-5",
+          "mb-4 rounded-xl border px-4 py-3.5 transition duration-150 sm:px-5",
           CARD[state.status],
         )}
       >
@@ -195,7 +195,7 @@ export function LoopBody({ node, state, body }: LoopBodyProps): ReactNode {
         </div>
       )}
       <ol
-        className="space-y-2 rounded-[20px] bg-surface-sunken p-2.5"
+        className="space-y-2 rounded-xl bg-surface-sunken p-2.5"
         aria-label={`Repeated for each ${unit}`}
       >
         {body.map(({ node: child, state: childState }) => (

@@ -22,12 +22,12 @@ export function TravellerChecklist({ members }: { members: MemberResponse[] }): 
       {members.map((member) => (
         <li key={member.user_id} className="flex items-start gap-2 text-sm">
           {member.traveller_details_complete ? (
-            <CircleCheck className="mt-0.5 size-4 shrink-0 text-live" aria-label="complete" />
+            <CircleCheck className="mt-0.5 size-4 shrink-0 text-success" aria-label="complete" />
           ) : (
             <CircleAlert className="mt-0.5 size-4 shrink-0 text-danger" aria-label="missing" />
           )}
           <span className="text-ink">{member.display_name}</span>
-          <span className="font-mono text-xs text-muted">
+          <span className="text-xs leading-5 text-muted">
             {member.traveller_details_complete
               ? "details complete"
               : `missing: ${member.traveller_details_missing.map((f) => FIELD_LABEL[f]).join(", ")}`}

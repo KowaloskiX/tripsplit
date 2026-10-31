@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 
 import { ErrorCallout } from "@/components/ui/callout";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Disclosure } from "@/components/ui/disclosure";
 import { agentRunFrameUrl, apiErrorMessage, type BookingResponse } from "@/lib/api";
 
 import { ApprovalCard } from "./approval-card";
@@ -32,6 +32,8 @@ type LiveAgentPanelProps = {
   currency: string;
   isOrganizer: boolean;
   travellers?: number | undefined;
+  /** More of the booking, shown inside the "Details" disclosure next to the agent's run. */
+  children?: ReactNode;
 };
 
 /** What the agent sees and where it is in the checkout, refreshed twice a second. */
@@ -41,6 +43,7 @@ export function LiveAgentPanel({
   currency,
   isOrganizer,
   travellers,
+  children,
 }: LiveAgentPanelProps): ReactNode {
   const run = booking.run;
   const working = booking.status === "running" || booking.status === "approved";
@@ -70,37 +73,43 @@ export function LiveAgentPanel({
     );
   }
 
+  const step = live?.step ?? run.steps;
   return (
-    <Panel>
-      <PanelHeader>
-        <span>{working ? "Live · agent working" : "Agent run"}</span>
-        <span>
-          step {live?.step ?? run.steps}
-          {run.cost_usd > 0 ? ` · $${run.cost_usd.toFixed(3)}` : ""}
-        </span>
-      </PanelHeader>
-      <div className="space-y-3 p-4">
-        <MilestoneStepper
-          milestone={live?.milestone ?? run.milestone}
-          finished={booking.status === "confirmed"}
-        />
-        <RunGraph
-          runId={run.run_id}
-          active={working}
-          steps={live?.steps}
-          title={bookingTitle(booking.title)}
-        />
-        <LiveFrame
-          src={frameUrl}
-          alt={`What the agent sees on ${booking.supplier}`}
-          placeholder={`step ${live?.step ?? run.steps} · ${
-            working ? "Waiting for the first frame…" : "No frame recorded"
-          }`}
-        />
-        {reason && working && <p className="text-sm text-muted">{reason}</p>}
-        <RunNotice booking={booking} reason={reason} isOrganizer={isOrganizer} />
-      </div>
-    </Panel>
+    <div className="space-y-2">
+      {working && (
+        <p className="text-sm text-muted">
+          Agent working · step {step}
+          {reason ? ` · ${reason}` : ""}
+        </p>
+      )}
+      <RunNotice booking={booking} reason={reason} isOrganizer={isOrganizer} />
+      <Disclosure summary="Details">
+        <div className="space-y-3 pt-3">
+          <p className="text-xs text-muted">
+            {working ? "Live · agent working" : "Agent run"} · step {step}
+            {run.cost_usd > 0 ? ` · $${run.cost_usd.toFixed(3)}` : ""}
+          </p>
+          <MilestoneStepper
+            milestone={live?.milestone ?? run.milestone}
+            finished={booking.status === "confirmed"}
+          />
+          <RunGraph
+            runId={run.run_id}
+            active={working}
+            steps={live?.steps}
+            title={bookingTitle(booking.title)}
+          />
+          <LiveFrame
+            src={frameUrl}
+            alt={`What the agent sees on ${booking.supplier}`}
+            placeholder={`step ${step} · ${
+              working ? "Waiting for the first frame…" : "No frame recorded"
+            }`}
+          />
+          {children}
+        </div>
+      </Disclosure>
+    </div>
   );
 }
 

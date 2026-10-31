@@ -1,3 +1,4 @@
+import { MonitorSmartphone } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,7 @@ import { ErrorCallout } from "@/components/ui/callout";
 import { apiErrorMessage, type RoomResponse } from "@/lib/api";
 
 import { useMemberLeaves, usePayAll, useSeedMembers, useVoteAll } from "./mutations";
+import { useDemoUiStore } from "./store";
 
 const LEAVABLE = ["collecting", "proposing", "voting", "paying"];
 
@@ -27,11 +29,13 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
   const missing = trip.group_size - room.members.length;
   const joinable = ["collecting", "proposing", "voting"].includes(trip.status);
   const favourite = room.my_vote_proposal_id ?? room.proposals[0]?.id;
+  const stageView = useDemoUiStore((state) => state.stageView);
+  const setStageView = useDemoUiStore((state) => state.setStageView);
 
   return (
-    <details className="rounded-[var(--radius-panel)] border border-dashed border-line px-5 py-3.5">
-      <summary className="cursor-pointer text-sm font-medium text-muted">
-        Demo controls (dev only)
+    <details className="mx-auto w-full max-w-3xl rounded-[var(--radius-panel)] border border-dashed border-line px-4 py-2.5 text-center open:text-left">
+      <summary className="cursor-pointer text-xs font-medium text-muted">
+        Demo<span className="sr-only"> controls (dev only)</span>
       </summary>
       <div className="mt-3 space-y-3">
         {error && <ErrorCallout>{apiErrorMessage(error)}</ErrorCallout>}
@@ -60,6 +64,17 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
           >
             Everyone else pays
           </Button>
+          {room.my_role === "organizer" && (
+            <Button
+              size="sm"
+              variant={stageView ? "solid" : "outline"}
+              aria-pressed={stageView}
+              onClick={() => setStageView(!stageView)}
+            >
+              <MonitorSmartphone className="size-4" aria-hidden />
+              Stage view
+            </Button>
+          )}
           <Button
             size="sm"
             variant="outline"

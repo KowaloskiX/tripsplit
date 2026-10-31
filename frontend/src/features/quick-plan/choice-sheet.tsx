@@ -18,7 +18,7 @@ export function ChoiceSheet({ pkg, currency, people, onChoose }: ChoiceSheetProp
   return (
     <section
       aria-label="How do you want to pay?"
-      className="sheet-up rounded-[32px] border border-line bg-surface p-4 shadow-pop sm:p-5"
+      className="sheet-up rounded-[var(--radius-panel)] border border-line bg-surface p-4 shadow-pop sm:p-5"
     >
       <span aria-hidden className="mx-auto mb-4 block h-1 w-10 rounded-full bg-line" />
       <p className="eyebrow">You picked</p>
@@ -27,7 +27,7 @@ export function ChoiceSheet({ pkg, currency, people, onChoose }: ChoiceSheetProp
         <button
           type="button"
           onClick={() => onChoose?.("invite")}
-          className="group flex flex-col items-start gap-3 rounded-[24px] bg-sun p-5 text-left text-sun-ink transition duration-150 hover:brightness-95 active:scale-[0.98]"
+          className="group flex flex-col items-start gap-3 rounded-xl bg-sun p-5 text-left text-sun-ink transition duration-150 hover:brightness-95 active:scale-[0.98]"
         >
           <Users className="size-6" strokeWidth={1.5} aria-hidden />
           <span className="text-lg leading-snug tracking-[-0.02em]">
@@ -40,7 +40,7 @@ export function ChoiceSheet({ pkg, currency, people, onChoose }: ChoiceSheetProp
         <button
           type="button"
           onClick={() => onChoose?.("pay_all")}
-          className="flex flex-col items-start gap-3 rounded-[24px] border border-ink/15 p-5 text-left text-ink transition duration-150 hover:border-ink/40 active:scale-[0.98]"
+          className="flex flex-col items-start gap-3 rounded-xl border border-ink/15 p-5 text-left text-ink transition duration-150 hover:border-ink/40 active:scale-[0.98]"
         >
           <Wallet className="size-6" strokeWidth={1.5} aria-hidden />
           <span className="text-lg leading-snug tracking-[-0.02em]">

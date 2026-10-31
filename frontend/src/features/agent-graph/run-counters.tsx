@@ -45,7 +45,7 @@ export function RunCounters({ counters }: { counters: Counters }): ReactNode {
       {tiles.map((tile) => (
         <div
           key={tile.label}
-          className="flex items-center gap-3 rounded-[24px] bg-surface-sunken px-3.5 py-3"
+          className="flex items-center gap-3 rounded-xl bg-surface-sunken px-3.5 py-3"
         >
           <span
             className={cn(

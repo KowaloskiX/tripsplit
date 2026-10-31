@@ -19,8 +19,8 @@ type StepperProps = {
 
 // The current dot is see-through: the sliding indicator underneath gives it its colour.
 const DOT: Record<StepState, string> = {
-  done: "bg-ink text-bg",
-  current: "text-pastel-ink",
+  done: "bg-accent text-accent-ink",
+  current: "text-sun-ink",
   alert: "text-danger",
   upcoming: "border border-ink/15 bg-surface text-muted",
 };
@@ -55,18 +55,18 @@ export function Stepper({ steps, label, className }: StepperProps): ReactNode {
     <div className={cn("relative w-full", className)}>
       <span
         aria-hidden
-        className="absolute top-4 h-0.5 -translate-y-1/2 rounded-full bg-line"
+        className="absolute top-3 h-px -translate-y-1/2 rounded-full bg-line"
         style={{ left: inset, right: inset }}
       >
         <span
-          className="absolute inset-0 origin-left rounded-full bg-ink transition-transform duration-700 ease-[var(--ease-spring)]"
+          className="absolute inset-0 origin-left rounded-full bg-accent transition-transform duration-700 ease-[var(--ease-spring)]"
           style={{ transform: `scaleX(${fill})` }}
         />
       </span>
       {!allDone && (
         <span
           aria-hidden
-          className="absolute top-0 left-0 flex h-8 justify-center transition-transform duration-500 ease-[var(--ease-spring)]"
+          className="absolute top-0 left-0 flex h-6 justify-center transition-transform duration-500 ease-[var(--ease-spring)]"
           style={
             {
               width: `calc(100% / ${count})`,
@@ -76,7 +76,7 @@ export function Stepper({ steps, label, className }: StepperProps): ReactNode {
         >
           <span
             className={cn(
-              "halo size-8 rounded-full transition-colors duration-300",
+              "size-6 rounded-full transition-colors duration-300",
               alert ? "bg-pastel-blush [--halo-color:var(--color-danger)]" : "bg-sun",
             )}
           />
@@ -90,25 +90,25 @@ export function Stepper({ steps, label, className }: StepperProps): ReactNode {
               key={step.key}
               data-state={step.state}
               aria-current={isActive ? "step" : undefined}
-              className="relative flex flex-1 flex-col items-center gap-2"
+              className="relative flex flex-1 flex-col items-center gap-1.5"
             >
               <span
                 className={cn(
-                  "ticket-mono relative z-10 inline-flex size-8 items-center justify-center rounded-full text-xs transition duration-300",
+                  "ticket-mono relative z-10 inline-flex size-6 items-center justify-center rounded-full text-[11px] transition duration-300",
                   DOT[step.state],
                 )}
               >
                 {step.state === "done" ? (
-                  <Check key="done" className="pop size-4" strokeWidth={2.5} aria-hidden />
+                  <Check key="done" className="pop size-3.5" strokeWidth={2.5} aria-hidden />
                 ) : step.state === "alert" ? (
-                  <AlertTriangle className="size-4" aria-hidden />
+                  <AlertTriangle className="size-3.5" aria-hidden />
                 ) : (
                   index + 1
                 )}
               </span>
               <span
                 className={cn(
-                  "max-w-[5.5rem] text-center text-[11px] leading-tight transition-colors duration-300 sm:max-w-none sm:text-sm",
+                  "max-w-[5.5rem] text-center text-[11px] leading-tight transition-colors duration-300 sm:max-w-none sm:text-[13px]",
                   LABEL[step.state],
                 )}
               >

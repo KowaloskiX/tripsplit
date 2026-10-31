@@ -20,7 +20,7 @@ export function PayAllForm({ tripId, totalMinor, currency, onPaid }: PayAllFormP
   return (
     <section
       aria-label="Pay for everyone"
-      className="sheet-up space-y-3 rounded-[32px] border border-line bg-surface p-4 shadow-pop sm:p-5"
+      className="sheet-up space-y-3 rounded-[var(--radius-panel)] border border-line bg-surface p-4 shadow-pop sm:p-5"
     >
       <p className="eyebrow">Pay for everyone</p>
       <p className="ticket-mono text-2xl text-ink">{formatMoney(totalMinor, currency)}</p>

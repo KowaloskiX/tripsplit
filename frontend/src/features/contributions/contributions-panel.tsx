@@ -51,6 +51,7 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
           contributions={room.contributions}
           currency={trip.currency}
           myUserId={room.my_user_id}
+          foldTable={trip.status !== "paying"}
         />
       </div>
     </Panel>

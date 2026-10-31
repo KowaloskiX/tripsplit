@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ConfettiBurst } from "@/components/ui/confetti-burst";
+import { Disclosure } from "@/components/ui/disclosure";
 import { CountUp, DigitRoll } from "@/components/ui/number-roll";
 import { Progress } from "@/components/ui/progress";
 import { Stamp } from "@/components/ui/stamp";
@@ -14,6 +15,8 @@ type ContributionsTableProps = {
   contributions: ContributionResponse[];
   currency: string;
   myUserId: string;
+  /** Fold the per-member table behind "Who paid what" (once everyone has paid). */
+  foldTable?: boolean;
 };
 
 /** Presentational: who owes what, who has paid, and how far the group is. */
@@ -21,6 +24,7 @@ export function ContributionsTable({
   contributions,
   currency,
   myUserId,
+  foldTable = false,
 }: ContributionsTableProps): ReactNode {
   // A former member's settled share (0, maybe a refund) is not part of the group's progress.
   const shares = contributions.filter((c) => c.amount_minor > 0);
@@ -70,57 +74,73 @@ export function ContributionsTable({
         label={`${paid} of ${total} shares paid`}
       />
 
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="text-xs text-muted">
-            <th className="py-2 text-left font-medium">Member</th>
-            <th className="py-2 text-right font-medium">Share</th>
-            <th className="hidden py-2 text-right font-medium sm:table-cell">Paid</th>
-            <th className="py-2 text-right font-medium">Status</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-line">
-          {contributions.map((contribution) => {
-            const done = contribution.outstanding_minor === 0;
-            const refund = contribution.refund_minor > 0;
-            return (
-              <tr key={contribution.user_id}>
-                <td className="py-2.5 text-ink">
-                  <span className="flex items-center gap-2.5">
-                    <Avatar name={contribution.display_name} size="sm" />
-                    <span className="min-w-0 truncate">
-                      {contribution.display_name}
-                      {contribution.user_id === myUserId && (
-                        <span className="text-muted"> (you)</span>
-                      )}
-                    </span>
-                  </span>
-                </td>
-                <td className="ticket-mono py-2.5 text-right text-sm text-ink">
-                  {formatMoney(contribution.amount_minor, currency)}
-                </td>
-                <td className="ticket-mono hidden py-2.5 text-right text-sm text-muted sm:table-cell">
-                  {formatMoney(contribution.paid_minor, currency)}
-                </td>
-                <td className="py-2.5 text-right">
-                  <Badge
-                    // A new key on every state change remounts the badge, so it pops.
-                    key={refund ? "refund" : done ? "paid" : "pending"}
-                    tone={refund ? "info" : done ? "success" : "warn"}
-                    className={done || refund ? "pop tabular-nums" : "tabular-nums"}
-                  >
-                    {refund
-                      ? `refund ${formatMoney(contribution.refund_minor, currency)}`
-                      : done
-                        ? "paid"
-                        : "pending"}
-                  </Badge>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      {foldTable ? (
+        <Disclosure summary="Who paid what">
+          <MemberTable contributions={contributions} currency={currency} myUserId={myUserId} />
+        </Disclosure>
+      ) : (
+        <MemberTable contributions={contributions} currency={currency} myUserId={myUserId} />
+      )}
     </div>
+  );
+}
+
+function MemberTable({
+  contributions,
+  currency,
+  myUserId,
+}: Omit<ContributionsTableProps, "foldTable">): ReactNode {
+  return (
+    <table className="w-full text-sm">
+      <thead>
+        <tr className="text-xs text-muted">
+          <th className="py-2 text-left font-medium">Member</th>
+          <th className="py-2 text-right font-medium">Share</th>
+          <th className="hidden py-2 text-right font-medium sm:table-cell">Paid</th>
+          <th className="py-2 text-right font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody className="divide-y divide-line">
+        {contributions.map((contribution) => {
+          const done = contribution.outstanding_minor === 0;
+          const refund = contribution.refund_minor > 0;
+          return (
+            <tr key={contribution.user_id}>
+              <td className="py-2.5 text-ink">
+                <span className="flex items-center gap-2.5">
+                  <Avatar name={contribution.display_name} size="sm" />
+                  <span className="min-w-0 truncate">
+                    {contribution.display_name}
+                    {contribution.user_id === myUserId && (
+                      <span className="text-muted"> (you)</span>
+                    )}
+                  </span>
+                </span>
+              </td>
+              <td className="ticket-mono py-2.5 text-right text-sm text-ink">
+                {formatMoney(contribution.amount_minor, currency)}
+              </td>
+              <td className="ticket-mono hidden py-2.5 text-right text-sm text-muted sm:table-cell">
+                {formatMoney(contribution.paid_minor, currency)}
+              </td>
+              <td className="py-2.5 text-right">
+                <Badge
+                  // A new key on every state change remounts the badge, so it pops.
+                  key={refund ? "refund" : done ? "paid" : "pending"}
+                  tone={refund ? "info" : done ? "success" : "warn"}
+                  className={done || refund ? "pop tabular-nums" : "tabular-nums"}
+                >
+                  {refund
+                    ? `refund ${formatMoney(contribution.refund_minor, currency)}`
+                    : done
+                      ? "paid"
+                      : "pending"}
+                </Badge>
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
   );
 }
