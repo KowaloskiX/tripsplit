@@ -179,7 +179,7 @@ class ClaudeCliResearcher:
             await process.wait()
             raise
         if process.returncode != 0:
-            raise ValueError(
-                f"Claude CLI exited with {process.returncode}: {stderr.decode(errors='replace')}"
-            )
+            # The CLI reports API errors (rate or spend limits) in the stdout envelope, not stderr.
+            detail = (stderr or stdout)[:500].decode(errors="replace")
+            raise ValueError(f"Claude CLI exited with {process.returncode}: {detail}")
         return stdout

@@ -164,7 +164,7 @@ class FixtureResearcher:
                 title=f"Comfort: train + apartment in {place.apartment_area} + local evening",
                 summary=(
                     f"A whole apartment in {place.apartment_area} for the group, the morning "
-                    f"train and one guided evening: {place.casual_activity.lower()}."
+                    f"train and one guided evening: {place.casual_activity}."
                 ),
                 items=(
                     train("2nd", place.train_2nd_return),
@@ -180,7 +180,7 @@ class FixtureResearcher:
                 title=f"Weekend splurge: 1st class + hotel in {place.hotel_area} + river evening",
                 summary=(
                     f"1st class both ways, a 4-star hotel in {place.hotel_area} with breakfast "
-                    f"and a {place.splurge_activity.lower()}."
+                    f"and a {place.splurge_activity}."
                 ),
                 items=(
                     train("1st", place.train_1st_return),
