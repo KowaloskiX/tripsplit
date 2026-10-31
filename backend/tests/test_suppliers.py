@@ -18,7 +18,7 @@ from app.core.domain.suppliers import (
     quote_is_fresh,
 )
 from app.core.domain.travellers import TravellerDetails, describe_missing, masked_document_number
-from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode, TravelPreferences
 from app.suppliers.pkp import PkpIntercitySupplier
 from app.suppliers.ports import BookingRef, DisruptionKind, OfferRef, SearchRequest
 from app.suppliers.providers import build_registry
@@ -231,7 +231,7 @@ async def test_the_pkp_adapter_searches_whole_party_offers() -> None:
     assert "Sold as 3+3" in offer.details
     assert offer.purchase_url.startswith("https://ebilet.intercity.pl/")
     assert offer.supplier_data["legs"][0]["train_number"] == 131
-    assert transport.fare_requests == [3, 3]
+    assert transport.fare_requests == [3]  # 3 + 3 is priced by one request
     assert (
         await pkp.search(
             SearchRequest(
@@ -276,3 +276,36 @@ def test_destination_of() -> None:
     assert destination_of("Lisbon", "Weekend in Prague") == "Lisbon"
     assert destination_of("", "Long weekend in Barcelona") == "Barcelona"
     assert destination_of("", "somewhere") == "Prague"
+
+
+def test_travel_preferences_limit_departure_hour_and_transfers() -> None:
+    anything = TravelPreferences()
+    assert anything.accepts(5, 3)
+    picky = TravelPreferences(earliest_departure_hour=8, max_transfers=0)
+    assert picky.accepts(8, 0)
+    assert not picky.accepts(7, 0)
+    assert not picky.accepts(9, 1)
+
+
+async def test_pkp_honours_the_groups_preferences() -> None:
+    """The recorded connection leaves at 07:52 and is direct."""
+    pkp = PkpIntercitySupplier(RecordedTransport())
+
+    def asking(preferences: TravelPreferences) -> SearchRequest:
+        return SearchRequest(
+            "Warszawa", "Prague", date(2026, 11, 20), None, 6, preferences=preferences
+        )
+
+    assert len(await pkp.search(asking(TravelPreferences(earliest_departure_hour=7)))) == 1
+    assert len(await pkp.search(asking(TravelPreferences(max_transfers=0)))) == 1
+    assert await pkp.search(asking(TravelPreferences(earliest_departure_hour=8))) == []
+
+
+async def test_in_a_demo_pkp_trains_are_bought_on_the_fake_rail_site() -> None:
+    """Prices from PKP, purchase on our own site: a demo never drives intercity.pl."""
+    registry = build_registry(["pkp_intercity"], "http://localhost:8000", pkp=RecordedTransport())
+    pkp = registry.get("pkp_intercity")
+    assert pkp is not None
+    request = SearchRequest("Warszawa", "Prague", date(2026, 11, 20), None, 6)
+    (offer,) = await pkp.search(request)
+    assert offer.purchase_url == "http://localhost:8000/api/demo-supplier/rail"

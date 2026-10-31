@@ -4,12 +4,15 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
+from app.core.domain.errors import BookingError
 from app.core.domain.trips import (
     AgentOutcome,
     AgentRunStatus,
     BookingKind,
     BookingStatus,
     ContributionStatus,
+    RunStepSource,
+    RunStepStatus,
     SupplierChannel,
     TransportMode,
     TripStatus,
@@ -87,6 +90,19 @@ class TripBookingsResponse(BaseModel):
     bookings: list[BookingResponse]
 
 
+class RunStepResponse(BaseModel):
+    index: int
+    # The flow-graph node this step belongs to (see `FlowGraphResponse`).
+    node_id: str | None
+    # The agent's action ("goto", "click", "fill_form", ...): an open set that grows with the
+    # agent, so a plain string — the UI shows an unknown one as "other".
+    kind: str
+    status: RunStepStatus
+    duration_ms: int | None
+    source: RunStepSource
+    iteration: int | None
+
+
 class LiveStatusResponse(BaseModel):
     """What the runner reports in `status.json` right now."""
 
@@ -97,6 +113,49 @@ class LiveStatusResponse(BaseModel):
     # The runner's outcome so far; `awaiting_approval` while it waits for the human.
     outcome: str | None
     cost_usd: float
+    steps: list[RunStepResponse]
+    # Engine counters: replayed flow steps, rule steps, planner (LLM) calls, tokens used.
+    flow_steps: int
+    rule_steps: int
+    llm_calls: int
+    tokens: int
+
+
+class FlowNodeResponse(BaseModel):
+    id: str
+    # open_url | fill | choose | click | loop | verify | approve — an open set like `kind`.
+    type: str
+    label: str
+    stage: str | None
+    # Variable NAMES the node reads (`vault.passenger_{i}_first_name`), never values.
+    inputs: list[str]
+    outputs: list[str]
+
+
+class FlowEdgeResponse(BaseModel):
+    # `from` is a Python keyword: the field is `source` with the wire name `from`.
+    source: str = Field(serialization_alias="from")
+    to: str
+
+
+class FlowGraphResponse(BaseModel):
+    """The run's plan, `runs/<id>/flow_graph.json`: what the agent intends to do, node by node."""
+
+    nodes: list[FlowNodeResponse]
+    edges: list[FlowEdgeResponse]
+
+
+class BatchItemResponse(BaseModel):
+    booking: BookingResponse
+    # Why THIS booking was refused (the same codes as the single-booking endpoints); null = ok.
+    error: BookingError | None
+
+
+class BatchResponse(BaseModel):
+    """Every booking a "book everything" / "approve the basket" click touched."""
+
+    trip_status: TripStatus
+    items: list[BatchItemResponse]
 
 
 class RunStatusResponse(BaseModel):

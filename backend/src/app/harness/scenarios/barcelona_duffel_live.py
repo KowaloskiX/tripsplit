@@ -38,6 +38,7 @@ DUFFEL_TRIP = (SupplierSpec("duffel"), SupplierSpec("sim_stay"), SupplierSpec("s
 
 SCENARIO = Scenario(
     name="barcelona_duffel_live",
+    holds=True,
     title="Barcelona on REAL airline offers (Duffel test API): hold at close, pay, ticket",
     description=(
         "Six friends fly Warszawa -> Barcelona on offers from Duffel's test API (real search, "

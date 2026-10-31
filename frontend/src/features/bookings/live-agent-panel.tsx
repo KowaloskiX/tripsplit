@@ -8,6 +8,7 @@ import { ApprovalCard } from "./approval-card";
 import { MilestoneStepper } from "./milestone-stepper";
 import { useApproveBooking } from "./mutations";
 import { useRunStatus } from "./queries";
+import { RunGraph } from "./run-graph";
 
 const FRAME_POLL_MS = 1000;
 
@@ -82,6 +83,7 @@ export function LiveAgentPanel({
           milestone={live?.milestone ?? run.milestone}
           finished={booking.status === "confirmed"}
         />
+        <RunGraph runId={run.run_id} active={working} steps={live?.steps} title={booking.title} />
         {failedTick === tick && <p className="text-sm text-muted">Waiting for the first frame…</p>}
         <img
           src={frameUrl}

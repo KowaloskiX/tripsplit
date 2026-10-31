@@ -11,7 +11,7 @@ uv run search-eval run                                    # replay (default) -> 
 uv run search-eval run --briefs waw-prg,krk-vie           # a subset (id prefixes)
 uv run search-eval compare var/search-evals/<a> var/search-evals/<b>
 # record what is missing, live (PKP via Camoufox ~15 s/search, Duffel test ~4 s, LiteAPI sandbox ~6 s):
-uv run search-eval run --mode record --quotes [--liteapi-src <dir with liteapi.py>]
+uv run search-eval run --mode record --quotes
 uv run search-eval run --mode live --briefs waw-prg       # live, nothing written
 ```
 
@@ -24,7 +24,7 @@ made an LLM call (it must make none; `llm_guard.py` refuses and counts them).
 |---|---|
 | `dataset.py` | `EvalBrief`s: origin Warszawa/Kraków/Gdańsk, 7 destinations, party 2/4/6/8, budget tight (800 PLN pp) / medium (1600) / none, weekend vs midweek Nov-Dec 2026, mode any / rail / flight / fly there + train back, optional earliest departure hour |
 | `cassette.py` | `RecordingSupplier` around any `SupplierAdapter`: `record` / `replay` / `live`; `var/search-evals/cassettes/<supplier>/<hash>.json` + `suppliers.json` (replay needs no adapter, key or browser) |
-| `suppliers.py` | live: `pkp_intercity` (BrowserTransport), `duffel` (test key), `liteapi` (sandbox; merged module or `--liteapi-src`), `sim_activity`; `sim_stay` when LiteAPI is absent |
+| `suppliers.py` | live: `pkp_intercity` (BrowserTransport), `duffel` (test key), `liteapi` (sandbox key), `sim_activity`; `sim_stay` without a LiteAPI key |
 | `oracle.py` | every supplier's return + one-way offers (all modes), stays, activities -> the cheapest complete and the cheapest schedule-sane combination in the wished modes, budget feasibility |
 | `checks.py` | schedule checks (day one / arrival / checkout day / connections / city-level places / ≤ 14 h per way / no 00-05 departure / earliest hour) |
 | `metrics.py` | per brief: completeness, budget, optimality, diversity, schedule, consistency, mode (+ quote drift, latency, LLM calls); weighted score; summary |

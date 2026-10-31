@@ -24,6 +24,7 @@ from app.harness.scenarios.common import FRIENDS, ORGANIZER, PRAGUE
 
 SCENARIO = Scenario(
     name="mixed_modes",
+    holds=True,
     title="Fly there, train back: two transport bookings of different modes",
     description=(
         "The brief says “fly there, train back”: the package has a one-way flight (airline "

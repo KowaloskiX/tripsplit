@@ -4,12 +4,14 @@ Plain dataclasses on both sides — no Beanie, no provider SDK — so the servic
 result does not care whether a fixture or an LLM with web search produced it.
 """
 
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from enum import StrEnum
 from typing import Any, Protocol
 
-from app.core.domain.trips import BookingKind, TransportMode
+from app.core.domain.trips import NO_PREFERENCES, BookingKind, TransportMode, TravelPreferences
 from app.suppliers.ports import Segment
 
 PACKAGES_PER_RESEARCH = 3
@@ -30,8 +32,7 @@ class TripBrief:
     destination: str = ""
     # The trip's mode preference; None = any (the brief may still say "fly there, train back").
     transport_mode: TransportMode | None = None
-    # No departure (out or back) before this local hour; None = no preference.
-    earliest_departure_hour: int | None = None
+    preferences: TravelPreferences = NO_PREFERENCES
 
     @property
     def nights(self) -> int:
@@ -70,3 +71,30 @@ class PackagePlan:
 
 class PackageResearcher(Protocol):
     async def research(self, brief: TripBrief) -> list[PackagePlan]: ...
+
+
+class SearchOutcome(StrEnum):
+    OK = "ok"
+    EMPTY = "empty"  # the supplier answered, but with nothing
+    CACHED = "cached"
+    FAILED = "failed"
+    TIMEOUT = "timeout"
+
+
+@dataclass(frozen=True, slots=True)
+class SupplierProgress:
+    """One supplier search finished during a research (for a live "suppliers ticked off")."""
+
+    supplier_id: str
+    supplier: str  # display name
+    kind: BookingKind
+    outcome: SearchOutcome
+    offers: int
+    seconds: float
+
+
+type ProgressSink = Callable[[SupplierProgress], Awaitable[None]]
+
+# Set by whoever runs a research and wants per-supplier progress (ProposalService -> the feed);
+# a context variable, so every `PackageResearcher` wrapper passes it through untouched.
+research_progress: ContextVar[ProgressSink | None] = ContextVar("research_progress", default=None)

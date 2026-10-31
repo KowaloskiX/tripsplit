@@ -6,8 +6,10 @@ Segments are split into the way there and the way back at the longest gap (the s
 """
 
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import date, timedelta
 
+from app.core.domain.trips import NO_PREFERENCES, TravelPreferences
 from app.suppliers.ports import Segment
 
 # One direction longer than this is a lost day, not a journey (a 22 h flight via three hubs).
@@ -38,22 +40,26 @@ def travel_time(segments: Sequence[Segment]) -> timedelta:
 def leg_fits(
     segments: Sequence[Segment],
     day: date,
-    earliest_departure_hour: int | None = None,
+    preferences: TravelPreferences = NO_PREFERENCES,
     *,
     arrive_same_day: bool,
 ) -> bool:
     """One direction: leaves on `day` (and arrives that day when it must — the way there
-    ends at a hotel), within `MAX_DIRECTION`, not before the preferred hour
-    (`DEFAULT_EARLIEST_HOUR` without one). No segments = unknown = fits."""
+    ends at a hotel), within `MAX_DIRECTION`, every leg at or after the preferred hour
+    (`DEFAULT_EARLIEST_HOUR` without one), within the preferred number of changes. No
+    segments = unknown = fits."""
     if not segments:
         return True
     first, last = segments[0], segments[-1]
-    hour = DEFAULT_EARLIEST_HOUR if earliest_departure_hour is None else earliest_departure_hour
+    hour = preferences.earliest_departure_hour
+    strict = replace(
+        preferences, earliest_departure_hour=DEFAULT_EARLIEST_HOUR if hour is None else hour
+    )
     return (
         first.departs_at.date() == day
         and (not arrive_same_day or last.arrives_at.date() == day)
         and last.arrives_at - first.departs_at <= MAX_DIRECTION
-        and first.departs_at.hour >= hour
+        and all(strict.accepts(leg.departs_at.hour, len(segments) - 1) for leg in segments)
     )
 
 
@@ -61,7 +67,7 @@ def fits_calendar(
     segments: Sequence[Segment],
     date_from: date,
     date_to: date,
-    earliest_departure_hour: int | None = None,
+    preferences: TravelPreferences = NO_PREFERENCES,
 ) -> bool:
     """There on the first day (arriving that day), back on the last day — each direction
     `leg_fits`. No segments = unknown = fits."""
@@ -71,6 +77,6 @@ def fits_calendar(
     return (
         bool(out)
         and bool(back)
-        and leg_fits(out, date_from, earliest_departure_hour, arrive_same_day=True)
-        and leg_fits(back, date_to, earliest_departure_hour, arrive_same_day=False)
+        and leg_fits(out, date_from, preferences, arrive_same_day=True)
+        and leg_fits(back, date_to, preferences, arrive_same_day=False)
     )

@@ -15,14 +15,18 @@ Verified on 2026-10-31 (Warszawa Centralna -> Praha hl.n.). Field names are Poli
 API's are; they stop at this module.
 """
 
+import asyncio
 import json
-from collections.abc import Sequence
+import logging
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Protocol
 from urllib.parse import quote
 
 from app.core.domain.bookings import split_party
+
+logger = logging.getLogger(__name__)
 
 GATEWAY = "https://api-gateway.intercity.pl/server/public/endpoint"
 STATIONS_ORIGIN = "https://www.intercity.pl"
@@ -176,20 +180,54 @@ def parse_fares(payload: Any) -> list[FareQuote]:
     return fares
 
 
+# Calls one client has in flight at once: enough to price a search's trains in one round,
+# few enough to stay a polite, demo-sized load on an unofficial API.
+MAX_CONCURRENT_CALLS = 6
+
+
 class IntercityClient:
-    def __init__(self, transport: Transport) -> None:
+    """Calls may run concurrently (bounded by `max_concurrent`). Station lookups are cached
+    for the client's lifetime — station codes do not change between searches."""
+
+    def __init__(self, transport: Transport, max_concurrent: int = MAX_CONCURRENT_CALLS) -> None:
         self.transport = transport
+        self._slots = asyncio.Semaphore(max_concurrent)
+        self._stations: dict[str, Station | None] = {}
+
+    async def _get(self, url: str) -> Any:
+        async with self._slots:
+            return await self.transport.get_json(url)
+
+    async def _post(self, url: str, body: dict[str, Any]) -> Any:
+        async with self._slots:
+            return await self.transport.post_json(url, body)
 
     async def stations(self, query: str) -> list[Station]:
-        return parse_stations(await self.transport.get_json(f"{STATIONS_URL}?q={quote(query)}"))
+        return parse_stations(await self._get(f"{STATIONS_URL}?q={quote(query)}"))
 
     async def station(self, query: str) -> Station | None:
         """The best concrete station for a name. "Warszawa" first answers the aggregate
         "Warszawa (dowolna stacja)", whose code the fare endpoint rejects — skip aggregates."""
+        key = query.strip().casefold()
+        if key in self._stations:
+            return self._stations[key]
         found = await self.stations(query)
         concrete = [station for station in found if "dowolna" not in station.name.lower()]
         candidates = concrete or found
-        return candidates[0] if candidates else None
+        best = candidates[0] if candidates else None
+        if best is not None:  # an unknown name may be a typo fixed in the next search
+            self._stations[key] = best
+        return best
+
+    async def fares_by_size(
+        self, connection: Connection, from_code: int, to_code: int, sizes: Sequence[int]
+    ) -> dict[int, list[FareQuote]]:
+        """Fares for every distinct purchase size, asked concurrently: 3 + 3 is one call."""
+        distinct = sorted(set(sizes))
+        answers = await asyncio.gather(
+            *(self.fares(connection, from_code, to_code, size) for size in distinct)
+        )
+        return dict(zip(distinct, answers, strict=True))
 
     async def connections(self, from_code: int, to_code: int, day: date) -> list[Connection]:
         body = {
@@ -214,7 +252,7 @@ class IntercityClient:
             "atrybutyHandlowe": [],
             "urzadzenieNr": _DEVICE_NO,
         }
-        return parse_connections(await self.transport.post_json(f"{GATEWAY}/Pociagi", body))
+        return parse_connections(await self._post(f"{GATEWAY}/Pociagi", body))
 
     async def fares(
         self, connection: Connection, from_code: int, to_code: int, passengers: int
@@ -248,7 +286,7 @@ class IntercityClient:
             "wersja": _CLIENT_VERSION,
             "urzadzenieNr": _DEVICE_NO,
         }
-        return parse_fares(await self.transport.post_json(f"{GATEWAY}/Sprzedaz", body))
+        return parse_fares(await self._post(f"{GATEWAY}/Sprzedaz", body))
 
     async def group_quote(
         self,
@@ -263,11 +301,13 @@ class IntercityClient:
 
         None when any purchase of the split has no matching fare (sold out, class missing).
         """
+        sizes = split_group(travellers)
+        by_size = await self.fares_by_size(connection, from_code, to_code, sizes)
         purchases: list[FareQuote] = []
-        for size in split_group(travellers):
+        for size in sizes:
             matching = [
                 fare
-                for fare in await self.fares(connection, from_code, to_code, size)
+                for fare in by_size[size]
                 if fare.travel_class == travel_class and fare.refundable == refundable
             ]
             if not matching:
@@ -334,6 +374,8 @@ class BrowserTransport:
         self._camoufox: Any = None
         self._browser: Any = None
         self._pages: dict[str, Any] = {}
+        # Concurrent first calls must not open the same origin's page twice.
+        self._page_lock = asyncio.Lock()
 
     async def __aenter__(self) -> "BrowserTransport":
         from camoufox.async_api import AsyncCamoufox
@@ -353,10 +395,13 @@ class BrowserTransport:
         if self._browser is None:
             raise RuntimeError("BrowserTransport is not open — use `async with`")
         origin = STATIONS_ORIGIN if url.startswith(STATIONS_ORIGIN) else APP_ORIGIN
-        if origin not in self._pages:
-            page = await self._browser.new_page()
-            await page.goto(f"{origin}/", wait_until="domcontentloaded")
-            self._pages[origin] = page
+        if origin in self._pages:
+            return self._pages[origin]
+        async with self._page_lock:
+            if origin not in self._pages:
+                page = await self._browser.new_page()
+                await page.goto(f"{origin}/", wait_until="domcontentloaded")
+                self._pages[origin] = page
         return self._pages[origin]
 
     async def _fetch(self, url: str, method: str, headers: dict[str, str], body: str | None) -> Any:
@@ -368,6 +413,73 @@ class BrowserTransport:
 
     async def post_json(self, url: str, body: dict[str, Any]) -> Any:
         return await self._fetch(url, "POST", _api_headers(), json.dumps(body))
+
+
+class SharedBrowserTransport:
+    """One `BrowserTransport` for a whole long-lived process (the API server).
+
+    The browser starts lazily on the first call (a ~5 s warm-up nobody pays at boot) and is
+    reused by every later call. Up to `max_concurrent` calls run at once — each is a `fetch()`
+    inside the page, and concurrent `page.evaluate`s are safe — so a search can price several
+    trains in parallel; 1 serialises them. Opening and discarding the browser is under a lock.
+    A failed call closes the browser (unless another call already replaced it) and is retried
+    once on a fresh one (a crashed page, an expired Akamai session); a second failure
+    propagates to the adapter, which treats it as "could not ask". `close()` belongs in the
+    server's shutdown.
+    """
+
+    def __init__(
+        self,
+        factory: Callable[[], BrowserTransport] | None = None,
+        *,
+        max_concurrent: int = 6,
+    ) -> None:
+        self._factory = factory or (lambda: BrowserTransport(headless=True))
+        self._browser: BrowserTransport | None = None
+        self._lock = asyncio.Lock()
+        self._slots = asyncio.Semaphore(max_concurrent)
+
+    @property
+    def started(self) -> bool:
+        return self._browser is not None
+
+    async def _open(self) -> BrowserTransport:
+        async with self._lock:
+            if self._browser is None:
+                browser = self._factory()
+                await browser.__aenter__()
+                self._browser = browser
+            return self._browser
+
+    async def _discard(self, browser: BrowserTransport | None = None) -> None:
+        """Closes `browser` if it is still the current one (any current one when None)."""
+        async with self._lock:
+            if self._browser is None or (browser is not None and self._browser is not browser):
+                return
+            current, self._browser = self._browser, None
+        try:
+            await current.__aexit__(None, None, None)
+        except Exception:
+            logger.warning("closing the PKP browser failed", exc_info=True)
+
+    async def _call(self, operation: Callable[[BrowserTransport], Awaitable[Any]]) -> Any:
+        async with self._slots:
+            browser = await self._open()
+            try:
+                return await operation(browser)
+            except Exception:
+                logger.warning("PKP browser call failed — restarting the browser once")
+                await self._discard(browser)
+            return await operation(await self._open())
+
+    async def get_json(self, url: str) -> Any:
+        return await self._call(lambda browser: browser.get_json(url))
+
+    async def post_json(self, url: str, body: dict[str, Any]) -> Any:
+        return await self._call(lambda browser: browser.post_json(url, body))
+
+    async def close(self) -> None:
+        await self._discard()
 
 
 def summarize(quotes: Sequence[GroupQuote]) -> list[str]:

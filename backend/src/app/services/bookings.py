@@ -11,7 +11,7 @@ import json
 import logging
 import mimetypes
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -45,6 +45,8 @@ from app.core.domain.trips import (
     EventActor,
     EventKind,
     MemberRole,
+    RunStepSource,
+    RunStepStatus,
     SupplierChannel,
     TripStatus,
 )
@@ -72,6 +74,7 @@ from app.suppliers.registry import SupplierRegistry
 logger = logging.getLogger(__name__)
 
 STATUS_FILE = "status.json"
+GRAPH_FILE = "flow_graph.json"
 RESULT_FILE = "result.json"
 APPROVAL_FILE = "approval.json"  # read by `app.agent.runner` (`--await-approval`)
 LIVE_FRAME = "live.jpg"
@@ -109,11 +112,38 @@ class BookingWithRun:
 
 
 @dataclass(frozen=True, slots=True)
+class BatchItem:
+    """One booking of a "book everything" / "approve the basket" click: what it became, or
+    why it was refused (the other bookings of the batch still went ahead)."""
+
+    booking: Booking
+    run: AgentRun | None
+    error: BookingError | None
+
+
+@dataclass(frozen=True, slots=True)
+class Batch:
+    trip: Trip  # read after the batch: a price rise may have sent it back to PAYING
+    items: list[BatchItem]
+
+
+@dataclass(frozen=True, slots=True)
 class TripBookings:
     trip: Trip
     is_organizer: bool
     travellers: int
     items: list[BookingWithRun]
+
+
+@dataclass(frozen=True, slots=True)
+class RunStep:
+    index: int
+    node_id: str | None
+    kind: str  # the agent's action ("goto", "click", "fill_form", ...) — an open set
+    status: RunStepStatus
+    duration_ms: int | None
+    source: RunStepSource
+    iteration: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,6 +156,28 @@ class LiveStatus:
     reason: str
     outcome: str | None
     cost_usd: float
+    steps: list[RunStep] = field(default_factory=list)
+    # The engine's counters: replayed flow steps, rule steps, planner (LLM) calls, tokens.
+    flow_steps: int = 0
+    rule_steps: int = 0
+    llm_calls: int = 0
+    tokens: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class FlowNode:
+    id: str
+    type: str  # open_url | fill | choose | click | loop | verify | approve — grows with the agent
+    label: str
+    stage: str | None
+    inputs: list[str]  # variable names (`vault.passenger_{i}_first_name`), never values
+    outputs: list[str]
+
+
+@dataclass(frozen=True, slots=True)
+class FlowGraph:
+    nodes: list[FlowNode]
+    edges: list[tuple[str, str]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,19 +210,92 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     return parsed if isinstance(parsed, dict) else None
 
 
+def _whole(value: object) -> int | None:
+    return int(value) if isinstance(value, int | float) and not isinstance(value, bool) else None
+
+
+def _strings(value: object) -> list[str]:
+    return [item for item in value if isinstance(item, str)] if isinstance(value, list) else []
+
+
+# The runner's "plan" source is a follow-up action of an earlier LLM macro plan.
+_SOURCE_ALIASES = {"plan": RunStepSource.LLM.value}
+
+
+def _run_step(raw: object) -> RunStep | None:
+    """One `status.json` step, or None when it is not one (the runner writes, we only read)."""
+    if not isinstance(raw, dict):
+        return None
+    index = _whole(raw.get("index"))
+    source = str(raw.get("source") or "")
+    try:
+        status = RunStepStatus(str(raw.get("status")))
+        origin = RunStepSource(_SOURCE_ALIASES.get(source, source))
+    except ValueError:
+        return None
+    if index is None or index < 0:
+        return None
+    node_id = raw.get("node_id")
+    duration = _whole(raw.get("duration_ms"))
+    iteration = _whole(raw.get("iteration"))
+    return RunStep(
+        index=index,
+        node_id=node_id if isinstance(node_id, str) else None,
+        kind=str(raw.get("kind") or "other"),
+        status=status,
+        duration_ms=max(duration, 0) if duration is not None else None,
+        source=origin,
+        iteration=iteration if iteration is not None and iteration >= 0 else None,
+    )
+
+
 def _live_status(raw: dict[str, Any] | None) -> LiveStatus:
     raw = raw or {}
-    reached = raw.get("reached")
+    steps = raw.get("steps")
     return LiveStatus(
         milestone=raw.get("milestone") if isinstance(raw.get("milestone"), str) else None,
-        reached=[item for item in reached if isinstance(item, str)]
-        if isinstance(reached, list)
-        else [],
+        reached=_strings(raw.get("reached")),
         step=int(raw.get("step") or 0),
         reason=str(raw.get("reason") or ""),
         outcome=raw.get("outcome") if isinstance(raw.get("outcome"), str) else None,
         cost_usd=float(raw.get("cost_usd") or 0.0),
+        steps=[
+            step
+            for step in (_run_step(item) for item in (steps if isinstance(steps, list) else []))
+            if step is not None
+        ],
+        flow_steps=_whole(raw.get("flow_steps")) or 0,
+        rule_steps=_whole(raw.get("rule_steps")) or 0,
+        llm_calls=_whole(raw.get("llm_calls")) or 0,
+        tokens=_whole(raw.get("tokens")) or 0,
     )
+
+
+def _flow_graph(raw: dict[str, Any] | None) -> FlowGraph | None:
+    """`flow_graph.json` as the runner writes it; None while it does not exist yet."""
+    if raw is None or not isinstance(raw.get("nodes"), list):
+        return None
+    nodes = [
+        FlowNode(
+            id=str(node["id"]),
+            type=str(node.get("type") or "other"),
+            label=str(node.get("label") or ""),
+            stage=node.get("stage") if isinstance(node.get("stage"), str) else None,
+            inputs=_strings(node.get("inputs")),
+            outputs=_strings(node.get("outputs")),
+        )
+        for node in raw["nodes"]
+        if isinstance(node, dict) and isinstance(node.get("id"), str) and node["id"]
+    ]
+    listed = raw.get("edges")
+    edges = [
+        (edge["from"], edge["to"])
+        for edge in (listed if isinstance(listed, list) else [])
+        if isinstance(edge, dict)
+        and isinstance(edge.get("from"), str)
+        and isinstance(edge.get("to"), str)
+    ]
+    return FlowGraph(nodes=nodes, edges=edges)
 
 
 def _outcome_of(raw: dict[str, Any] | None) -> AgentOutcome:
@@ -238,6 +363,7 @@ class BookingService:
         price_tolerance_percent: float = 0.0,
         payments: PaymentProvider | None = None,
         clock: Clock = utc_now,
+        holds: bool = False,
     ) -> None:
         self.db = db
         # Refunds overpayments once the trip is booked (see `_settle_refunds`).
@@ -248,7 +374,11 @@ class BookingService:
         self.clock = clock
         # Holds and re-quotes right before every purchase (see `start`).
         self.prices = SupplierPrices(
-            db, self.suppliers, clock=clock, price_tolerance_percent=price_tolerance_percent
+            db,
+            self.suppliers,
+            clock=clock,
+            price_tolerance_percent=price_tolerance_percent,
+            holds=holds,
         )
         self.travellers = TravellerService()
         self.runs_dir = runs_dir.resolve()
@@ -344,6 +474,15 @@ class BookingService:
         raw = await asyncio.to_thread(_read_json, run_dir / STATUS_FILE)
         return Ok(RunView(run=run, live=_live_status(raw)))
 
+    async def graph(self, run_id: str, user_id: str) -> Result[FlowGraph, BookingError]:
+        """The run's plan (`flow_graph.json`) — same access rule as its status."""
+        found = await self._run_for_member(run_id, user_id)
+        if not isinstance(found, Ok):
+            return found
+        raw = await asyncio.to_thread(_read_json, found.value[1] / GRAPH_FILE)
+        graph = _flow_graph(raw)
+        return Ok(graph) if graph is not None else Err(BookingError.GRAPH_NOT_FOUND)
+
     async def frame(self, run_id: str, user_id: str) -> Result[Frame, BookingError]:
         found = await self._run_for_member(run_id, user_id)
         if not isinstance(found, Ok):
@@ -390,6 +529,29 @@ class BookingService:
                 return await self._hand_over(trip, booking)
             case SupplierChannel.AGENT:
                 return await self._launch(trip, booking, members)
+
+    async def start_all(self, trip_id: str, user_id: str) -> Result[Batch, BookingError]:
+        """ "Book everything": starts every startable booking of the trip, one after another,
+        each exactly like `start` (Rule #1, traveller details, a binding price). A refusal
+        stops nothing but itself — except a price change that sends the trip back to PAYING,
+        after which nothing more may start (the rest are reported `trip_not_ready`)."""
+        access = await self._organizer(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        trip, _ = access.value
+        if trip.status not in TRIP_STATUSES_THAT_BUY:
+            return Err(BookingError.TRIP_NOT_READY)
+        items: list[BatchItem] = []
+        for booking in await self.bookings.for_trip(identifier_of(trip)):
+            if booking.status not in BOOKING_STATUSES_THAT_START:
+                continue
+            started = await self.start(trip_id, to_text(identifier_of(booking)), user_id)
+            fresh = await self.bookings.get(identifier_of(booking)) or booking
+            if isinstance(started, Ok):
+                items.append(BatchItem(fresh, started.value.run, None))
+            else:
+                items.append(BatchItem(fresh, None, started.error))
+        return Ok(Batch(trip=await self.trips.get(identifier_of(trip)) or trip, items=items))
 
     async def _details_missing(
         self, trip: Trip, booking: Booking, members: list[TripMember]
@@ -847,6 +1009,35 @@ class BookingService:
             actor_user_id=member.user_id,
         )
         return Ok(BookingWithRun(booking=booking, run=run))
+
+    async def approve_all(self, trip_id: str, user_id: str) -> Result[Batch, BookingError]:
+        """ "Approve the basket": approves every summary awaiting approval in one click —
+        each exactly like `approve`, so refused as a whole (`trip_not_ready`) unless the trip
+        is buying and every current share is paid. An API purchase that fails, or a quote
+        that went stale, is reported for its booking; the others are still approved."""
+        access = await self._organizer(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        trip, _ = access.value
+        waiting = [
+            booking
+            for booking in await self.bookings.for_trip(identifier_of(trip))
+            if booking.status is BookingStatus.AWAITING_APPROVAL
+        ]
+        if not waiting:
+            return Err(BookingError.NOT_AWAITING_APPROVAL)
+        if not await self._may_buy(trip):
+            return Err(BookingError.TRIP_NOT_READY)
+        items: list[BatchItem] = []
+        for booking in waiting:
+            booking_id = to_text(identifier_of(booking))
+            approved = await self.approve(trip_id, booking_id, user_id, approved=True)
+            fresh = await self.bookings.get(identifier_of(booking)) or booking
+            if isinstance(approved, Ok):
+                items.append(BatchItem(fresh, approved.value.run, None))
+            else:
+                items.append(BatchItem(fresh, None, approved.error))
+        return Ok(Batch(trip=await self.trips.get(identifier_of(trip)) or trip, items=items))
 
     async def _decide_direct(
         self, trip: Trip, member: TripMember, booking: Booking, approved: bool

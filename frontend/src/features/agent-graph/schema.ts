@@ -26,8 +26,11 @@ export type FlowNodeType = (typeof NODE_TYPES)[number];
 export const STEP_STATUSES = ["pending", "running", "done", "failed", "healed"] as const;
 export type StepStatus = (typeof STEP_STATUSES)[number];
 
-/** Where a step's decision came from: a recorded flow replayed, a rule, or the LLM planner. */
-export const STEP_SOURCES = ["flow", "rule", "llm"] as const;
+/**
+ * Where a step's decision came from: a recorded flow replayed, a rule, the LLM planner, or a
+ * person (the approval).
+ */
+export const STEP_SOURCES = ["flow", "rule", "llm", "human"] as const;
 export type StepSource = (typeof STEP_SOURCES)[number];
 
 const nodeType = z.enum(NODE_TYPES).catch("other");

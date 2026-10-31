@@ -21,13 +21,14 @@ from app.core.config import Settings
 from app.core.domain.result import Err, Ok
 from app.core.domain.suppliers import TravellerField
 from app.core.domain.travellers import Gender, TravellerDetails
-from app.core.domain.trips import TransportMode
+from app.core.domain.trips import TransportMode, TravelPreferences
 from app.suppliers.airports import airport_code
 from app.suppliers.duffel import (
     CAPABILITIES,
     DuffelConfig,
     DuffelSupplier,
     ascii_name,
+    fits_preferences,
     notice_of,
     parse_offer,
     select_offers,
@@ -137,8 +138,8 @@ def test_duffel_is_configured_only_with_a_usable_key() -> None:
     config = duffel_config(Settings(duffel_api_key=TEST_KEY, duffel_fx_eur_pln=4.25))
     assert config is not None
     assert config.rates_to_pln()["EUR"] == Decimal("4.25")
-    assert build_registry(["duffel", "sim_stay"], None, config).ids == ["duffel", "sim_stay"]
-    assert build_registry(["duffel", "sim_stay"], None, None).ids == ["sim_stay"]
+    assert build_registry(["duffel", "sim_stay"], None, duffel=config).ids == ["duffel", "sim_stay"]
+    assert build_registry(["duffel", "sim_stay"], None, duffel=None).ids == ["sim_stay"]
     assert duffel_supplier(config).display_name == "Duffel (airline API, test mode)"
 
 
@@ -167,6 +168,13 @@ def test_an_offer_is_parsed_with_local_times_and_payment_terms() -> None:
     assert offer.hold_until == datetime(2026, 11, 2, 3, 46, 20, tzinfo=UTC)  # the guarantee
     assert len(offer.passenger_ids) == 6
     assert offer.itinerary[0] == "BA 0107@2026-11-20T14:42:00+01:00"
+
+
+def test_offers_outside_the_groups_preferences_are_not_shown() -> None:
+    offer = parse_offer(fixture("offer_request_waw_bcn")["data"]["offers"][0])
+    assert offer is not None and offer.direct
+    assert fits_preferences(offer, TravelPreferences(earliest_departure_hour=0, max_transfers=0))
+    assert not fits_preferences(offer, TravelPreferences(earliest_departure_hour=23))
 
 
 def test_a_malformed_offer_is_skipped() -> None:

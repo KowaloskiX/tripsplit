@@ -30,6 +30,7 @@ def _load(name: str) -> ModuleType:
 
 
 SUPPLIER_PLUGINS = _load("20261031_120000_supplier_plugins")
+TRIP_PREFERENCES = _load("20261031_150000_trip_preferences")
 DEPARTS = datetime(2026, 11, 20, 7, 52, tzinfo=UTC)
 
 
@@ -190,6 +191,43 @@ async def test_supplier_plugins_forward_and_backward(database: Database) -> None
     # ... and the new code still reads what Backward wrote.
     again = await Booking.get(train)
     assert again is not None and again.kind is BookingKind.TRANSPORT
+
+
+async def test_trip_preferences_forward_and_backward(database: Database) -> None:
+    trips = Trip.get_pymongo_collection()
+    old = {
+        "title": "Prague",
+        "origin": "Warszawa",
+        "brief": "",
+        "date_from": datetime(2026, 11, 20, tzinfo=UTC),
+        "date_to": datetime(2026, 11, 22, tzinfo=UTC),
+        "group_size": 2,
+        "budget_per_person_minor": None,
+        "currency": "PLN",
+        "destination": "Praha",
+        "transport_mode": None,
+        "status": "paying",
+        "organizer_id": PydanticObjectId(),
+        "invite_code": "preferences-trip",
+        "chosen_proposal_id": None,
+        "total_minor": 0,
+        "created_at": DEPARTS,
+        "updated_at": DEPARTS,
+    }
+    trip_id = (await trips.insert_one(old, bypass_document_validation=True)).inserted_id
+    before = await Trip.get(trip_id)  # expand: read before the backfill
+    assert before is not None and before.earliest_departure_hour is None
+
+    await TRIP_PREFERENCES.Forward.trip_preferences.run(session=None)
+    raw = await _raw(Trip, trip_id)
+    assert (raw["earliest_departure_hour"], raw["max_transfers"]) == (None, None)
+    after = await Trip.get(trip_id)
+    assert after is not None
+    await after.set({"status": "booking"})  # passes the validator
+    await TRIP_PREFERENCES.Forward.trip_preferences.run(session=None)  # idempotent
+
+    await TRIP_PREFERENCES.Backward.no_trip_preferences.run(session=None)
+    assert "max_transfers" not in await _raw(Trip, trip_id)
 
 
 def test_pure_mappings_leave_current_documents_alone() -> None:

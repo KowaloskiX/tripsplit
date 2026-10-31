@@ -12,7 +12,12 @@ from app.core.domain.packages import per_person
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
-from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trips import (
+    BookingKind,
+    SupplierChannel,
+    TransportMode,
+    TravelPreferences,
+)
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -56,7 +61,11 @@ def test_a_leg_must_leave_on_its_day_and_not_at_night() -> None:
     assert not leg_fits([_segment(20, 2, 2)], date(2026, 11, 20), arrive_same_day=True)
     assert not leg_fits([_segment(20, 22, 4)], date(2026, 11, 20), arrive_same_day=True)
     assert leg_fits([_segment(22, 22, 9)], date(2026, 11, 22), arrive_same_day=False)
-    assert not leg_fits([_segment(20, 7, 2)], date(2026, 11, 20), 8, arrive_same_day=True)
+    eight = TravelPreferences(earliest_departure_hour=8)
+    assert not leg_fits([_segment(20, 7, 2)], date(2026, 11, 20), eight, arrive_same_day=True)
+    direct = TravelPreferences(max_transfers=0)
+    two = [_segment(20, 9, 1, "WAW", "VIE"), _segment(20, 11, 1, "VIE", "PRG")]
+    assert not leg_fits(two, date(2026, 11, 20), direct, arrive_same_day=True)
 
 
 def test_the_calendar_needs_both_directions() -> None:
@@ -90,7 +99,7 @@ async def test_the_earliest_hour_keeps_the_dawn_flight_out() -> None:
     flights = replace(BRIEF, transport_mode=TransportMode.FLIGHT)
     early = await _research("sim_flight", "sim_stay").research(flights)
     late = await _research("sim_flight", "sim_stay").research(
-        replace(flights, earliest_departure_hour=8)
+        replace(flights, preferences=TravelPreferences(earliest_departure_hour=8))
     )
     assert early[0].items[0].supplier == "Ryanair"  # 06:25 out of Modlin
     assert late[0].items[0].supplier == "Wizz Air"  # 09:40

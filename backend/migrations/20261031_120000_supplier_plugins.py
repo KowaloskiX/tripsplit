@@ -43,7 +43,15 @@ BOOKING_DEFAULTS: dict[str, Any] = {
     "hold_expires_at": None,
     "quoted_at": None,
 }
-TRIP_DEFAULTS: dict[str, Any] = {"destination": "", "transport_mode": None}
+# Every Trip field added since, too: the validator in place is always today's (it requires each
+# model field to be PRESENT), so an old trip must gain them all for this update to pass,
+# whichever migrations ran before.
+TRIP_DEFAULTS: dict[str, Any] = {
+    "destination": "",
+    "transport_mode": None,
+    "earliest_departure_hour": None,
+    "max_transfers": None,
+}
 
 
 def _iso(value: Any) -> str:

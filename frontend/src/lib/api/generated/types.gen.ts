@@ -68,6 +68,32 @@ export type ApproveRequest = {
 };
 
 /**
+ * BatchItemResponse
+ */
+export type BatchItemResponse = {
+    booking: BookingResponse;
+    error: BookingError | null;
+};
+
+/**
+ * BatchResponse
+ *
+ * Every booking a "book everything" / "approve the basket" click touched.
+ */
+export type BatchResponse = {
+    /**
+     * Items
+     */
+    items: Array<BatchItemResponse>;
+    trip_status: TripStatus;
+};
+
+/**
+ * BookingError
+ */
+export type BookingError = 'trip_not_found' | 'booking_not_found' | 'run_not_found' | 'frame_not_found' | 'graph_not_found' | 'not_organizer' | 'trip_not_ready' | 'booking_not_startable' | 'not_awaiting_approval' | 'nothing_to_disrupt' | 'sold_out' | 'price_changed' | 'booking_not_completable' | 'traveller_details_missing' | 'quote_expired' | 'supplier_unknown';
+
+/**
  * BookingKind
  *
  * What a purchase is, independent of who sells it. How a transport moves is its
@@ -220,9 +246,17 @@ export type CreateTripRequest = {
      */
     display_name: string;
     /**
+     * Earliest Departure Hour
+     */
+    earliest_departure_hour?: number | null;
+    /**
      * Group Size
      */
     group_size: number;
+    /**
+     * Max Transfers
+     */
+    max_transfers?: number | null;
     /**
      * Origin
      */
@@ -398,6 +432,66 @@ export type EventResponse = {
 };
 
 /**
+ * FlowEdgeResponse
+ */
+export type FlowEdgeResponse = {
+    /**
+     * From
+     */
+    from: string;
+    /**
+     * To
+     */
+    to: string;
+};
+
+/**
+ * FlowGraphResponse
+ *
+ * The run's plan, `runs/<id>/flow_graph.json`: what the agent intends to do, node by node.
+ */
+export type FlowGraphResponse = {
+    /**
+     * Edges
+     */
+    edges: Array<FlowEdgeResponse>;
+    /**
+     * Nodes
+     */
+    nodes: Array<FlowNodeResponse>;
+};
+
+/**
+ * FlowNodeResponse
+ */
+export type FlowNodeResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Inputs
+     */
+    inputs: Array<string>;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Outputs
+     */
+    outputs: Array<string>;
+    /**
+     * Stage
+     */
+    stage: string | null;
+    /**
+     * Type
+     */
+    type: string;
+};
+
+/**
  * Gender
  *
  * As on the travel document; airlines ask for it (and derive the title from it).
@@ -452,6 +546,14 @@ export type LiveStatusResponse = {
      */
     cost_usd: number;
     /**
+     * Flow Steps
+     */
+    flow_steps: number;
+    /**
+     * Llm Calls
+     */
+    llm_calls: number;
+    /**
      * Milestone
      */
     milestone: string | null;
@@ -468,9 +570,21 @@ export type LiveStatusResponse = {
      */
     reason: string;
     /**
+     * Rule Steps
+     */
+    rule_steps: number;
+    /**
      * Step
      */
     step: number;
+    /**
+     * Steps
+     */
+    steps: Array<RunStepResponse>;
+    /**
+     * Tokens
+     */
+    tokens: number;
 };
 
 /**
@@ -745,6 +859,48 @@ export type RunStatusResponse = {
 };
 
 /**
+ * RunStepResponse
+ */
+export type RunStepResponse = {
+    /**
+     * Duration Ms
+     */
+    duration_ms: number | null;
+    /**
+     * Index
+     */
+    index: number;
+    /**
+     * Iteration
+     */
+    iteration: number | null;
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Node Id
+     */
+    node_id: string | null;
+    source: RunStepSource;
+    status: RunStepStatus;
+};
+
+/**
+ * RunStepSource
+ *
+ * Where a step's decision came from.
+ */
+export type RunStepSource = 'flow' | 'rule' | 'llm' | 'human';
+
+/**
+ * RunStepStatus
+ *
+ * One step of an agent run, as `status.json` reports it.
+ */
+export type RunStepStatus = 'pending' | 'running' | 'done' | 'failed' | 'healed';
+
+/**
  * SeedMembersRequest
  */
 export type SeedMembersRequest = {
@@ -967,6 +1123,10 @@ export type TripResponse = {
      */
     destination: string;
     /**
+     * Earliest Departure Hour
+     */
+    earliest_departure_hour: number | null;
+    /**
      * Group Size
      */
     group_size: number;
@@ -974,6 +1134,10 @@ export type TripResponse = {
      * Id
      */
     id: string;
+    /**
+     * Max Transfers
+     */
+    max_transfers: number | null;
     /**
      * Organizer Id
      */
@@ -1080,6 +1244,40 @@ export type AgentRunsFrameResponses = {
      */
     200: unknown;
 };
+
+export type AgentRunsGraphData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/agent-runs/{run_id}/graph';
+};
+
+export type AgentRunsGraphErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AgentRunsGraphError = AgentRunsGraphErrors[keyof AgentRunsGraphErrors];
+
+export type AgentRunsGraphResponses = {
+    /**
+     * Successful Response
+     */
+    200: FlowGraphResponse;
+};
+
+export type AgentRunsGraphResponse = AgentRunsGraphResponses[keyof AgentRunsGraphResponses];
 
 export type AgentRunsStatusData = {
     body?: never;
@@ -1456,6 +1654,48 @@ export type BookingsListResponses = {
 
 export type BookingsListResponse = BookingsListResponses[keyof BookingsListResponses];
 
+export type BookingsApproveAllData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings/approve-all';
+};
+
+export type BookingsApproveAllErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsApproveAllError = BookingsApproveAllErrors[keyof BookingsApproveAllErrors];
+
+export type BookingsApproveAllResponses = {
+    /**
+     * Successful Response
+     */
+    200: BatchResponse;
+};
+
+export type BookingsApproveAllResponse = BookingsApproveAllResponses[keyof BookingsApproveAllResponses];
+
 export type BookingsCheckDisruptionsData = {
     body?: never;
     path: {
@@ -1499,6 +1739,48 @@ export type BookingsCheckDisruptionsResponses = {
 };
 
 export type BookingsCheckDisruptionsResponse = BookingsCheckDisruptionsResponses[keyof BookingsCheckDisruptionsResponses];
+
+export type BookingsStartAllData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings/start-all';
+};
+
+export type BookingsStartAllErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsStartAllError = BookingsStartAllErrors[keyof BookingsStartAllErrors];
+
+export type BookingsStartAllResponses = {
+    /**
+     * Successful Response
+     */
+    202: BatchResponse;
+};
+
+export type BookingsStartAllResponse = BookingsStartAllResponses[keyof BookingsStartAllResponses];
 
 export type BookingsApproveData = {
     body: ApproveRequest;

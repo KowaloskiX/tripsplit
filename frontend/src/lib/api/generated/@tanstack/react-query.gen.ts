@@ -6,8 +6,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { agentRunsFrame, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, contributionsPay, demoDisruption, demoLeave, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
-import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
+import { agentRunsFrame, agentRunsGraph, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsApproveAll, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, bookingsStartAll, contributionsPay, demoDisruption, demoLeave, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
+import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsGraphData, AgentRunsGraphError, AgentRunsGraphResponse, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveAllData, BookingsApproveAllError, BookingsApproveAllResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartAllData, BookingsStartAllError, BookingsStartAllResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -58,6 +58,26 @@ export const agentRunsFrameOptions = (options: Options<AgentRunsFrameData>) => q
         return data;
     },
     queryKey: agentRunsFrameQueryKey(options)
+});
+
+export const agentRunsGraphQueryKey = (options: Options<AgentRunsGraphData>) => createQueryKey('agentRunsGraph', options);
+
+/**
+ * Run Graph
+ *
+ * The run's plan, for the live pipeline view. 404 until the agent has written it.
+ */
+export const agentRunsGraphOptions = (options: Options<AgentRunsGraphData>) => queryOptions<AgentRunsGraphResponse, AgentRunsGraphError, AgentRunsGraphResponse, ReturnType<typeof agentRunsGraphQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await agentRunsGraph({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: agentRunsGraphQueryKey(options)
 });
 
 export const agentRunsStatusQueryKey = (options: Options<AgentRunsStatusData>) => createQueryKey('agentRunsStatus', options);
@@ -330,6 +350,25 @@ export const bookingsListOptions = (options: Options<BookingsListData>) => query
 });
 
 /**
+ * Approve All Bookings
+ *
+ * Approves every summary awaiting approval at once — refused unless every share is paid.
+ */
+export const bookingsApproveAllMutation = (options?: Partial<Options<BookingsApproveAllData>>): UseMutationOptions<BookingsApproveAllResponse, BookingsApproveAllError, Options<BookingsApproveAllData>> => {
+    const mutationOptions: UseMutationOptions<BookingsApproveAllResponse, BookingsApproveAllError, Options<BookingsApproveAllData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await bookingsApproveAll({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Check Disruptions
  *
  * Asks the suppliers that report disruptions about the trip's bought bookings; every
@@ -339,6 +378,25 @@ export const bookingsCheckDisruptionsMutation = (options?: Partial<Options<Booki
     const mutationOptions: UseMutationOptions<BookingsCheckDisruptionsResponse, BookingsCheckDisruptionsError, Options<BookingsCheckDisruptionsData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await bookingsCheckDisruptions({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Start All Bookings
+ *
+ * "Book everything": starts every startable booking; refusals are reported per booking.
+ */
+export const bookingsStartAllMutation = (options?: Partial<Options<BookingsStartAllData>>): UseMutationOptions<BookingsStartAllResponse, BookingsStartAllError, Options<BookingsStartAllData>> => {
+    const mutationOptions: UseMutationOptions<BookingsStartAllResponse, BookingsStartAllError, Options<BookingsStartAllData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await bookingsStartAll({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

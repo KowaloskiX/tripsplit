@@ -97,6 +97,7 @@ async def collect(brief: EvalBrief, suppliers: SupplierRegistry) -> RawOffers:
         return_date=brief.date_to,
         party_size=brief.party,
         budget_per_person_minor=brief.budget_per_person_minor,
+        preferences=brief.trip_brief().preferences,
     )
     there = replace(base, return_date=None)
     home = replace(

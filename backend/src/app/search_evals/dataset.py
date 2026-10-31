@@ -11,7 +11,7 @@ from datetime import date
 from enum import StrEnum
 
 from app.ai.research import TripBrief
-from app.core.domain.trips import TransportMode
+from app.core.domain.trips import TransportMode, TravelPreferences
 
 
 class BudgetTier(StrEnum):
@@ -109,7 +109,7 @@ class EvalBrief:
             budget_per_person_minor=self.budget_per_person_minor,
             destination=self.destination,
             transport_mode=explicit_mode,
-            earliest_departure_hour=self.earliest_departure_hour,
+            preferences=TravelPreferences(earliest_departure_hour=self.earliest_departure_hour),
         )
 
 

@@ -20,7 +20,7 @@ from typing import Any, Protocol
 from app.core.domain.result import Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
-from app.core.domain.trips import TransportMode
+from app.core.domain.trips import NO_PREFERENCES, TransportMode, TravelPreferences
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +36,8 @@ class SearchRequest:
     mode: TransportMode | None = None
     budget_per_person_minor: int | None = None
     currency: str = "PLN"
+    # Departure-hour and transfer limits; transport adapters filter by them where they can.
+    preferences: TravelPreferences = NO_PREFERENCES
 
 
 @dataclass(frozen=True, slots=True)

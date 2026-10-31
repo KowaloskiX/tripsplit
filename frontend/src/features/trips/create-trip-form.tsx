@@ -5,12 +5,23 @@ import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+import { CONTROL_CLASS, Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { apiErrorMessage } from "@/lib/api";
 
 import { useCreateTrip } from "./mutations";
-import { type CreateTripValues, createTripSchema, MAX_GROUP_SIZE } from "./schema";
+import {
+  type CreateTripValues,
+  createTripSchema,
+  MAX_GROUP_SIZE,
+  MAX_TRANSFERS,
+  SUGGESTED_DESTINATIONS,
+  TRANSPORT_LABELS,
+  TRANSPORT_MODES,
+} from "./schema";
+
+const DEPARTURE_HOURS = Array.from({ length: 13 }, (_, index) => index + 5);
+const TRANSFER_CHOICES = Array.from({ length: MAX_TRANSFERS + 1 }, (_, index) => index);
 
 type CreateTripFormProps = {
   /** Pre-fills "Your name" — e.g. the part of the email before the @. */
@@ -28,6 +39,10 @@ export function CreateTripForm({ defaultDisplayName = "" }: CreateTripFormProps)
     defaultValues: {
       title: "",
       origin: "Warszawa",
+      destination: "",
+      transportMode: "any",
+      earliestDeparture: "",
+      maxTransfers: "",
       brief: "",
       dateFrom: "",
       dateTo: "",
@@ -72,6 +87,70 @@ export function CreateTripForm({ defaultDisplayName = "" }: CreateTripFormProps)
       <div className="grid gap-4 sm:grid-cols-2">
         <Field htmlFor="origin" label="From" error={errors.origin?.message}>
           <Input id="origin" {...aria("origin")} {...register("origin")} />
+        </Field>
+        <Field htmlFor="destination" label="To" error={errors.destination?.message}>
+          <Input
+            id="destination"
+            list="destination-suggestions"
+            placeholder="Praha"
+            autoComplete="off"
+            {...aria("destination")}
+            {...register("destination")}
+          />
+          <datalist id="destination-suggestions">
+            {SUGGESTED_DESTINATIONS.map((city) => (
+              <option key={city} value={city} />
+            ))}
+          </datalist>
+        </Field>
+        <Field htmlFor="transportMode" label="Getting there" error={errors.transportMode?.message}>
+          <select
+            id="transportMode"
+            className={`${CONTROL_CLASS} h-11`}
+            {...aria("transportMode")}
+            {...register("transportMode")}
+          >
+            {TRANSPORT_MODES.map((mode) => (
+              <option key={mode} value={mode}>
+                {TRANSPORT_LABELS[mode]}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field
+          htmlFor="earliestDeparture"
+          label="Leave no earlier than"
+          hint="Optional, local time."
+          error={errors.earliestDeparture?.message}
+        >
+          <select
+            id="earliestDeparture"
+            className={`${CONTROL_CLASS} h-11`}
+            {...aria("earliestDeparture")}
+            {...register("earliestDeparture")}
+          >
+            <option value="">Any time</option>
+            {DEPARTURE_HOURS.map((hour) => (
+              <option key={hour} value={String(hour)}>
+                {`${String(hour).padStart(2, "0")}:00`}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field htmlFor="maxTransfers" label="Changes" error={errors.maxTransfers?.message}>
+          <select
+            id="maxTransfers"
+            className={`${CONTROL_CLASS} h-11`}
+            {...aria("maxTransfers")}
+            {...register("maxTransfers")}
+          >
+            <option value="">Any</option>
+            {TRANSFER_CHOICES.map((count) => (
+              <option key={count} value={String(count)}>
+                {count === 0 ? "Direct only" : `Up to ${count}`}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field htmlFor="groupSize" label="People" error={errors.groupSize?.message}>
           <Input

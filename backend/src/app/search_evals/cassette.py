@@ -12,7 +12,8 @@
 What goes into a recording is the offer data only — search requests carry no traveller, and the
 wrapper never records `hold` / `purchase` (it refuses them). The key deliberately leaves out two
 request fields no adapter reads for a search: the budget, and a mode equal to the supplier's own
-(`None` and `rail` ask a rail supplier the same thing), so briefs share recordings.
+(`None` and `rail` ask a rail supplier the same thing), so briefs share recordings. Travel
+preferences are part of a transport key only when set (a carrier filters by them).
 """
 
 import hashlib
@@ -28,7 +29,7 @@ from typing import Any
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
-from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trips import NO_PREFERENCES, BookingKind, SupplierChannel, TransportMode
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -147,9 +148,20 @@ def quote_of(raw: Mapping[str, Any] | None) -> Quote | None:
     )
 
 
-def request_key(request: SearchRequest, own_mode: TransportMode | None) -> Json:
+def request_key(
+    request: SearchRequest, own_mode: TransportMode | None, *, transport: bool = True
+) -> Json:
     """What identifies a search for the cassette (see the module docstring)."""
     mode = request.mode if request.mode is not None else own_mode
+    preferences = request.preferences
+    extra: Json = {}
+    if transport and preferences != NO_PREFERENCES:
+        # Only when set and only for transport (a carrier filters its connections by them);
+        # searches without preferences keep their key.
+        extra["preferences"] = {
+            "earliest_departure_hour": preferences.earliest_departure_hour,
+            "max_transfers": preferences.max_transfers,
+        }
     return {
         "origin": request.origin.strip().casefold(),
         "destination": request.destination.strip().casefold(),
@@ -158,6 +170,7 @@ def request_key(request: SearchRequest, own_mode: TransportMode | None) -> Json:
         "party_size": request.party_size,
         "mode": mode.value if mode is not None else None,
         "currency": request.currency,
+        **extra,
     }
 
 
@@ -324,7 +337,11 @@ class RecordingSupplier:
         return offers
 
     async def _search(self, request: SearchRequest) -> list[Offer]:
-        described = request_key(request, self.capabilities.mode)
+        described = request_key(
+            request,
+            self.capabilities.mode,
+            transport=self.capabilities.kind is BookingKind.TRANSPORT,
+        )
         key = digest({"call": "search", "supplier": self.id, **described})
         recorded = None if self.mode is CassetteMode.LIVE else self.store.load(self.id, key)
         if recorded is not None and self.refresh_empty and self.mode is CassetteMode.RECORD:

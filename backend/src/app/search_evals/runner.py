@@ -14,6 +14,9 @@ from app.search_evals.oracle import collect, solve
 from app.suppliers.ports import OfferRef
 from app.suppliers.registry import SupplierRegistry
 
+# A live supplier is given all the time it needs: the eval records, it does not race.
+EVAL_SUPPLIER_TIMEOUT_S = 300.0
+
 
 async def _quote_drift(
     packages: Sequence[PackagePlan], suppliers: SupplierRegistry, party: int, notes: list[str]
@@ -44,6 +47,10 @@ async def _quote_drift(
     return round(sum(drifts) / len(drifts), 2) if drifts else None
 
 
+def _misses(suppliers: SupplierRegistry) -> int:
+    return sum(a.stats.misses for a in suppliers if isinstance(a, RecordingSupplier))
+
+
 def _recorded_seconds(suppliers: SupplierRegistry) -> dict[str, float]:
     """What the live suppliers took for the calls so far (as recorded), per supplier."""
     return {
@@ -60,13 +67,20 @@ async def run_brief(
     notes: list[str] = []
     packages: list[PackagePlan] = []
     before = _recorded_seconds(suppliers)
+    misses_before = _misses(suppliers)
     with no_llm() as llm:
         try:
-            packages = await CatalogResearcher(suppliers).research(brief.trip_brief())
+            researcher = CatalogResearcher(suppliers, supplier_timeout_s=EVAL_SUPPLIER_TIMEOUT_S)
+            packages = await researcher.research(brief.trip_brief())
         except CassetteMiss as miss:
             return BriefResult(brief.id, error=f"cassette miss: {miss}")
         except ValueError as refused:
             notes.append(f"research gave up: {refused}")
+        missed = _misses(suppliers) - misses_before
+        if missed:
+            # The research treats a failing supplier as "no offers", so a replay miss surfaces
+            # here, from the wrappers' counters, not as an exception.
+            return BriefResult(brief.id, error=f"cassette miss: {missed} search(es) not recorded")
         after = _recorded_seconds(suppliers)
         research_seconds = {
             key: round(after[key] - before.get(key, 0.0), 2)

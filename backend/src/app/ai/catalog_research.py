@@ -4,30 +4,58 @@ It asks every transport supplier of the wanted mode (any mode when the trip has 
 every stay supplier and every activity supplier in the registry, then composes three packages
 deterministically:
 
-- **Budget** — the cheapest transport and a step up from the cheapest bed; if that breaks the
-  per-person budget it trims to the cheapest bed.
-- **Comfort** — the cheapest transport, the second-best stay and the cheaper evening out;
-  without the evening when that breaks the budget.
-- **Splurge** — the dearest transport, the best stay and the dearer evening. It stays a splurge.
+- **Budget** — the cheapest transport and a step up from the cheapest bed (none when the
+  cheapest is known to be decent); if that breaks the per-person budget it trims to the
+  cheapest bed, and says so when even that does not fit.
+- **Comfort** — a third way to go when there is one (no slower than the cheapest, at most 1.5x
+  its price), the second-best stay and the cheaper evening out; without the evening when that
+  breaks the budget.
+- **Splurge** — the dearest of the quickest transports, the best stay and the dearer evening.
 
-"Fly there, train back" in the brief composes one-way offers of two modes. Whether a package
+Transport has to fit the calendar (`app.ai.itinerary`: there on day one, back on the last day,
+no red-eye, the trip's travel preferences) whenever anything does. Two rail singles compete
+with the return ticket. "Fly there, train back" in the brief composes one-way offers of two
+modes; when the wished modes have nothing, each direction falls back to another mode and every
+summary says so. Whether a package
 still exceeds the budget is flagged where it is stored (`Proposal.over_budget`). With the PKP
 Intercity adapter enabled this is the live research: real trains and fares, same rules.
+
+Every supplier search of a research runs at once (transport, stays, activities). One that fails
+or exceeds `supplier_timeout_s` contributes no offers and never fails the research by itself; a
+timed-out search keeps running in the background and, with a `SearchCache`, fills the cache for
+the next research. Each finished search is reported to the `research_progress` sink, if set.
 """
 
 import asyncio
+import logging
+import time
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import timedelta
 
 from app.ai.itinerary import fits_calendar, leg_fits, travel_time
 from app.ai.places import destination_of, travel_modes
-from app.ai.research import PackageItemPlan, PackagePlan, TripBrief
+from app.ai.research import (
+    PackageItemPlan,
+    PackagePlan,
+    SearchOutcome,
+    SupplierProgress,
+    TripBrief,
+    research_progress,
+)
 from app.core.domain.packages import is_over_budget, per_person
 from app.core.domain.suppliers import mode_noun
 from app.core.domain.trips import BookingKind, TransportMode
 from app.suppliers.ports import Offer, SearchRequest, Segment, SupplierAdapter
 from app.suppliers.registry import SupplierRegistry
+from app.suppliers.search_cache import SearchCache
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_SUPPLIER_TIMEOUT_S = 15.0
+# Searches that outlived their timeout, referenced so they finish instead of being collected
+# (the researcher that started one may be gone by then: it is built per request).
+_BACKGROUND: set[asyncio.Task[list[Offer]]] = set()
 
 type Transport = tuple[PackageItemPlan, ...]
 
@@ -81,18 +109,16 @@ def _label(transport: Transport) -> str:
     return " + ".join(labels)
 
 
+def _total(transport: Transport) -> int:
+    return sum(item.price_minor for item in transport)
+
+
 def _segments(transport: Transport) -> list[Segment]:
     return [segment for item in transport for segment in item.segments]
 
 
 def _fits_calendar(transport: Transport, brief: TripBrief) -> bool:
-    return fits_calendar(
-        _segments(transport), brief.date_from, brief.date_to, brief.earliest_departure_hour
-    )
-
-
-def _total(transport: Transport) -> int:
-    return sum(item.price_minor for item in transport)
+    return fits_calendar(_segments(transport), brief.date_from, brief.date_to, brief.preferences)
 
 
 def _pairs(there: Sequence[PackageItemPlan], home: Sequence[PackageItemPlan]) -> list[Transport]:
@@ -157,16 +183,28 @@ def _comfort_transport(
     return min(others, key=lambda t: (_travel_time(t), _total(t), _label(t)), default=cheapest)
 
 
+def _settled(task: asyncio.Task[list[Offer]]) -> None:
+    _BACKGROUND.discard(task)
+    if not task.cancelled() and task.exception() is not None:
+        logger.warning("a timed-out supplier search failed later: %s", task.exception())
+
+
 class CatalogResearcher:
-    def __init__(self, suppliers: SupplierRegistry) -> None:
+    def __init__(
+        self,
+        suppliers: SupplierRegistry,
+        *,
+        cache: SearchCache | None = None,
+        supplier_timeout_s: float = DEFAULT_SUPPLIER_TIMEOUT_S,
+    ) -> None:
         self.suppliers = suppliers
+        self.cache = cache
+        self.supplier_timeout_s = supplier_timeout_s
 
     async def research(self, brief: TripBrief) -> list[PackagePlan]:
         text = f"{brief.title} {brief.brief}"
         destination = destination_of(brief.destination, text)
         outbound, back = travel_modes(brief.transport_mode, text)
-        # Transport, stays and activities are different suppliers: asked at the same time, the
-        # research takes as long as the slowest of them, not their sum.
         transports, stays, activities = await asyncio.gather(
             self._transports(brief, destination, outbound, back),
             self._offers(BookingKind.STAY, brief, destination),
@@ -186,14 +224,71 @@ class CatalogResearcher:
     async def _search(
         self, kind: BookingKind, mode: TransportMode | None, request: SearchRequest
     ) -> list[PackageItemPlan]:
-        """Every matching supplier at once; the offers in registry order (deterministic)."""
         adapters = self.suppliers.of_kind(kind, mode)
-        answers = await asyncio.gather(*(adapter.search(request) for adapter in adapters))
+        answers = await asyncio.gather(*(self._ask(adapter, request) for adapter in adapters))
         return [
             _item(adapter, offer)
             for adapter, offers in zip(adapters, answers, strict=True)
             for offer in offers
         ]
+
+    async def _ask(self, adapter: SupplierAdapter, request: SearchRequest) -> list[Offer]:
+        """One supplier's offers; [] when it fails or is too slow — never an exception."""
+        started = time.monotonic()
+        cached = self.cache.get(adapter, request) if self.cache is not None else None
+        if cached is not None:
+            await self._report(adapter, SearchOutcome.CACHED, cached, started)
+            return cached
+        task = asyncio.ensure_future(self._fetch(adapter, request))
+        try:
+            offers = await asyncio.wait_for(asyncio.shield(task), self.supplier_timeout_s)
+        except TimeoutError:
+            logger.warning(
+                "%s search exceeded %.1f s — researching without it",
+                adapter.id,
+                self.supplier_timeout_s,
+            )
+            _BACKGROUND.add(task)
+            task.add_done_callback(_settled)
+            await self._report(adapter, SearchOutcome.TIMEOUT, [], started)
+            return []
+        except Exception:
+            # The boundary to a plugin: its failure means "no offers from it", nothing more.
+            logger.exception("%s search failed", adapter.id)
+            await self._report(adapter, SearchOutcome.FAILED, [], started)
+            return []
+        outcome = SearchOutcome.OK if offers else SearchOutcome.EMPTY
+        await self._report(adapter, outcome, offers, started)
+        return offers
+
+    async def _fetch(self, adapter: SupplierAdapter, request: SearchRequest) -> list[Offer]:
+        if self.cache is None:
+            return await adapter.search(request)
+        return await self.cache.search(adapter, request)
+
+    async def _report(
+        self,
+        adapter: SupplierAdapter,
+        outcome: SearchOutcome,
+        offers: Sequence[Offer],
+        started: float,
+    ) -> None:
+        sink = research_progress.get()
+        if sink is None:
+            return
+        progress = SupplierProgress(
+            supplier_id=adapter.id,
+            supplier=adapter.display_name,
+            kind=adapter.capabilities.kind,
+            outcome=outcome,
+            offers=len(offers),
+            seconds=round(time.monotonic() - started, 2),
+        )
+        try:
+            await sink(progress)
+        except Exception:
+            # Progress is a nicety; a broken sink must not cost the group its packages.
+            logger.warning("research progress sink failed", exc_info=True)
 
     def _request(
         self, brief: TripBrief, origin: str, destination: str, *, one_way: bool = False
@@ -206,6 +301,7 @@ class CatalogResearcher:
             party_size=brief.travellers,
             budget_per_person_minor=brief.budget_per_person_minor,
             currency=brief.currency,
+            preferences=brief.preferences,
         )
 
     async def _offers(
@@ -222,27 +318,32 @@ class CatalogResearcher:
     ) -> list[Transport]:
         """Each option is the transport of one package, cheapest first: a return journey, or a
         one-way out plus a one-way back — when the modes differ, or when two rail singles beat
-        the cheapest return that fits the calendar by `ONE_WAYS_MIN_SAVING`."""
+        the cheapest return that fits the calendar by `ONE_WAYS_MIN_SAVING`. Every search of
+        it runs at once."""
         if outbound == back:
             request = replace(self._request(brief, brief.origin, destination), mode=outbound)
-            found = await self._search(BookingKind.TRANSPORT, outbound, request)
-            returns: list[Transport] = [(item,) for item in _by_price(found)]
             if outbound not in SINGLES_MODES:
-                return returns
-            there = await self._one_way(brief, destination, SINGLES_MODE, home=False)
-            home = await self._one_way(brief, destination, SINGLES_MODE, home=True)
-            pairs = _pairs(there, home)
+                found = await self._search(BookingKind.TRANSPORT, outbound, request)
+                return [(item,) for item in _by_price(found)]
+            found, there, home = await asyncio.gather(
+                self._search(BookingKind.TRANSPORT, outbound, request),
+                self._one_way(brief, destination, SINGLES_MODE, home=False),
+                self._one_way(brief, destination, SINGLES_MODE, home=True),
+            )
+            returns: list[Transport] = [(item,) for item in _by_price(found)]
             fitting = [t for t in returns if _fits_calendar(t, brief)] or returns
             bar = min((_total(t) for t in fitting), default=None)
             # Two bookings instead of one are worth it only for a real saving.
             cheaper = [
                 pair
-                for pair in pairs
+                for pair in _pairs(there, home)
                 if bar is None or _total(pair) <= bar * (1 - ONE_WAYS_MIN_SAVING)
             ]
             return sorted([*returns, *cheaper], key=lambda t: (_total(t), _label(t)))
-        there = await self._one_way(brief, destination, outbound, home=False)
-        home = await self._one_way(brief, destination, back, home=True)
+        there, home = await asyncio.gather(
+            self._one_way(brief, destination, outbound, home=False),
+            self._one_way(brief, destination, back, home=True),
+        )
         return _pairs(there, home)
 
     async def _one_way(
@@ -256,9 +357,10 @@ class CatalogResearcher:
             self._request(brief, start, end, one_way=True), depart_date=day, mode=mode
         )
         found = _by_price(await self._search(BookingKind.TRANSPORT, mode, request))
-        hour = brief.earliest_departure_hour
         fitting = [
-            item for item in found if leg_fits(item.segments, day, hour, arrive_same_day=not home)
+            item
+            for item in found
+            if leg_fits(item.segments, day, brief.preferences, arrive_same_day=not home)
         ]
         return fitting or found
 
@@ -271,23 +373,26 @@ class CatalogResearcher:
     ) -> tuple[list[Transport], str]:
         """When the wished modes have nothing both ways: each direction in its wished mode if
         it has offers, else in any other mode — and a sentence saying so."""
-        legs: list[list[PackageItemPlan]] = []
-        for mode, home in ((outbound, False), (back, True)):
-            found = await self._one_way(brief, destination, mode, home=home) if mode else []
-            if not found:
-                found = [
-                    item
-                    for item in await self._one_way(brief, destination, None, home=home)
-                    if item.mode is not mode
-                ]
-            legs.append(found)
-        there, home_legs = legs
-        if not there or not home_legs:
+        legs = await asyncio.gather(
+            self._leg_or_other_mode(brief, destination, outbound, home=False),
+            self._leg_or_other_mode(brief, destination, back, home=True),
+        )
+        there, home = legs
+        if not there or not home:
             return [], ""
         wished = _directions(outbound, back)
-        used = _directions(there[0].mode, home_legs[0].mode)
+        used = _directions(there[0].mode, home[0].mode)
         note = f"No {wished} on these dates, so this goes {used}."
-        return _pairs(there, home_legs), note
+        return _pairs(there, home), note
+
+    async def _leg_or_other_mode(
+        self, brief: TripBrief, destination: str, mode: TransportMode | None, *, home: bool
+    ) -> list[PackageItemPlan]:
+        found = await self._one_way(brief, destination, mode, home=home) if mode else []
+        if found:
+            return found
+        anything = await self._one_way(brief, destination, None, home=home)
+        return [item for item in anything if item.mode is not mode]
 
     def _fits(self, items: Sequence[PackageItemPlan], brief: TripBrief) -> bool:
         total = sum(item.price_minor for item in items)

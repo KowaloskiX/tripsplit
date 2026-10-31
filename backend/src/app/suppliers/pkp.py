@@ -11,6 +11,7 @@ An offer is a whole journey (one way, or out and back) for the whole party in on
 asks for exactly the same trains.
 """
 
+import asyncio
 import logging
 import time
 from collections.abc import Sequence
@@ -22,7 +23,13 @@ from zoneinfo import ZoneInfo
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
-from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trips import (
+    NO_PREFERENCES,
+    BookingKind,
+    SupplierChannel,
+    TransportMode,
+    TravelPreferences,
+)
 from app.suppliers.intercity import (
     MAX_PASSENGERS_PER_PURCHASE,
     Connection,
@@ -108,9 +115,16 @@ class LiveSearchLog:
     notes: list[str] = field(default_factory=list)
 
 
-def _in_window(connections: Sequence[Connection], hours: range) -> list[Connection]:
-    preferred = [c for c in connections if c.departs_at.hour in hours]
-    return (preferred or list(connections))[:MAX_CONNECTIONS]
+def _in_window(
+    connections: Sequence[Connection],
+    hours: range,
+    preferences: TravelPreferences = NO_PREFERENCES,
+) -> list[Connection]:
+    """The connections the group accepts (earliest departure, transfers), preferring the
+    weekend window; none when the preferences rule every connection out."""
+    allowed = [c for c in connections if preferences.accepts(c.departs_at.hour, len(c.legs) - 1)]
+    preferred = [c for c in allowed if c.departs_at.hour in hours]
+    return (preferred or allowed)[:MAX_CONNECTIONS]
 
 
 def _cheapest(fares: Sequence[FareQuote], travel_class: int) -> FareQuote | None:
@@ -126,9 +140,12 @@ class PkpIntercitySupplier:
     id = SUPPLIER_ID
     display_name = CARRIER
 
-    def __init__(self, transport: Transport) -> None:
+    def __init__(self, transport: Transport, purchase_site: str | None = None) -> None:
+        """`purchase_site`: in a demo, where the agent BUYS the train instead of e-IC (our
+        fake rail site) — prices still come from PKP, the agent never drives intercity.pl."""
         self.capabilities = CAPABILITIES
         self.client = IntercityClient(transport)
+        self.purchase_site = purchase_site
         self.log = LiveSearchLog()
 
     # ---- search -------------------------------------------------------------------------
@@ -153,17 +170,25 @@ class PkpIntercitySupplier:
         return await self.client.station(query)
 
     async def _search(self, request: SearchRequest) -> list[Offer]:
-        origin = await self._station(request.origin)
-        destination = await self._station(request.destination)
+        origin, destination = await asyncio.gather(
+            self._station(request.origin), self._station(request.destination)
+        )
         if origin is None or destination is None:
             self.log.notes.append(f"unknown station: {request.origin} / {request.destination}")
             return []
         self.log.origin, self.log.destination = origin.name, destination.name
         party = request.party_size
-        there = await self._best((origin, destination), request.depart_date, party, OUTBOUND_HOURS)
-        back: dict[int, LegQuote] = {}
+        wants = request.preferences
+        # Both directions at once; the client bounds how many calls are in flight.
+        directions = [
+            self._best((origin, destination), request.depart_date, party, OUTBOUND_HOURS, wants)
+        ]
         if request.return_date is not None:
-            back = await self._best((destination, origin), request.return_date, party, RETURN_HOURS)
+            directions.append(
+                self._best((destination, origin), request.return_date, party, RETURN_HOURS, wants)
+            )
+        there, *rest = await asyncio.gather(*directions)
+        back: dict[int, LegQuote] = rest[0] if rest else {}
         offers = []
         for travel_class in (2, 1):
             legs = [there.get(travel_class)]
@@ -178,17 +203,29 @@ class PkpIntercitySupplier:
         return offers
 
     async def _best(
-        self, route: tuple[Station, Station], day: date, travellers: int, hours: range
+        self,
+        route: tuple[Station, Station],
+        day: date,
+        travellers: int,
+        hours: range,
+        preferences: TravelPreferences = NO_PREFERENCES,
     ) -> dict[int, LegQuote]:
         """The cheapest whole-party fare per class over the connections in the window."""
         origin, to = route
-        connections = await self.client.connections(origin.code, to.code, day)
+        connections = _in_window(
+            await self.client.connections(origin.code, to.code, day), hours, preferences
+        )
+        sizes = split_group(travellers)
+        # Every train priced concurrently, each distinct purchase size once (3 + 3 = one call).
+        priced = await asyncio.gather(
+            *(
+                self.client.fares_by_size(connection, origin.code, to.code, sizes)
+                for connection in connections
+            )
+        )
         best: dict[int, LegQuote] = {}
-        for connection in _in_window(connections, hours):
-            per_size = [
-                await self.client.fares(connection, origin.code, to.code, size)
-                for size in split_group(travellers)
-            ]
+        for connection, by_size in zip(connections, priced, strict=True):
+            per_size = [by_size[size] for size in sizes]
             for travel_class in (1, 2):
                 picks = [_cheapest(fares, travel_class) for fares in per_size]
                 chosen = [pick for pick in picks if pick is not None]
@@ -251,7 +288,8 @@ class PkpIntercitySupplier:
             seller=CARRIER,
             segments=segments,
             refundable=False,
-            purchase_url=results_url(
+            purchase_url=self.purchase_site
+            or results_url(
                 first.departs_at.date(), first.from_code, first.to_code, f"{first.departs_at:%H:%M}"
             ),
             details=(

@@ -2,7 +2,7 @@
 
     uv run search-eval list
     uv run search-eval run                                   # replay (default): free, deterministic
-    uv run search-eval run --mode record --liteapi-src ../../tripsplit-l/backend/src/app/suppliers
+    uv run search-eval run --mode record --quotes          # ask live what is not recorded yet
     uv run search-eval run --mode live --briefs waw-prg      # live suppliers, nothing recorded
     uv run search-eval compare var/search-evals/<a> var/search-evals/<b>
 
@@ -49,7 +49,6 @@ async def _run(args: argparse.Namespace) -> int:
             store,
             stack,
             _csv(args.suppliers) or None,
-            liteapi_src=Path(args.liteapi_src) if args.liteapi_src else None,
             refresh_empty=args.refresh_empty,
         )
         print(f"{mode} with {', '.join(registry.ids)} over {len(briefs)} briefs", flush=True)
@@ -86,7 +85,6 @@ def main(argv: list[str] | None = None) -> None:
     run.add_argument("--suppliers", help="comma-separated supplier ids (default: per mode)")
     run.add_argument("--cassettes", default=str(CASSETTES))
     run.add_argument("--out", help="report directory (default: var/search-evals/<timestamp>)")
-    run.add_argument("--liteapi-src", help="a directory with liteapi.py, if not merged yet")
     run.add_argument("--quotes", action="store_true", help="re-quote what the packages chose")
     run.add_argument(
         "--refresh-empty", action="store_true", help="record: ask again where nothing was found"

@@ -4,6 +4,7 @@ This module is the contract shared by the "group & money" side (trips, proposals
 contributions, events) and the "agent & booking" side (bookings, agent runs).
 """
 
+from dataclasses import dataclass
 from enum import StrEnum
 
 
@@ -41,6 +42,32 @@ class TransportMode(StrEnum):
     FLIGHT = "flight"
     BUS = "bus"
     FERRY = "ferry"
+
+
+MAX_TRANSFERS_LIMIT = 3
+
+
+@dataclass(frozen=True, slots=True)
+class TravelPreferences:
+    """The organizer's simple transport preferences; None = no preference.
+
+    `earliest_departure_hour` (0-23, local time at the departure station/airport) applies to
+    every leg; `max_transfers` counts changes within one direction (0 = direct only).
+    """
+
+    earliest_departure_hour: int | None = None
+    max_transfers: int | None = None
+
+    def accepts(self, departure_hour: int, transfers: int) -> bool:
+        if (
+            self.earliest_departure_hour is not None
+            and departure_hour < self.earliest_departure_hour
+        ):
+            return False
+        return self.max_transfers is None or transfers <= self.max_transfers
+
+
+NO_PREFERENCES = TravelPreferences()
 
 
 class SupplierChannel(StrEnum):
@@ -90,6 +117,25 @@ class AgentOutcome(StrEnum):
     MAX_STEPS = "max_steps"
     ERROR = "error"
     UNKNOWN = "unknown"
+
+
+class RunStepStatus(StrEnum):
+    """One step of an agent run, as `status.json` reports it."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    HEALED = "healed"  # a replayed step that missed and was re-planned
+
+
+class RunStepSource(StrEnum):
+    """Where a step's decision came from."""
+
+    FLOW = "flow"  # a recorded flow, replayed
+    RULE = "rule"  # a deterministic rule
+    LLM = "llm"  # the planner model (including the follow-ups of one macro plan)
+    HUMAN = "human"  # the approval
 
 
 class ContributionStatus(StrEnum):

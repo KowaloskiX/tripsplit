@@ -6,6 +6,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query
 from starlette import status
 
+from app.core.domain.trips import TravelPreferences
 from app.core.errors_http import ErrorResponse
 from app.routes.dependencies import CurrentUser, TripServiceDep
 from app.routes.errors import trip_value
@@ -42,6 +43,10 @@ async def create_trip(
             display_name=payload.display_name,
             destination=payload.destination,
             transport_mode=payload.transport_mode,
+            preferences=TravelPreferences(
+                earliest_departure_hour=payload.earliest_departure_hour,
+                max_transfers=payload.max_transfers,
+            ),
         ),
     )
     return TripStatusResponse.model_validate(trip_value(result))

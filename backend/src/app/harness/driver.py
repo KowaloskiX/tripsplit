@@ -67,6 +67,7 @@ from app.models.bookings import Booking
 from app.repositories.trips import ProposalRepository
 from app.services.bookings import running_monitors
 from app.suppliers.duffel import DuffelLog
+from app.suppliers.liteapi import LiteApiLog
 from app.suppliers.pkp import LiveSearchLog
 from app.suppliers.ports import DisruptionKind
 from app.suppliers.sim import SimDisruption
@@ -162,6 +163,7 @@ class ScenarioResult:
     bookings: list[BookingRecord] = field(default_factory=list)
     suppliers: list[str] = field(default_factory=list)
     live_search: LiveSearchLog | None = None
+    liteapi: LiteApiLog | None = None
     duffel: DuffelLog | None = None
     # Who travelled, as the report may show it: name, fields present, masked document.
     travellers: list[str] = field(default_factory=list)
@@ -197,13 +199,14 @@ class Driver:
                 for name, info in all_features().items()
             },
         )
-        if self.scenario.live_flights_only and not self.world.options.live_flights:
+        missing_flag = self._missing_live_flag()
+        if missing_flag is not None:
             result.steps.append(
                 StepRecord(
                     0,
                     "Setup",
                     "pending",
-                    "pending — needs --live-flights (the real Duffel test API)",
+                    f"pending — needs {missing_flag}",
                     0.0,
                     "",
                     [],
@@ -241,10 +244,20 @@ class Driver:
             await self._release_agents()
             await self.world.close()
         result.live_search = self.world.live_search_log
+        result.liteapi = self.world.liteapi_log
         result.duffel = self.world.duffel_log
         result.seconds = round(time.monotonic() - started, 2)
         self._judge(result)
         return result
+
+    def _missing_live_flag(self) -> str | None:
+        """The switch a live-only scenario needs but did not get (it is then pending)."""
+        options = self.world.options
+        if self.scenario.live_stays_only and not options.live_stays:
+            return "--live-stays (the real LiteAPI sandbox)"
+        if self.scenario.live_flights_only and not options.live_flights:
+            return "--live-flights (the real Duffel test API)"
+        return None
 
     async def _steps(self, before: Snapshot, result: ScenarioResult) -> None:
         expected_error: str | None = None
@@ -303,6 +316,7 @@ class Driver:
                 expected_events=expected_events if outcome == "ok" else (),
                 suppliers=self.world.suppliers,
                 now=self.world.clock.now(),
+                holds=self.scenario.holds,
             )
             violations = check_all(context, dict(self.scenario.known_violations))
             for violation in violations:
