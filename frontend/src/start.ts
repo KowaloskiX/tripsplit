@@ -15,13 +15,15 @@ import { createMiddleware, createStart } from "@tanstack/react-start";
  * rewritten renderer — deliberately deferred and recorded as debt.
  *
  * `connect-src 'self'` is enough because the API is served from the same origin under `/api`.
+ * `img-src https:` lets offer photos load from the suppliers' CDNs (LiteAPI hotel images);
+ * images cannot run code, and the URLs come from our own API, not from user input.
  */
 const PRODUCTION_CSP = [
   "default-src 'self'",
   "base-uri 'self'",
   "frame-ancestors 'none'",
   "form-action 'self'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https:",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",
   "connect-src 'self'",

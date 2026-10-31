@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { DigitRoll } from "@/components/ui/number-roll";
 import { Stamp } from "@/components/ui/stamp";
 import {
+  imagesFromApi,
   isExample,
   LinkChips,
   PhotoStrip,
   type Provenance,
   ProvenancePill,
+  provenanceFromApi,
   type TrustImage,
   type TrustLink,
 } from "@/features/trust";
@@ -51,6 +53,29 @@ export function segmentLine(segment: SegmentResponse): string {
   )}`;
 }
 
+const CAUTION: Record<Provenance["kind"], number> = { live: 0, test: 1, sandbox: 1, example: 2 };
+
+/** The package's pill: its least trustworthy transport/stay item (activities are extras, so a
+ *  simulated museum ticket does not mark a live train + hotel as an example). */
+export function packageProvenance(proposal: ProposalResponse): Provenance | undefined {
+  let worst: Provenance | undefined;
+  for (const item of proposal.items) {
+    if (item.kind === "activity") continue;
+    const provenance = provenanceFromApi(item.provenance);
+    if (provenance && (!worst || CAUTION[provenance.kind] > CAUTION[worst.kind]))
+      worst = provenance;
+  }
+  return worst;
+}
+
+/** The stay's photos make the card's cover. */
+export function packageImages(proposal: ProposalResponse): TrustImage[] {
+  const stay = proposal.items.find(
+    (item) => item.kind === "stay" && (item.images ?? []).length > 0,
+  );
+  return stay ? imagesFromApi(stay.images, stay.title) : [];
+}
+
 export function ProposalCard({
   proposal,
   currency,
@@ -58,10 +83,12 @@ export function ProposalCard({
   voting,
   leading = false,
   receding = false,
-  provenance,
+  provenance: provenanceProp,
   links = [],
-  images = [],
+  images: imagesProp,
 }: ProposalCardProps): ReactNode {
+  const provenance = provenanceProp ?? packageProvenance(proposal);
+  const images = imagesProp ?? packageImages(proposal);
   const example = isExample(provenance);
   return (
     <article
@@ -149,6 +176,9 @@ export function ProposalCard({
                   {item.supplier}
                   <ExternalLink className="size-3" aria-hidden />
                 </a>
+                {(item.links ?? []).length > 0 && (
+                  <LinkChips links={item.links ?? []} className="mt-1.5" />
+                )}
               </div>
               <span className="ticket-mono ml-auto shrink-0 text-sm text-ink">
                 {formatMoney(item.price_minor, currency)}

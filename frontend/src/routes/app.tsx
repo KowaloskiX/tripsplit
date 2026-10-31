@@ -1,4 +1,5 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -48,12 +49,18 @@ function AppPage(): ReactNode {
         Create a trip, send the invite link, and the agent proposes three packages. The group votes,
         everyone pays their own share, and only then does the agent book.
       </p>
+      <Button asChild variant="lime" size="lg" className="mt-6">
+        <Link to="/plan">
+          <Sparkles className="size-5" aria-hidden />
+          Plan a trip in one sentence
+        </Link>
+      </Button>
 
       <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <TripList />
         <Panel>
           <PanelHeader>
-            <span>Start a new trip</span>
+            <span>Or fill in the details</span>
           </PanelHeader>
           <div className="p-5">
             <CreateTripForm defaultDisplayName={user.email.split("@")[0] ?? ""} />

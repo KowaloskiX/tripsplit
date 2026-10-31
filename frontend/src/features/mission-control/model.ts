@@ -72,7 +72,8 @@ export type MissionControlData = {
   /** Purchases in the basket; the header counts tickets against it. */
   purchases: number;
   browser: BrowserMission;
-  calls: readonly ApiCall[];
+  /** Supplier API log; `null` = not available (hide the terminal). */
+  calls: readonly ApiCall[] | null;
   stay?: StayMission | null;
   tickets: readonly MissionTicket[];
 };

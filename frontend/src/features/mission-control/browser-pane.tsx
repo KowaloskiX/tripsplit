@@ -6,7 +6,9 @@ import { cn } from "@/lib/utils";
 import { GraphStrip } from "./graph-strip";
 import type { BrowserMission } from "./model";
 
-const FRAME_MS = 333;
+// One frame a second: the agent's screenshots change about that fast, and every request
+// counts against the API's per-client rate limit (shared with the room's other polls).
+const FRAME_MS = 1000;
 
 /**
  * The newest frame that has actually loaded. Each tick preloads the next URL off-screen and
