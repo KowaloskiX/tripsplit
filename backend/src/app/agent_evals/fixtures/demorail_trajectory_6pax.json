@@ -1,0 +1,234 @@
+[
+  {
+    "action": "fill_form",
+    "text": null,
+    "direction": null,
+    "url": null,
+    "milestone": "search",
+    "fields": [
+      {
+        "text": "2026-11-20",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "date",
+          "text": "YYYY-MM-DD",
+          "href": ""
+        }
+      }
+    ]
+  },
+  {
+    "action": "select",
+    "text": "6",
+    "direction": null,
+    "url": null,
+    "milestone": "search",
+    "desc": {
+      "tag": "select",
+      "type": "",
+      "testid": "",
+      "name": "passengers",
+      "text": "1",
+      "href": ""
+    }
+  },
+  {
+    "action": "click",
+    "text": null,
+    "direction": null,
+    "url": null,
+    "milestone": "search",
+    "desc": {
+      "tag": "button",
+      "type": "submit",
+      "testid": "",
+      "name": "",
+      "text": "Search",
+      "href": ""
+    }
+  },
+  {
+    "action": "click",
+    "text": null,
+    "direction": null,
+    "url": null,
+    "milestone": "results",
+    "desc": {
+      "tag": "button",
+      "type": "submit",
+      "testid": "",
+      "name": "",
+      "text": "Select EC 111 Praha",
+      "href": ""
+    }
+  },
+  {
+    "action": "fill_form",
+    "text": null,
+    "direction": null,
+    "url": null,
+    "milestone": "passengers",
+    "fields": [
+      {
+        "text": "{{vault.passenger_1_first_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p1_first",
+          "text": "Passenger 1 first name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_1_last_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p1_last",
+          "text": "Passenger 1 last name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_2_first_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p2_first",
+          "text": "Passenger 2 first name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_2_last_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p2_last",
+          "text": "Passenger 2 last name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_3_first_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p3_first",
+          "text": "Passenger 3 first name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_3_last_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p3_last",
+          "text": "Passenger 3 last name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_4_first_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p4_first",
+          "text": "Passenger 4 first name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_4_last_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p4_last",
+          "text": "Passenger 4 last name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_5_first_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p5_first",
+          "text": "Passenger 5 first name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_5_last_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p5_last",
+          "text": "Passenger 5 last name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_6_first_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p6_first",
+          "text": "Passenger 6 first name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.passenger_6_last_name}}",
+        "desc": {
+          "tag": "input",
+          "type": "",
+          "testid": "",
+          "name": "p6_last",
+          "text": "Passenger 6 last name",
+          "href": ""
+        }
+      },
+      {
+        "text": "{{vault.email}}",
+        "desc": {
+          "tag": "input",
+          "type": "email",
+          "testid": "",
+          "name": "email",
+          "text": "Contact email",
+          "href": ""
+        }
+      }
+    ]
+  },
+  {
+    "action": "click",
+    "text": null,
+    "direction": null,
+    "url": null,
+    "milestone": "passengers",
+    "desc": {
+      "tag": "button",
+      "type": "submit",
+      "testid": "",
+      "name": "",
+      "text": "Continue to summary",
+      "href": ""
+    }
+  }
+]

@@ -45,10 +45,13 @@ def _resolve(text: str | None, vault: Vault) -> str | None:
     return _PLACEHOLDER.sub(repl, text)
 
 
-def _fill(page, ref, text, vault):
+def _fill(page, ref, text, vault, delay_ms=25):
     loc = _locator(page, ref)
     loc.fill("")  # fill() focuses the field; a separate click can time out
-    loc.type(_resolve(text or "", vault), delay=25)
+    if delay_ms:
+        loc.type(_resolve(text or "", vault), delay=delay_ms)  # human pace for bot walls
+    else:
+        loc.fill(_resolve(text or "", vault))
 
 
 def _locator(page, ref):
@@ -82,7 +85,7 @@ def act(browser, action, vault):
     if kind == "click":
         _click(page, action["ref"])
     elif kind == "type":
-        _fill(page, action["ref"], action.get("text", ""), vault)
+        _fill(page, action["ref"], action.get("text", ""), vault, browser.type_delay_ms)
     elif kind == "fill_form":
         # Many text fields in ONE planner step: a 6-passenger form is 13 fields, i.e. 13
         # planner calls (~2 minutes on the CLI planner) when filled one by one.
@@ -90,7 +93,7 @@ def act(browser, action, vault):
         if not fields:
             raise ValueError("fill_form needs a non-empty 'fields' list of {ref, text}")
         for field in fields:
-            _fill(page, field["ref"], field.get("text", ""), vault)
+            _fill(page, field["ref"], field.get("text", ""), vault, browser.type_delay_ms)
     elif kind == "select":
         loc = _locator(page, action["ref"])
         val = (_resolve(action.get("text", ""), vault) or "").strip()
@@ -119,7 +122,9 @@ def act(browser, action, vault):
     elif kind == "goto":
         browser.goto(action["url"])
         return
-    elif kind in ("wait", "done", "handoff"):
+    elif kind == "wait":
+        page.wait_for_timeout(min(int(action.get("ms") or 0), 5000))
+    elif kind in ("done", "handoff"):
         pass
     else:
         raise ValueError(f"unknown action: {kind}")

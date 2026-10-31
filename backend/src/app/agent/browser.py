@@ -25,6 +25,8 @@ class Browser:
         self.page = None
         self._cdp = None  # CDP session for the live screencast
         self.live_frame_path = None  # if set (Chromium), stream frames here
+        # Per-keystroke delay; 0 = instant fill (sites without bot management, per profile).
+        self.type_delay_ms = 25
 
     def start(self):
         if self.engine == "camoufox":
