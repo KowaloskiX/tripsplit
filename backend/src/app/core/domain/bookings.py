@@ -1,6 +1,6 @@
-"""Booking-side rules: which states may start an agent, how a disruption re-prices the trip,
-how shares are re-split and how many passengers one supplier purchase may carry. Pure Python —
-no framework, no database."""
+"""Booking-side rules: which states may start a purchase, how a disruption re-prices the trip,
+how shares are re-split and how a party is split into purchases. Pure Python — no framework,
+no database. What a particular supplier allows lives in `app.core.domain.suppliers`."""
 
 import math
 import re
@@ -25,21 +25,6 @@ TRIP_STATUSES_THAT_BUY: frozenset[TripStatus] = frozenset(
 BOOKING_STATUSES_THAT_START: frozenset[BookingStatus] = frozenset(
     {BookingStatus.PENDING, BookingStatus.FAILED, BookingStatus.HANDOFF}
 )
-
-
-PKP_INTERCITY = "PKP Intercity"
-# An online international PKP Intercity purchase accepts at most 5 passengers: a 6-person
-# request answers "No offers fulfil the criteria" (verified live on intercity.pl).
-PKP_INTERCITY_PURCHASE_CAP = 5
-
-# Passengers per ONE online purchase, by supplier name (case-insensitive). The single place
-# that knows the caps — the PKP client and the voting close both read it from here.
-_PURCHASE_CAPS: dict[str, int] = {PKP_INTERCITY.casefold(): PKP_INTERCITY_PURCHASE_CAP}
-
-
-def purchase_cap(supplier: str) -> int | None:
-    """How many passengers one purchase at `supplier` may carry; None = no known limit."""
-    return _PURCHASE_CAPS.get(supplier.strip().casefold())
 
 
 def split_party(travellers: int, cap: int | None) -> list[int]:

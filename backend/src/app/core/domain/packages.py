@@ -52,15 +52,21 @@ def booking_goal(
     date_from: date,
     date_to: date,
     starts_at: datetime | None = None,
+    itinerary: str = "",
 ) -> str:
-    """The natural-language instruction the booking agent receives for one package item."""
+    """The natural-language instruction the booking agent receives for one package item.
+
+    `itinerary` describes transport segments ("LO 401 WAW -> BCN 2026-11-20 07:05"); without
+    it a transport is taken as a return journey over the trip's dates.
+    """
     extra = f" {details.strip()}" if details.strip() else ""
     match kind:
-        case BookingKind.TRAIN:
-            body = (
-                f"Find and book {title} for {travellers} passengers, outbound on "
-                f"{date_from.isoformat()}, return on {date_to.isoformat()}."
+        case BookingKind.TRANSPORT:
+            route = (
+                itinerary.strip()
+                or f"outbound on {date_from.isoformat()}, return on {date_to.isoformat()}"
             )
+            body = f"Find and book {title} for {travellers} passengers: {route}."
         case BookingKind.STAY:
             body = (
                 f"Find and book {title} for {travellers} guests, check-in "

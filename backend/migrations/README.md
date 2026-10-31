@@ -58,7 +58,12 @@ uv run beanie migrate --uri "$MONGODB_URL" --database "$MONGODB_DATABASE" -p mig
   for a while two versions of the code run against the same documents. First add the new field
   and read both, then backfill, and only then stop reading the old one and drop it in a
   separate step.
-- **A new field needs no migration** — documents without it are read by Pydantic with the
-  default value. That is the main convenience we chose Mongo for; do not spoil it by adding
+- **A new field needs no migration to be READ** — documents without it are read by Pydantic
+  with the default value. That is the main convenience we chose Mongo for; do not spoil it by adding
   required fields with no default.
+- **...but it needs a backfill to be WRITTEN.** The collection validators require every model
+  field to be present, and Mongo's strict validation level checks every update of an old
+  document too: an old trip missing a new field cannot even change status. Backfill all new
+  fields in ONE update per document (see `20261031_120000_supplier_plugins.py`) — adding them
+  one by one fails on the first.
 - **Add a new document to `app/documents.py`**, otherwise Beanie will not register it.

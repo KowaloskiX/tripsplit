@@ -56,6 +56,10 @@ def settings(mongodb_url: str) -> Settings:
         mongodb_url=mongodb_url,
         mongodb_database=_TEST_DATABASE,
         auth_secret="test-secret-not-used-in-production",
+        # The rail-flavoured trip the HTTP tests were written around (rail + a stay site +
+        # activities, all bought by the agent). Flights, buses and holds have their own tests
+        # and harness scenarios.
+        suppliers="sim_rail,sim_stay_site,sim_activity",
     )
 
 

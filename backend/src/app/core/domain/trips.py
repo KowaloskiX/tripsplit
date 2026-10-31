@@ -28,9 +28,40 @@ class MemberRole(StrEnum):
 
 
 class BookingKind(StrEnum):
-    TRAIN = "train"
+    """What a purchase is, independent of who sells it. How a transport moves is its
+    `TransportMode`; the supplier behind it is a plugin (see `app.suppliers.ports`)."""
+
+    TRANSPORT = "transport"
     STAY = "stay"
     ACTIVITY = "activity"
+
+
+class TransportMode(StrEnum):
+    RAIL = "rail"
+    FLIGHT = "flight"
+    BUS = "bus"
+    FERRY = "ferry"
+
+
+class SupplierChannel(StrEnum):
+    """How a purchase at a supplier is made."""
+
+    API = "api"  # the supplier's own booking API, called by the backend after the approval
+    AGENT = "agent"  # the browser agent drives the supplier's site up to the pay click
+    MANUAL = "manual"  # a human books it by hand and enters the reference
+
+
+# Before suppliers became plugins, rail was a kind of its own. Stored documents may still say so.
+LEGACY_TRAIN_KIND = "train"
+
+
+def upgrade_legacy_kind(raw: dict[str, object]) -> dict[str, object]:
+    """Reads a stored item or booking written before `transport` existed: kind `train` becomes
+    kind `transport` with mode `rail`. Anything else is returned unchanged (expand-contract:
+    the readers accept both shapes until the backfill migration has run everywhere)."""
+    if raw.get("kind") != LEGACY_TRAIN_KIND:
+        return raw
+    return {**raw, "kind": BookingKind.TRANSPORT.value, "mode": raw.get("mode") or "rail"}
 
 
 class BookingStatus(StrEnum):
@@ -91,6 +122,9 @@ class EventKind(StrEnum):
     RESPLIT = "resplit"
     PRICE_CHANGED = "price_changed"  # the supplier re-quoted a booking before the purchase
     REFUND_ISSUED = "refund_issued"  # an overpayment went back to the member
+    HOLD_PLACED = "hold_placed"  # the supplier holds the price while the group pays
+    HOLD_EXPIRED = "hold_expired"  # the hold lapsed before the purchase — re-held / re-quoted
+    TRAVELLER_DETAILS_MISSING = "traveller_details_missing"  # names who still has to fill in
 
 
 def split_evenly(total_minor: int, members: int) -> list[int]:

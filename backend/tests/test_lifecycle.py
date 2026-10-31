@@ -6,7 +6,7 @@ booking then fails, as with a broken browser), and quotes are scripted per booki
 """
 
 import secrets
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Iterator, Sequence
 from datetime import date
 from typing import Any
 
@@ -17,22 +17,39 @@ from httpx import ASGITransport, AsyncClient
 
 from app.agent.launcher import LaunchSpec
 from app.core.config import Settings, get_settings
+from app.core.deps import SettingsDep
 from app.core.domain.errors import BookingError, TripError
+from app.core.domain.result import Err, Result
+from app.core.domain.suppliers import SupplierCapabilities
+from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import (
     BookingKind,
     BookingStatus,
     ContributionStatus,
     EventKind,
     MemberRole,
+    SupplierChannel,
+    TransportMode,
     TripStatus,
 )
 from app.core.http_security import CSRF_HEADER_NAME
 from app.db.client import Database
+from app.db.documents import utc_now
 from app.db.identifiers import identifier_of, to_object_id
 from app.models.bookings import AgentRun, Booking
 from app.models.trips import Contribution, Trip, TripEvent, TripMember, Vote
-from app.routes.dependencies import get_booking_service
+from app.routes.dependencies import get_booking_service, get_supplier_registry
 from app.services.bookings import BookingService
+from app.suppliers.ports import (
+    BookingRef,
+    DisruptionNotice,
+    Hold,
+    Offer,
+    OfferRef,
+    Quote,
+    SearchRequest,
+)
+from app.suppliers.registry import SupplierRegistry
 
 PASSWORD = "correct-horse-battery-staple"
 TRAIN_MINOR = 120_000
@@ -61,13 +78,44 @@ class RecordingLauncher:
 
 
 class ScriptedQuotes:
-    """The current price per booking id; unscripted bookings keep their stored amount."""
+    """A rail supplier plugin whose current price is scripted per offer (`offer_ref`); an
+    unscripted offer answers the price the seeded booking was created with."""
+
+    id = "scripted_rail"
+    display_name = "Scripted rail"
+    capabilities = SupplierCapabilities(
+        kind=BookingKind.TRANSPORT,
+        mode=TransportMode.RAIL,
+        channel=SupplierChannel.AGENT,
+        max_party_per_purchase=5,
+        required_traveller_fields=frozenset(),
+    )
 
     def __init__(self) -> None:
         self.prices: dict[str, int | None] = {}
 
-    async def quote(self, booking: Booking) -> int | None:
-        return self.prices.get(str(booking.id), booking.amount_minor)
+    async def search(self, request: SearchRequest) -> list[Offer]:
+        return []
+
+    async def quote(self, offer: OfferRef, party_size: int) -> Quote | None:
+        price = self.prices.get(offer.offer_ref, int(offer.supplier_data["listed_minor"]))
+        return Quote(price, "PLN", utc_now()) if price is not None else None
+
+    async def hold(self, offer: OfferRef, travellers: Sequence[TravellerDetails]) -> Hold | None:
+        return None
+
+    async def purchase(
+        self,
+        offer: OfferRef,
+        travellers: Sequence[TravellerDetails],
+        *,
+        price_minor: int,
+        hold_ref: str | None,
+    ) -> Result[str, str]:
+        return Err("bought by the agent")
+
+    async def status(self, booking: BookingRef) -> DisruptionNotice | None:
+        return None
 
 
 @pytest.fixture
@@ -94,12 +142,12 @@ def lifecycle_app(
     quotes: ScriptedQuotes,
     tolerance: list[float],
 ) -> Iterator[FastAPI]:
-    def service() -> BookingService:
+    def service(current: SettingsDep) -> BookingService:
         return BookingService(
             database,
             launcher,
             tmp_path / "runs",
-            quotes=quotes,
+            suppliers=SupplierRegistry([quotes, *get_supplier_registry(current)]),
             price_tolerance_percent=tolerance[0],
         )
 
@@ -184,9 +232,14 @@ async def _seed_trip(
         ).insert()
 
     def booking(kind: BookingKind, title: str, supplier: str, amount: int) -> Booking:
+        transport = kind is BookingKind.TRANSPORT
         return Booking(
             trip_id=identifier_of(trip),
             kind=kind,
+            mode=TransportMode.RAIL if transport else None,
+            supplier_id=ScriptedQuotes.id if transport else "",
+            offer_ref=f"offer:{title}" if transport else "",
+            supplier_data={"listed_minor": amount} if transport else {},
             title=title,
             supplier=supplier,
             supplier_url="http://localhost:8400/api/demo-supplier/rail",
@@ -196,7 +249,7 @@ async def _seed_trip(
             passenger_user_ids=user_ids,
         )
 
-    train = await booking(BookingKind.TRAIN, "EC 131", "PKP Intercity", TRAIN_MINOR).insert()
+    train = await booking(BookingKind.TRANSPORT, "EC 131", "PKP Intercity", TRAIN_MINOR).insert()
     stay = await booking(BookingKind.STAY, "Old Town apartment", "Booking.com", STAY_MINOR).insert()
     return trip, train, stay
 
@@ -225,7 +278,7 @@ async def test_a_price_rise_resplits_exactly_and_sends_the_trip_back_to_paying(
 ) -> None:
     organizer, friend = people
     trip, train, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKING)
-    quotes.prices[str(train.id)] = 124_670  # +46.70 PLN for the party
+    quotes.prices[train.offer_ref] = 124_670  # +46.70 PLN for the party
 
     response = await organizer.post(f"/api/trips/{trip.id}/bookings/{train.id}/start")
     assert response.status_code == 409, response.text
@@ -267,7 +320,7 @@ async def test_a_price_drop_marks_refunds_and_the_booking_proceeds(
 ) -> None:
     organizer, friend = people
     trip, train, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKING)
-    quotes.prices[str(train.id)] = 110_000
+    quotes.prices[train.offer_ref] = 110_000
 
     response = await organizer.post(f"/api/trips/{trip.id}/bookings/{train.id}/start")
     assert response.status_code == 202, response.text
@@ -290,7 +343,7 @@ async def test_a_sold_out_booking_fails_before_launching(
 ) -> None:
     organizer, _ = people
     trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKING)
-    quotes.prices[str(train.id)] = None
+    quotes.prices[train.offer_ref] = None
 
     response = await organizer.post(f"/api/trips/{trip.id}/bookings/{train.id}/start")
     assert response.status_code == 409
@@ -310,7 +363,7 @@ async def test_a_change_within_the_tolerance_is_ignored(
     tolerance[0] = 5.0
     organizer, _ = people
     trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKING)
-    quotes.prices[str(train.id)] = 123_000  # +2.5 %
+    quotes.prices[train.offer_ref] = 123_000  # +2.5 %
 
     response = await organizer.post(f"/api/trips/{trip.id}/bookings/{train.id}/start")
     assert response.status_code == 202, response.text
@@ -362,25 +415,28 @@ async def test_six_travellers_become_two_train_purchases_with_their_own_vaults(
     launcher: RecordingLauncher,
 ) -> None:
     lifecycle_app.dependency_overrides[get_settings] = lambda: settings.model_copy(
-        update={"demo_supplier_url": "http://localhost:8400"}
+        update={
+            "demo_supplier_url": "http://localhost:8400",
+            "suppliers": "demo_rail,sim_stay_site,sim_activity",
+        }
     )
     organizer, friend = people
     trip_id = await _six_person_trip(organizer, friend, seeded=4)
     await _research_and_close(lifecycle_app, organizer, trip_id)
 
     bookings = await _bookings(trip_id)
-    trains = [b for b in bookings if b.kind is BookingKind.TRAIN]
+    trains = [b for b in bookings if b.mode is TransportMode.RAIL]
     assert [len(t.passenger_user_ids) for t in trains] == [3, 3]
     room = (await organizer.get(f"/api/trips/{trip_id}")).json()
     chosen = next(p for p in room["proposals"] if p["chosen"])
-    train_item = next(i for i in chosen["items"] if i["kind"] == BookingKind.TRAIN)
+    train_item = next(i for i in chosen["items"] if i.get("mode") == TransportMode.RAIL)
     assert sum(t.amount_minor for t in trains) == train_item["price_minor"]
     assert [t.title.endswith(s) for t, s in zip(trains, ("1-3)", "4-6)"), strict=True)] == [
         True,
         True,
     ]
     assert all(t.supplier_url == "http://localhost:8400/api/demo-supplier/rail" for t in trains)
-    assert all(len(b.passenger_user_ids) == 6 for b in bookings if b.kind is not BookingKind.TRAIN)
+    assert all(len(b.passenger_user_ids) == 6 for b in bookings if b.mode is not TransportMode.RAIL)
 
     await _pay_everyone(organizer, friend, trip_id)
     names = {m["user_id"]: m["display_name"] for m in room["members"]}
@@ -404,7 +460,7 @@ async def test_five_travellers_are_one_train_purchase(
     organizer, friend = people
     trip_id = await _six_person_trip(organizer, friend, seeded=3)
     await _research_and_close(lifecycle_app, organizer, trip_id)
-    trains = [b for b in await _bookings(trip_id) if b.kind is BookingKind.TRAIN]
+    trains = [b for b in await _bookings(trip_id) if b.mode is TransportMode.RAIL]
     assert len(trains) == 1
     assert len(trains[0].passenger_user_ids) == 5
     assert "(passengers" not in trains[0].title
@@ -487,7 +543,7 @@ async def test_leaving_after_paying_refunds_the_leaver_and_the_rest_top_up(
     kinds = [e["kind"] for e in (await organizer.get(f"/api/trips/{trip_id}/feed")).json()]
     assert EventKind.MEMBER_LEFT in kinds and EventKind.RESPLIT in kinds
     # Five travellers fit one PKP purchase again: the two train parts merge into one.
-    trains = [b for b in await _bookings(trip_id) if b.kind is BookingKind.TRAIN]
+    trains = [b for b in await _bookings(trip_id) if b.mode is TransportMode.RAIL]
     assert len(trains) == 1
     assert len(trains[0].passenger_user_ids) == 5
     assert to_object_id(friend.id) not in trains[0].passenger_user_ids
@@ -630,7 +686,8 @@ async def _split_train(train: Booking, organizer: Person, friend: Person) -> lis
     )
     other = await Booking(
         trip_id=train.trip_id,
-        kind=BookingKind.TRAIN,
+        kind=BookingKind.TRANSPORT,
+        mode=TransportMode.RAIL,
         title="EC 131 (passengers 2-2)",
         supplier="PKP Intercity",
         supplier_url=train.supplier_url,

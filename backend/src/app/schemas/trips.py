@@ -9,12 +9,14 @@ from typing import Annotated, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
+from app.core.domain.suppliers import TravellerField
 from app.core.domain.trips import (
     BookingKind,
     ContributionStatus,
     EventActor,
     EventKind,
     MemberRole,
+    TransportMode,
     TripStatus,
 )
 from app.schemas.common import StrictRequest, normalize_text
@@ -50,6 +52,10 @@ class CreateTripRequest(StrictRequest):
     budget_per_person_minor: int | None = Field(default=None, ge=0)
     # How the organizer appears to the group.
     display_name: VisibleText = Field(min_length=1, max_length=NAME_MAX_LENGTH)
+    # Where to; empty = read from the title and brief.
+    destination: str = Field(default="", max_length=TITLE_MAX_LENGTH)
+    # How the group wants to travel; null = any mode the suppliers offer.
+    transport_mode: TransportMode | None = None
 
     @model_validator(mode="after")
     def _dates_in_order(self) -> Self:
@@ -94,6 +100,8 @@ class TripResponse(_ReadModel):
     group_size: int
     budget_per_person_minor: int | None
     currency: str
+    destination: str
+    transport_mode: TransportMode | None
     status: TripStatus
     organizer_id: str
     chosen_proposal_id: str | None
@@ -109,16 +117,31 @@ class MemberResponse(_ReadModel):
     user_id: str
     display_name: str
     role: MemberRole
+    # Which traveller details the trip's suppliers need that this member has not entered yet
+    # (field names only — values are never shown to anyone else).
+    traveller_details_missing: list[TravellerField]
+    traveller_details_complete: bool
+
+
+class SegmentResponse(_ReadModel):
+    carrier: str
+    number: str
+    origin: str
+    destination: str
+    departs_at: datetime
+    arrives_at: datetime
 
 
 class ProposalItemResponse(_ReadModel):
     kind: BookingKind
+    mode: TransportMode | None
     title: str
     supplier: str
     supplier_url: str
     price_minor: int
     details: str
     starts_at: datetime | None
+    segments: list[SegmentResponse]
 
 
 class ProposalResponse(_ReadModel):

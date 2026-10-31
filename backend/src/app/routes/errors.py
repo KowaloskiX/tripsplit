@@ -77,6 +77,9 @@ _BOOKING_STATUS: dict[BookingError, int] = {
     BookingError.SOLD_OUT: status.HTTP_409_CONFLICT,
     BookingError.PRICE_CHANGED: status.HTTP_409_CONFLICT,
     BookingError.NOT_COMPLETABLE: status.HTTP_409_CONFLICT,
+    BookingError.TRAVELLER_DETAILS_MISSING: status.HTTP_409_CONFLICT,
+    BookingError.QUOTE_EXPIRED: status.HTTP_409_CONFLICT,
+    BookingError.SUPPLIER_UNKNOWN: status.HTTP_409_CONFLICT,
 }
 
 _BOOKING_MESSAGE: dict[BookingError, str] = {
@@ -94,6 +97,11 @@ _BOOKING_MESSAGE: dict[BookingError, str] = {
         "The supplier changed the price. Shares were re-split — top up, then start again."
     ),
     BookingError.NOT_COMPLETABLE: "Only a handed-off or failed booking can be finished by hand.",
+    BookingError.TRAVELLER_DETAILS_MISSING: (
+        "Some travellers have not entered the details this supplier needs — see the trip feed."
+    ),
+    BookingError.QUOTE_EXPIRED: "The price is no longer guaranteed. Start the booking again.",
+    BookingError.SUPPLIER_UNKNOWN: "The supplier of this booking is not available right now.",
 }
 
 

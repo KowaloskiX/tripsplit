@@ -2,7 +2,7 @@
 exist, so production does not advertise a way to fabricate members, payments or disruptions.
 
 They exist so a six-person trip can be demonstrated from one browser: seed the friends, cast
-their votes, pay their shares, then delay the train.
+their votes, pay their shares, then delay the transport.
 """
 
 from fastapi import APIRouter, Depends
@@ -10,8 +10,7 @@ from starlette import status
 
 from app.core.domain.result import Ok
 from app.core.errors_http import ErrorResponse
-from app.db.identifiers import identifier_of, to_text
-from app.routes.bookings import booking_response
+from app.routes.bookings import disruption_response
 from app.routes.dependencies import (
     BookingServiceDep,
     CurrentUser,
@@ -19,7 +18,7 @@ from app.routes.dependencies import (
     require_demo_routes,
 )
 from app.routes.errors import booking_failure, trip_value
-from app.schemas.bookings import DisruptionRequest, DisruptionResponse, ShareChangeResponse
+from app.schemas.bookings import DisruptionRequest, DisruptionResponse
 from app.schemas.trips import (
     CastVoteRequest,
     DemoLeaveRequest,
@@ -27,7 +26,6 @@ from app.schemas.trips import (
     SeedMembersRequest,
     TripStatusResponse,
 )
-from app.services.bookings import BookingWithRun
 
 router = APIRouter(
     prefix="/trips/{trip_id}/demo",
@@ -86,7 +84,7 @@ async def make_member_leave(
 async def simulate_disruption(
     trip_id: str, payload: DisruptionRequest, user: CurrentUser, service: BookingServiceDep
 ) -> DisruptionResponse:
-    """The demo's last scene: the train is delayed, the agent rebooks and re-splits."""
+    """The demo's last scene: the transport is delayed, the agent rebooks and re-splits."""
     result = await service.simulate_disruption(
         trip_id,
         user.id,
@@ -96,26 +94,4 @@ async def simulate_disruption(
     )
     if not isinstance(result, Ok):
         raise booking_failure(result.error)
-    outcome = result.value
-    return DisruptionResponse(
-        cancelled_booking_ids=[to_text(identifier_of(booking)) for booking in outcome.cancelled],
-        replacements=[
-            booking_response(BookingWithRun(booking=booking, run=None))
-            for booking in outcome.replacements
-        ],
-        trip_status=outcome.trip.status,
-        previous_total_minor=outcome.previous_total_minor,
-        total_minor=outcome.trip.total_minor,
-        shares=[
-            ShareChangeResponse(
-                user_id=to_text(share.user_id),
-                display_name=share.display_name,
-                previous_minor=share.change.previous_minor,
-                share_minor=share.change.share_minor,
-                delta_minor=share.change.delta_minor,
-                paid_minor=share.change.paid_minor,
-                status=share.change.status,
-            )
-            for share in outcome.shares
-        ],
-    )
+    return disruption_response(result.value)

@@ -15,10 +15,11 @@ from app.core.background import BackgroundRunner
 from app.core.domain.errors import TripError
 from app.core.domain.packages import format_money, is_over_budget, per_person, pick_winner
 from app.core.domain.result import Err, Ok, Result
+from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.trips import EventActor, EventKind, TripStatus, split_evenly
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id, to_text
-from app.models.trips import Contribution, Proposal, ProposalItem, Trip
+from app.models.trips import Contribution, Proposal, ProposalItem, TransportSegment, Trip
 from app.repositories.bookings import BookingRepository
 from app.repositories.trips import (
     ContributionRepository,
@@ -29,8 +30,10 @@ from app.repositories.trips import (
     VoteRepository,
 )
 from app.services.booking_plans import bookings_for_item
+from app.services.supplier_prices import SupplierPrices
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
 from app.services.trip_views import TripStatusView
+from app.suppliers.registry import SupplierRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +52,14 @@ class ProposalService:
         researcher: PackageResearcher,
         runner: BackgroundRunner,
         *,
-        train_supplier_url: str | None = None,
+        suppliers: SupplierRegistry | None = None,
+        prices: SupplierPrices | None = None,
     ) -> None:
         self.db = db
-        # Demo seam: when set, train bookings go to this (fake) supplier instead of the
-        # researched one. The goal is unchanged — only where the agent drives.
-        self.train_supplier_url = train_supplier_url
+        # The supplier plugins: their capabilities split each item into purchases.
+        self.suppliers = suppliers if suppliers is not None else SupplierRegistry()
+        # Places the holds when the vote closes (suppliers that support them).
+        self.prices = prices if prices is not None else SupplierPrices(db, self.suppliers)
         self.researcher = researcher
         self.runner = runner
         self.trips = TripRepository()
@@ -93,13 +98,15 @@ class ProposalService:
             travellers=max(trip.group_size, len(members)),
             budget_per_person_minor=trip.budget_per_person_minor,
             currency=trip.currency,
+            destination=trip.destination,
+            transport_mode=trip.transport_mode,
         )
         await self.events.add(
             trip_oid,
             EventKind.MESSAGE,
             EventActor.AGENT,
-            f"Researching packages for {brief.travellers} people from {trip.origin} — trains, "
-            "stays and something fun. This can take a few minutes.",
+            f"Researching packages for {brief.travellers} people from {trip.origin} — getting "
+            "there, a place to stay and something fun. This can take a few minutes.",
         )
         self.runner.spawn(self.research(trip_oid, previous, brief), name=f"research-{trip_id}")
         return Ok(TripStatusView(trip_id=trip_id, status=TripStatus.PROPOSING))
@@ -193,8 +200,10 @@ class ProposalService:
 
     async def close_voting(self, trip_id: str, user_id: str) -> Result[TripStatusView, TripError]:
         """Picks the winner, splits it into one share per CURRENT member and queues the bookings
-        of every package item (several for a train whose supplier caps one purchase — see
-        `bookings_for_item`). All of it in one transaction: half a split is worse than none."""
+        of every package item (several where the supplier caps one purchase — see
+        `bookings_for_item`). All of it in one transaction: half a split is worse than none.
+        Then, outside it, every supplier that supports holds is asked to hold the price while
+        the group pays."""
         access = await self._access(trip_id, user_id)
         if not isinstance(access, Ok):
             return access
@@ -243,7 +252,7 @@ class ProposalService:
             passengers = [member.user_id for member in members]
             for index, item in enumerate(winner.items):
                 for booking in bookings_for_item(
-                    trip, item, index, passengers, train_supplier_url=self.train_supplier_url
+                    trip, item, index, passengers, self._capabilities(item)
                 ):
                     await self.bookings.add(booking, session=session)
             await self.events.add(
@@ -284,7 +293,14 @@ class ProposalService:
             await self.db.in_transaction(write)
         except _StatusChanged:
             return Err(TripError.INVALID_STATE)
+        fresh = await self.trips.get(trip_oid)
+        if fresh is not None:
+            await self.prices.place_holds(fresh)
         return Ok(TripStatusView(trip_id=trip_id, status=TripStatus.PAYING))
+
+    def _capabilities(self, item: ProposalItem) -> SupplierCapabilities | None:
+        adapter = self.suppliers.get(item.supplier_id) if item.supplier_id else None
+        return adapter.capabilities if adapter is not None else None
 
     async def _proposal_of(self, trip: Trip, proposal_id: str) -> Proposal | None:
         proposal_oid = to_object_id(proposal_id)
@@ -305,12 +321,28 @@ def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, brief: TripBrief) ->
         items=[
             ProposalItem(
                 kind=item.kind,
+                mode=item.mode,
                 title=item.title,
                 supplier=item.supplier,
                 supplier_url=item.supplier_url,
                 price_minor=item.price_minor,
                 details=item.details,
                 starts_at=item.starts_at,
+                supplier_id=item.supplier_id,
+                offer_ref=item.offer_ref,
+                segments=[
+                    TransportSegment(
+                        carrier=segment.carrier,
+                        number=segment.number,
+                        origin=segment.origin,
+                        destination=segment.destination,
+                        departs_at=segment.departs_at,
+                        arrives_at=segment.arrives_at,
+                    )
+                    for segment in item.segments
+                ],
+                refundable=item.refundable,
+                supplier_data=dict(item.supplier_data),
             )
             for item in plan.items
         ],

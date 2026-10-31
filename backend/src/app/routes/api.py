@@ -13,6 +13,7 @@ from app.routes.demo import router as demo_router
 from app.routes.demo_supplier import router as demo_supplier_router
 from app.routes.health import router as health_router
 from app.routes.proposals import router as proposals_router
+from app.routes.travellers import router as travellers_router
 from app.routes.trips import router as trips_router
 
 # Everything under /api — same origin as the frontend, so the session cookie is first-party.
@@ -24,5 +25,6 @@ api_router.include_router(proposals_router)
 api_router.include_router(contributions_router)
 api_router.include_router(demo_router)
 api_router.include_router(bookings_router)
+api_router.include_router(travellers_router)
 # Dev/test only: both answer 404 elsewhere (`require_demo_routes`).
 api_router.include_router(demo_supplier_router)

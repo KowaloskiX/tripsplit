@@ -4,11 +4,13 @@ Plain dataclasses on both sides — no Beanie, no provider SDK — so the servic
 result does not care whether a fixture or an LLM with web search produced it.
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
-from typing import Protocol
+from typing import Any, Protocol
 
-from app.core.domain.trips import BookingKind
+from app.core.domain.trips import BookingKind, TransportMode
+from app.suppliers.ports import Segment
 
 PACKAGES_PER_RESEARCH = 3
 
@@ -24,6 +26,10 @@ class TripBrief:
     travellers: int
     budget_per_person_minor: int | None = None
     currency: str = "PLN"
+    # Where to; empty = read from the title and brief.
+    destination: str = ""
+    # The trip's mode preference; None = any (the brief may still say "fly there, train back").
+    transport_mode: TransportMode | None = None
 
     @property
     def nights(self) -> int:
@@ -34,12 +40,19 @@ class TripBrief:
 class PackageItemPlan:
     kind: BookingKind
     title: str
-    supplier: str
+    supplier: str  # who sells it, for people
     supplier_url: str
     # Minor units (grosze) for the WHOLE group.
     price_minor: int
     details: str = ""
     starts_at: datetime | None = None
+    mode: TransportMode | None = None
+    # The supplier plugin's offer this item buys; empty for an item from outside the registry.
+    supplier_id: str = ""
+    offer_ref: str = ""
+    segments: tuple[Segment, ...] = ()
+    refundable: bool = False
+    supplier_data: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
