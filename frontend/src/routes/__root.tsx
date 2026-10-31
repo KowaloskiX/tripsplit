@@ -88,7 +88,7 @@ function RootLayout(): ReactNode {
 function SiteHeader(): ReactNode {
   return (
     <header className="border-b border-line">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-6 py-3.5">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
         <Link to="/" className="font-mono text-sm tracking-tight text-ink">
           <span className="text-accent">■</span> tripsplit
         </Link>
@@ -105,7 +105,7 @@ function SiteHeader(): ReactNode {
 function SiteFooter(): ReactNode {
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto max-w-5xl px-6 py-4 font-mono text-[11px] text-muted">
+      <div className="mx-auto max-w-6xl px-6 py-4 font-mono text-[11px] text-muted">
         fastapi · tanstack start · mongodb + redis · boundaries enforced in CI
       </div>
     </footer>

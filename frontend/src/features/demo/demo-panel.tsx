@@ -17,7 +17,8 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
   const voteAll = useVoteAll(trip.id);
   const payAll = usePayAll(trip.id);
   const error = seed.error ?? voteAll.error ?? payAll.error;
-  const missing = Math.max(trip.group_size - room.members.length, 1);
+  const missing = trip.group_size - room.members.length;
+  const joinable = ["collecting", "proposing", "voting"].includes(trip.status);
   const favourite = room.my_vote_proposal_id ?? room.proposals[0]?.id;
 
   return (
@@ -31,10 +32,10 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
           <Button
             size="sm"
             variant="outline"
-            disabled={seed.isPending}
+            disabled={seed.isPending || missing < 1 || !joinable}
             onClick={() => seed.mutate({ path, body: { count: missing } })}
           >
-            Seed {missing} member{missing === 1 ? "" : "s"}
+            {missing < 1 ? "Group is full" : `Seed ${missing} member${missing === 1 ? "" : "s"}`}
           </Button>
           <Button
             size="sm"

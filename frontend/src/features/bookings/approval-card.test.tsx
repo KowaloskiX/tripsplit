@@ -28,14 +28,14 @@ describe("ApprovalCard", () => {
       "src",
       "/api/agent-runs/b1-1/frame?t=1",
     );
-    expect(screen.getByText("1 240.00 PLN")).toBeInTheDocument();
+    expect(screen.getByText(/1 240\.00 PLN/)).toHaveTextContent("1 240.00 PLN budgeted");
     expect(screen.getByText(/For 6 people\./)).toBeInTheDocument();
   });
 
   it("approves and rejects", async () => {
     const user = userEvent.setup();
     const { onDecision } = renderCard();
-    await user.click(screen.getByRole("button", { name: "Approve and pay 1 240.00 PLN" }));
+    await user.click(screen.getByRole("button", { name: "Approve and pay" }));
     await user.click(screen.getByRole("button", { name: "Reject" }));
     expect(onDecision.mock.calls).toEqual([[true], [false]]);
   });

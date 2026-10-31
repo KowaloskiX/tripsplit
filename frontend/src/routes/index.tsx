@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage(): ReactNode {
   return (
-    <div className="mx-auto grid max-w-5xl gap-12 px-6 py-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:py-24">
+    <div className="mx-auto grid max-w-6xl gap-12 px-6 py-16 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14 lg:py-24">
       <section>
         <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">tripsplit</p>
         <h1 className="mt-4 max-w-xl font-mono text-4xl leading-[1.08] tracking-tight text-ink sm:text-5xl">

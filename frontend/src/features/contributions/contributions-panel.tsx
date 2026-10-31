@@ -40,7 +40,9 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
           </p>
         )}
         {trip.status === "booking" && (
-          <p className="text-sm text-live">Everyone paid — the agent is booking now.</p>
+          <p className="text-sm text-live">
+            Everyone paid — the organizer can start the bookings above.
+          </p>
         )}
         <ContributionsTable
           contributions={room.contributions}

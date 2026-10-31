@@ -25,6 +25,13 @@ const STEP_OF: Record<TripStatus, number> = {
   done: 4,
 };
 
+/** Off-happy-path statuses rename the step they sit on, so the stepper never lies. */
+const ACTIVE_LABEL: Partial<Record<TripStatus, string>> = {
+  proposing: "Researching",
+  disrupted: "Disrupted",
+  rebooking: "Rebooking",
+};
+
 export function StatusStepper({ status }: { status: TripStatus }): ReactNode {
   const current = STEP_OF[status];
   return (
@@ -44,7 +51,7 @@ export function StatusStepper({ status }: { status: TripStatus }): ReactNode {
               )}
             >
               {done && <Check className="size-3" aria-hidden />}
-              {step.label}
+              {(index === current && ACTIVE_LABEL[status]) || step.label}
             </span>
             {index < STEPS.length - 1 && <span className="h-px w-4 bg-line" aria-hidden />}
           </li>

@@ -41,7 +41,7 @@ function AppPage(): ReactNode {
   if (!user) return null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-6 py-12 lg:py-16">
+    <div className="mx-auto w-full max-w-6xl px-6 py-12 lg:py-16">
       <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">trips</p>
       <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">
         From group chat to tickets

@@ -13,7 +13,7 @@ export function RoutePending(): ReactNode {
   return (
     <div className="px-6 py-16 lg:py-24" role="status" aria-live="polite">
       <span className="sr-only">Loading…</span>
-      <div className="mx-auto h-1 w-full max-w-5xl overflow-hidden rounded-full bg-line">
+      <div className="mx-auto h-1 w-full max-w-6xl overflow-hidden rounded-full bg-line">
         <div className="route-pending-bar h-full w-1/3 rounded-full bg-accent" />
       </div>
     </div>

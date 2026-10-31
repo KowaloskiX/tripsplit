@@ -42,15 +42,19 @@ export function ApprovalCard({
           className="w-full rounded-[var(--radius-control)] border border-line"
         />
         <div>
-          <p className="font-mono text-2xl tracking-tight text-ink">{amount}</p>
+          <p className="font-mono text-2xl tracking-tight text-ink">
+            {amount} <span className="text-xs text-muted">budgeted</span>
+          </p>
+          {/* The budget comes from the package research; the binding price is the supplier's,
+              on the screenshot. Saying so beats a silent mismatch between the two numbers. */}
           <p className="mt-1 text-sm text-muted">
-            {travellers ? `For ${travellers} people. ` : ""}The agent stopped before paying. Check
-            the summary, then approve the final click.
+            {travellers ? `For ${travellers} people. ` : ""}The agent stopped before paying. The
+            supplier's own total is on the summary above — check it, then approve the final click.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button disabled={pending} onClick={() => onDecision(true)}>
-            Approve and pay {amount}
+            Approve and pay
           </Button>
           <Button variant="outline" disabled={pending} onClick={() => onDecision(false)}>
             Reject
