@@ -65,6 +65,7 @@ from app.harness.world import World
 from app.models.bookings import Booking
 from app.repositories.trips import ProposalRepository
 from app.services.bookings import running_monitors
+from app.suppliers.liteapi import LiteApiLog
 from app.suppliers.pkp import LiveSearchLog
 from app.suppliers.ports import DisruptionKind
 from app.suppliers.sim import SimDisruption
@@ -159,6 +160,7 @@ class ScenarioResult:
     bookings: list[BookingRecord] = field(default_factory=list)
     suppliers: list[str] = field(default_factory=list)
     live_search: LiveSearchLog | None = None
+    liteapi: LiteApiLog | None = None
     features: dict[str, str] = field(default_factory=dict)
     seconds: float = 0.0
 
@@ -191,6 +193,22 @@ class Driver:
                 for name, info in all_features().items()
             },
         )
+        if self.scenario.live_stays_only and not self.world.options.live_stays:
+            result.steps.append(
+                StepRecord(
+                    0,
+                    "Setup",
+                    "pending",
+                    "pending — needs --live-stays (the real LiteAPI sandbox)",
+                    0.0,
+                    "",
+                    [],
+                    [],
+                )
+            )
+            await self.world.close()
+            self._judge(result)
+            return result
         try:
             await self.world.setup()
             before = await self._snapshot()
@@ -217,6 +235,7 @@ class Driver:
             await self._release_agents()
             await self.world.close()
         result.live_search = self.world.live_search_log
+        result.liteapi = self.world.liteapi_log
         result.seconds = round(time.monotonic() - started, 2)
         self._judge(result)
         return result

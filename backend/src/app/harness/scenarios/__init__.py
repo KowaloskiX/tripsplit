@@ -17,6 +17,7 @@ from app.harness.scenarios import (
     missing_payment,
     mixed_modes,
     prague_happy_path,
+    prague_liteapi_live,
     price_jump,
     rail_party_of_eight,
     vote_tie,
@@ -43,5 +44,6 @@ SCENARIOS: dict[str, Scenario] = {
         rail_party_of_eight,
         mixed_modes,
         cancelled_flight,
+        prague_liteapi_live,
     )
 }

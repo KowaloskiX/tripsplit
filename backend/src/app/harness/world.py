@@ -3,7 +3,8 @@ plugins, one clock for all of them and a scripted agent.
 
 `--live-search` swaps the simulated rail carrier for the real PKP Intercity adapter (search and
 re-quote through a headless browser); `--live-agent` swaps it for the demo rail site and lets
-the real agent subprocess buy there. Every other supplier stays simulated.
+the real agent subprocess buy there; `--live-stays` plugs in the real `liteapi` adapter (the
+LiteAPI sandbox) for scenarios that list it. Every other supplier stays simulated.
 """
 
 import contextlib
@@ -34,8 +35,11 @@ from app.services.travellers import TravellerDetailsUpdate, TravellerService
 from app.services.trips import NewTrip, TripService
 from app.suppliers.demo_rail import DemoRailSupplier
 from app.suppliers.intercity import BrowserTransport
+from app.suppliers.liteapi import SUPPLIER_ID as LITEAPI
+from app.suppliers.liteapi import LiteApiLog, liteapi_supplier
 from app.suppliers.pkp import LiveSearchLog, PkpIntercitySupplier
 from app.suppliers.ports import SupplierAdapter
+from app.suppliers.providers import liteapi_config
 from app.suppliers.registry import SupplierRegistry
 from app.suppliers.sim import SIM_CAPABILITIES, SimBehaviour, sim_supplier
 
@@ -53,6 +57,8 @@ class Options:
     live_search: bool = False
     # Base URL of a backend serving /api/demo-supplier/rail; set => live agent for rail.
     live_agent_base_url: str | None = None
+    # The real LiteAPI sandbox for the `liteapi` supplier; without it such scenarios are pending.
+    live_stays: bool = False
     poll_s: float = 0.02
     max_steps: int = 40
 
@@ -91,6 +97,7 @@ class World:
     researcher: CatalogResearcher
     launcher: AgentLauncher
     live_search_log: LiveSearchLog | None = None
+    liteapi_log: LiteApiLog | None = None
     resources: contextlib.AsyncExitStack = field(default_factory=contextlib.AsyncExitStack)
     browser: BrowserTransport | None = None
     users: dict[str, str] = field(default_factory=dict)  # display name -> user id
@@ -119,9 +126,19 @@ class World:
         adapters: list[SupplierAdapter] = []
         browser: BrowserTransport | None = None
         pkp: PkpIntercitySupplier | None = None
+        liteapi_log: LiteApiLog | None = None
         for spec in scenario.suppliers:
             behaviour = copy.deepcopy(spec.behaviour) if spec.behaviour else SimBehaviour()
-            if spec.id == SIM_RAIL and options.live_agent_base_url:
+            if spec.id == LITEAPI:
+                if not options.live_stays:
+                    continue  # the scenario is reported pending (Scenario.live_stays_only)
+                config = liteapi_config(settings)
+                if config is None:
+                    raise RuntimeError("--live-stays needs a sandbox (sand_...) LITEAPI_KEY")
+                liteapi = liteapi_supplier(config, clock.now)
+                liteapi_log = liteapi.log
+                adapters.append(liteapi)
+            elif spec.id == SIM_RAIL and options.live_agent_base_url:
                 adapters.append(DemoRailSupplier(options.live_agent_base_url))
             elif spec.id == SIM_RAIL and options.live_search:
                 browser = BrowserTransport(headless=True)
@@ -179,6 +196,7 @@ class World:
             researcher=researcher,
             launcher=launcher,
             live_search_log=pkp.log if pkp is not None else None,
+            liteapi_log=liteapi_log,
             browser=browser,
         )
 

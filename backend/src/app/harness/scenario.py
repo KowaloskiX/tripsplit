@@ -321,6 +321,9 @@ class Scenario:
     known_violations: Mapping[str, str] = field(default_factory=dict)
     # The scenario documents a product bug: failing is expected (pytest xfail, strict=False).
     xfail: str | None = None
+    # Talks to the real LiteAPI SANDBOX: runs only with `--live-stays`, pending otherwise
+    # (the fast run and pytest never reach the network).
+    live_stays_only: bool = False
 
     @property
     def members(self) -> tuple[str, ...]:

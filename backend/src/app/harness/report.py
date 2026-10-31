@@ -145,6 +145,9 @@ def scenario_markdown(result: ScenarioResult) -> str:
                     f"{format_money(leg.total_minor, result.currency)} |"
                 )
         lines += [f"- {note}" for note in log.notes]
+    if result.liteapi is not None:
+        lines += ["", "## Live LiteAPI stays (sandbox)", ""]
+        lines += [f"- {_cell(note)}" for note in result.liteapi.notes]
     lines += ["", "## Domain features", ""]
     lines += [f"- `{name}`: {state}" for name, state in result.features.items()]
     return "\n".join(lines) + "\n"
