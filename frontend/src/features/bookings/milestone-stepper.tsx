@@ -36,16 +36,16 @@ export function MilestoneStepper({
 }): ReactNode {
   const current = finished ? CHECKOUT_STEPS.length - 1 : stepIndexOf(milestone);
   return (
-    <ol className="flex flex-wrap items-center gap-1.5 font-mono text-[11px]" aria-label="Progress">
+    <ol className="flex flex-wrap items-center gap-1.5 text-xs font-medium" aria-label="Progress">
       {CHECKOUT_STEPS.map((step, index) => (
         <li
           key={step}
           aria-current={index === current ? "step" : undefined}
           className={cn(
-            "rounded-full border px-2 py-0.5",
-            index < current && "border-live/40 text-live",
-            index === current && "border-accent bg-accent text-accent-ink",
-            index > current && "border-line text-muted",
+            "rounded-full px-2.5 py-0.5 capitalize",
+            index < current && "bg-ink text-bg",
+            index === current && "bg-lime text-pastel-ink",
+            index > current && "bg-surface-sunken text-muted",
           )}
         >
           {step}

@@ -3,8 +3,9 @@
 Everything here reads the supplier's capabilities, never its name:
 
 - `supports_hold` -> a hold is placed when the vote closes, so the price is locked while the
-  group pays. A hold that lapsed before the purchase is announced (HOLD_EXPIRED) and placed
-  again — at whatever the supplier now asks.
+  group pays (`hold_needs_traveller_details`: only once every passenger's required details
+  are in, otherwise when the purchase starts). A hold that lapsed before the purchase is
+  announced (HOLD_EXPIRED) and placed again — at whatever the supplier now asks.
 - otherwise -> the booking is re-quoted right before the purchase starts, unless its price
   was confirmed by the supplier within the capability's `quote_ttl`.
 
@@ -104,7 +105,22 @@ class SupplierPrices:
                 continue
             if booking.status is not BookingStatus.PENDING:
                 continue
+            if await self._hold_waits_for_details(booking, adapter, members):
+                continue  # placed when the purchase starts (see `refresh`)
             await self._hold(trip, booking, adapter, members, expired=False)
+
+    async def _hold_waits_for_details(
+        self, booking: Booking, adapter: SupplierAdapter, members: list[TripMember]
+    ) -> bool:
+        """A supplier whose hold names the passengers cannot hold before they all entered
+        the details it requires."""
+        capabilities = adapter.capabilities
+        if not capabilities.hold_needs_traveller_details:
+            return False
+        missing = await self.travellers.missing(
+            passengers_of(booking, members), capabilities.required_traveller_fields
+        )
+        return bool(missing)
 
     # ---- right before a purchase ----------------------------------------------------------
 

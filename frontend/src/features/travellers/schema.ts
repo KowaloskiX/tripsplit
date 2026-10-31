@@ -33,6 +33,8 @@ export const travellerDetailsSchema = z.object({
       message: "5-20 letters and digits.",
     }),
   documentExpiry: optionalDate,
+  // As on the document; airlines require it. Empty = leave it as it is.
+  gender: z.enum(["", "female", "male"]),
 });
 
 export type TravellerDetailsValues = z.infer<typeof travellerDetailsSchema>;
@@ -45,5 +47,6 @@ export function toTravellerDetailsBody(values: TravellerDetailsValues): Travelle
     nationality: optional(values.nationality)?.toUpperCase() ?? null,
     document_number: optional(values.documentNumber),
     document_expiry: optional(values.documentExpiry),
+    gender: values.gender === "" ? null : values.gender,
   };
 }

@@ -102,6 +102,9 @@ class BookingRef:
     offer: OfferRef
     confirmation_ref: str | None
     party_size: int
+    # The supplier's own id of the held/bought booking (`Hold.ref`), when it differs from the
+    # confirmation ref (an airline order id vs its PNR). None = no hold was placed.
+    hold_ref: str | None = None
 
 
 class DisruptionKind(StrEnum):

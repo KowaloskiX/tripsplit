@@ -9,6 +9,7 @@ export const FIELD_LABEL: Record<TravellerField, string> = {
   nationality: "nationality",
   document_number: "document number",
   document_expiry: "document expiry",
+  gender: "gender",
 };
 
 /**

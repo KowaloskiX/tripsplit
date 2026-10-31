@@ -5,11 +5,13 @@ import {
   Link,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { RouteFocus } from "@/components/ui/route-announcer";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionNav } from "@/features/auth";
+import { LandingFooter, Wordmark } from "@/features/brand";
 import { THEME_INIT_SCRIPT, ThemeToggle } from "@/features/theme";
 import appCss from "@/styles/app.css?url";
 
@@ -20,11 +22,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TripSplit — od czatu do biletów" },
+      { title: "tripsplit — from group chat to tickets" },
       {
         name: "description",
         content:
-          "A monorepo with working sign-in: FastAPI + TanStack Start, MongoDB with transactions, architecture boundaries enforced in CI.",
+          "An agent joins your group chat, proposes trip packages, collects votes and everyone's share, then books the train and the stay — and rebooks if the train is late.",
       },
     ],
     // Runs before the first paint, so a dark-mode user never sees a light flash. Declared
@@ -69,7 +71,7 @@ function RootLayout(): ReactNode {
             header on every page to reach the content. */}
         <a
           href={`#${MAIN_REGION_ID}`}
-          className="sr-only rounded-[var(--radius-control)] bg-accent px-3 py-2 text-sm text-accent-ink focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+          className="sr-only rounded-full bg-accent px-3 py-2 text-sm text-accent-ink focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
         >
           Skip to content
         </a>
@@ -86,14 +88,19 @@ function RootLayout(): ReactNode {
 }
 
 function SiteHeader(): ReactNode {
+  // Black in both themes: a `.dark` subtree gets the night palette whatever the page uses.
   return (
-    <header className="border-b border-line">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5">
-        <Link to="/" className="font-mono text-sm tracking-tight text-ink">
-          <span className="text-accent">■</span> tripsplit
+    <header className="dark sticky top-0 z-30 border-b border-line bg-bg text-ink">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
+        <Link
+          to="/"
+          aria-label="tripsplit — home"
+          className="rounded-full transition duration-150 hover:opacity-75"
+        >
+          <Wordmark />
         </Link>
 
-        <nav className="flex items-center gap-1.5">
+        <nav aria-label="Account" className="flex items-center gap-1">
           <ThemeToggle />
           <SessionNav />
         </nav>
@@ -103,10 +110,14 @@ function SiteHeader(): ReactNode {
 }
 
 function SiteFooter(): ReactNode {
+  const onLanding = useRouterState({ select: (state) => state.location.pathname === "/" });
+  // The landing page ends with a larger, editorial footer.
+  if (onLanding) return <LandingFooter />;
   return (
     <footer className="border-t border-line">
-      <div className="mx-auto max-w-6xl px-6 py-4 font-mono text-[11px] text-muted">
-        fastapi · tanstack start · mongodb + redis · boundaries enforced in CI
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
+        <Wordmark className="text-lg text-ink" />
+        <p>From group chat to tickets. Nobody fronts the money.</p>
       </div>
     </footer>
   );

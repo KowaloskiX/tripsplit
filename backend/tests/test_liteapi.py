@@ -367,7 +367,10 @@ def test_settings_build_the_supplier_only_with_a_usable_key() -> None:
     config = liteapi_config(settings(SANDBOX_KEY))
     assert config is not None
     assert build_registry(["sim_rail", "liteapi"], None).ids == ["sim_rail"]
-    assert build_registry(["sim_rail", "liteapi"], None, config).ids == ["sim_rail", "liteapi"]
+    assert build_registry(["sim_rail", "liteapi"], None, liteapi=config).ids == [
+        "sim_rail",
+        "liteapi",
+    ]
 
 
 def test_answers_map_to_ok_err_and_empty() -> None:

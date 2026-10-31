@@ -67,6 +67,7 @@ export type {
   EventActor,
   EventKind,
   EventResponse,
+  Gender,
   HealthStatus,
   LiveStatusResponse,
   LoginRequest,

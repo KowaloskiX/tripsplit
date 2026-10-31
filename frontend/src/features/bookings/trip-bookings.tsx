@@ -27,10 +27,8 @@ export function TripBookings({ tripId }: { tripId: string }): ReactNode {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-baseline justify-between gap-3">
-        <p className="font-mono text-xs uppercase tracking-[0.14em] text-accent">
-          {TRIP_STATUS_LABEL[trip.trip_status] ?? trip.trip_status}
-        </p>
-        <p className="font-mono text-sm text-muted">
+        <p className="eyebrow">{TRIP_STATUS_LABEL[trip.trip_status] ?? trip.trip_status}</p>
+        <p className="ticket-mono text-sm text-muted">
           total {formatMoney(trip.total_minor, trip.currency)}
         </p>
       </div>

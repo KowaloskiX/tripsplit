@@ -14,7 +14,7 @@ from beanie import PydanticObjectId
 from app.core.domain.errors import TripError
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import TravellerField, missing_traveller_fields
-from app.core.domain.travellers import TravellerDetails, masked_document_number
+from app.core.domain.travellers import Gender, TravellerDetails, masked_document_number
 from app.db.identifiers import to_object_id
 from app.models.travellers import TravellerProfile
 from app.models.trips import TripMember
@@ -30,6 +30,7 @@ class TravellerDetailsUpdate:
     nationality: str | None = None
     document_number: str | None = None
     document_expiry: date | None = None
+    gender: Gender | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +40,7 @@ class MyTravellerDetailsView:
     nationality: str | None
     document_number_masked: str | None
     document_expiry: date | None
+    gender: Gender | None
     provided: tuple[TravellerField, ...]
 
 
@@ -51,6 +53,7 @@ def details_of(member: TripMember, profile: TravellerProfile | None) -> Travelle
         nationality=profile.nationality,
         document_number=profile.document_number,
         document_expiry=profile.document_expiry,
+        gender=profile.gender,
     )
 
 
@@ -98,6 +101,7 @@ class TravellerService:
                 ("nationality", update.nationality),
                 ("document_number", update.document_number),
                 ("document_expiry", update.document_expiry),
+                ("gender", update.gender),
             )
             if value is not None
         }
@@ -111,6 +115,7 @@ def _view(profile: TravellerProfile | None) -> MyTravellerDetailsView:
         nationality=profile.nationality if profile else None,
         document_number=profile.document_number if profile else None,
         document_expiry=profile.document_expiry if profile else None,
+        gender=profile.gender if profile else None,
     )
     return MyTravellerDetailsView(
         full_name=profile.full_name if profile else "",
@@ -118,5 +123,6 @@ def _view(profile: TravellerProfile | None) -> MyTravellerDetailsView:
         nationality=details.nationality,
         document_number_masked=masked_document_number(details.document_number),
         document_expiry=details.document_expiry,
+        gender=details.gender,
         provided=tuple(sorted(details.provided_fields())),
     )

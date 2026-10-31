@@ -39,6 +39,7 @@ describe("travellerDetailsSchema", () => {
       nationality: "pl",
       documentNumber: "",
       documentExpiry: "",
+      gender: "",
     });
     expect(toTravellerDetailsBody(values)).toEqual({
       full_name: null,
@@ -46,6 +47,7 @@ describe("travellerDetailsSchema", () => {
       nationality: "PL",
       document_number: null,
       document_expiry: null,
+      gender: null,
     });
   });
 
@@ -56,6 +58,7 @@ describe("travellerDetailsSchema", () => {
       nationality: "POL",
       documentNumber: "",
       documentExpiry: "",
+      gender: "",
     });
     expect(parsed.success).toBe(false);
   });

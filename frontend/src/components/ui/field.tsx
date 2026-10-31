@@ -15,10 +15,7 @@ type FieldProps = {
 export function Field({ htmlFor, label, hint, error, children }: FieldProps): ReactNode {
   return (
     <div className="space-y-1.5">
-      <LabelPrimitive.Root
-        htmlFor={htmlFor}
-        className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted"
-      >
+      <LabelPrimitive.Root htmlFor={htmlFor} className="text-sm font-medium text-ink">
         {label}
       </LabelPrimitive.Root>
       {children}

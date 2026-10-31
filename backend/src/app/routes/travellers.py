@@ -33,6 +33,7 @@ async def update_my_details(
         nationality=payload.nationality,
         document_number=payload.document_number,
         document_expiry=payload.document_expiry,
+        gender=payload.gender,
     )
     return TravellerDetailsResponse.model_validate(
         trip_value(await service.update_mine(user.id, update))

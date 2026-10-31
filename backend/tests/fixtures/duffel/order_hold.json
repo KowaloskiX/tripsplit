@@ -1,0 +1,20 @@
+{
+  "data": {
+    "id": "ord_0000BBxVAkPCkSLAMvZP0y",
+    "type": "hold",
+    "live_mode": false,
+    "booking_reference": "JCLCEN",
+    "total_amount": "447.42",
+    "total_currency": "EUR",
+    "payment_status": {
+      "price_guarantee_expires_at": "2026-11-02T03:42:52Z",
+      "payment_required_by": "2026-11-03T03:42:52Z",
+      "paid_at": null,
+      "awaiting_payment": true
+    },
+    "offer_id": "off_034pFnWO4hhAklg4EeryOe",
+    "available_actions": ["cancel", "change", "update"],
+    "airline_initiated_changes": [],
+    "cancelled_at": null
+  }
+}

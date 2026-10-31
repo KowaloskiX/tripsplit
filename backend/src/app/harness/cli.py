@@ -1,6 +1,6 @@
 """`uv run trip-harness list` / `uv run trip-harness run <name>|all [--live-search] [--live-agent]
-[--live-stays] [--keep-db]` — runs scenarios against the local Mongo, one fresh database per
-scenario."""
+[--live-stays] [--live-flights] [--keep-db]` — runs scenarios against the local Mongo, one fresh
+database per scenario."""
 
 import argparse
 import asyncio
@@ -93,6 +93,7 @@ async def run_one(
     live_agent_url: str | None,
     keep_db: bool,
     live_stays: bool = False,
+    live_flights: bool = False,
 ) -> ScenarioResult:
     database_name = f"harness_{stamp}_{name}"[:63]
     settings = base.model_copy(update={"mongodb_database": database_name})
@@ -104,6 +105,7 @@ async def run_one(
             live_search=live_search,
             live_agent_base_url=live_agent_url,
             live_stays=live_stays,
+            live_flights=live_flights,
             poll_s=0.5 if live_agent_url else 0.02,
         )
         world = World.build(db, settings, SCENARIOS[name], options)
@@ -111,11 +113,14 @@ async def run_one(
             ("live-search", live_search),
             ("live-agent", live_agent_url),
             ("live-stays", live_stays),
+            ("live-flights", live_flights),
         )
         modes = [mode for mode, on in switches if on]
         driver = Driver(
             world,
-            wait_timeout_s=LIVE_TIMEOUT_S if live_agent_url or live_stays else FAST_TIMEOUT_S,
+            wait_timeout_s=(
+                LIVE_TIMEOUT_S if live_agent_url or live_stays or live_flights else FAST_TIMEOUT_S
+            ),
             mode=" + ".join(modes) or "fast (simulated suppliers, scripted agent)",
         )
         return await driver.run()
@@ -151,6 +156,7 @@ async def run_all(names: Sequence[str], args: argparse.Namespace) -> list[Scenar
                 live_agent_url=live_url,
                 keep_db=args.keep_db,
                 live_stays=args.live_stays,
+                live_flights=args.live_flights,
             )
             print(f"   {result.outcome.upper()} in {result.seconds:.1f}s {result.reason[:90]}")
             results.append(result)
@@ -192,6 +198,11 @@ def main() -> None:
         "--live-stays",
         action="store_true",
         help="the real liteapi adapter on the LiteAPI sandbox for scenarios that use it",
+    )
+    run.add_argument(
+        "--live-flights",
+        action="store_true",
+        help="the real duffel adapter on Duffel's TEST API for scenarios that use it",
     )
     run.add_argument("--keep-db", action="store_true", help="keep each scenario's database")
     args = parser.parse_args()

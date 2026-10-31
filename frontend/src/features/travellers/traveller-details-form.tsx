@@ -35,6 +35,7 @@ export function TravellerDetailsForm({ tripId, current }: TravellerDetailsFormPr
       nationality: current?.nationality ?? "",
       documentNumber: "",
       documentExpiry: current?.document_expiry ?? "",
+      gender: current?.gender ?? "",
     },
   });
 
@@ -85,6 +86,22 @@ export function TravellerDetailsForm({ tripId, current }: TravellerDetailsFormPr
           error={errors.documentExpiry?.message}
         >
           <Input id="traveller-expiry" type="date" {...register("documentExpiry")} />
+        </Field>
+        <Field
+          htmlFor="traveller-gender"
+          label="Gender"
+          hint="As on the document — airlines ask for it."
+          error={errors.gender?.message}
+        >
+          <select
+            id="traveller-gender"
+            className="h-10 w-full rounded-[var(--radius-control)] border border-line bg-surface px-3 text-sm text-ink"
+            {...register("gender")}
+          >
+            <option value="">—</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
         </Field>
       </div>
       <Button type="submit" size="sm" disabled={update.isPending}>

@@ -93,15 +93,16 @@ def scenario_markdown(result: ScenarioResult) -> str:
     lines += ["", "## Purchases", ""]
     if result.bookings:
         lines += [
-            "| Target | Booking | Supplier | Channel | Pax | Amount | Status | Hold until | Ref |",
-            "|---|---|---|---|---|---|---|---|---|",
+            "| Target | Booking | Supplier | Channel | Pax | Amount | Status | Hold until | Hold "
+            "ref | Ref |",
+            "|---|---|---|---|---|---|---|---|---|---|",
         ]
         for booking in result.bookings:
             lines.append(
                 f"| {booking.target} | {_cell(booking.title)} | {booking.supplier_id} | "
                 f"{booking.channel} | {booking.passengers} | "
                 f"{format_money(booking.amount_minor, result.currency)} | {booking.status} | "
-                f"{booking.hold_expires_at} | {booking.confirmation_ref} |"
+                f"{booking.hold_expires_at} | {booking.hold_ref} | {booking.confirmation_ref} |"
             )
     else:
         lines.append("No bookings (voting never closed).")
@@ -148,6 +149,13 @@ def scenario_markdown(result: ScenarioResult) -> str:
     if result.liteapi is not None:
         lines += ["", "## Live LiteAPI stays (sandbox)", ""]
         lines += [f"- {_cell(note)}" for note in result.liteapi.notes]
+    if result.duffel is not None:
+        lines += ["", "## Live Duffel flights (test API)", ""]
+        lines += [f"- `{call}`" for call in result.duffel.calls]
+        lines += [f"- {note}" for note in result.duffel.notes]
+    if result.travellers:
+        lines += ["", "## Travellers (masked)", ""]
+        lines += [f"- {_cell(line)}" for line in result.travellers]
     lines += ["", "## Domain features", ""]
     lines += [f"- `{name}`: {state}" for name, state in result.features.items()]
     return "\n".join(lines) + "\n"

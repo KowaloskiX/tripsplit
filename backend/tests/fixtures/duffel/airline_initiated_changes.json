@@ -1,0 +1,79 @@
+{
+  "meta": null,
+  "data": [
+    {
+      "id": "aic_0000BBxVDeR2Nas5yFUzM5",
+      "order_id": "ord_0000BBxVDbG8ZTiYG7M8Ra",
+      "action_taken": null,
+      "action_taken_at": null,
+      "available_actions": ["accept", "cancel", "change"],
+      "created_at": "2026-10-31T03:43:57.328608Z",
+      "added": [
+        {
+          "id": "sli_0000BBxVDeEH92fBKfWnTe",
+          "origin": {
+            "iata_code": "LHR",
+            "time_zone": "Europe/London"
+          },
+          "destination": {
+            "iata_code": "LTN",
+            "time_zone": "Europe/London"
+          },
+          "segments": [
+            {
+              "id": "seg_0000BBxVDeEH92fBKfWnTY",
+              "departing_at": "2026-11-20T15:42:00",
+              "arriving_at": "2026-11-20T16:20:00",
+              "marketing_carrier_flight_number": "7426",
+              "marketing_carrier": {
+                "iata_code": "ZZ",
+                "name": "Duffel Airways"
+              },
+              "origin": {
+                "iata_code": "LHR",
+                "time_zone": "Europe/London"
+              },
+              "destination": {
+                "iata_code": "LTN",
+                "time_zone": "Europe/London"
+              }
+            }
+          ]
+        }
+      ],
+      "removed": [
+        {
+          "id": "sli_0000BBxVD5hmRwelJdjV5s",
+          "origin": {
+            "iata_code": "LHR",
+            "time_zone": "Europe/London"
+          },
+          "destination": {
+            "iata_code": "LTN",
+            "time_zone": "Europe/London"
+          },
+          "segments": [
+            {
+              "id": "seg_0000BBxVD5hmRwelJdjV5W",
+              "departing_at": "2026-11-20T14:42:00",
+              "arriving_at": "2026-11-20T15:20:00",
+              "marketing_carrier_flight_number": "7426",
+              "marketing_carrier": {
+                "iata_code": "ZZ",
+                "name": "Duffel Airways"
+              },
+              "origin": {
+                "iata_code": "LHR",
+                "time_zone": "Europe/London"
+              },
+              "destination": {
+                "iata_code": "LTN",
+                "time_zone": "Europe/London"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

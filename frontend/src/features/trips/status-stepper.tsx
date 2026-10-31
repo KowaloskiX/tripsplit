@@ -1,8 +1,7 @@
-import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { type Step, Stepper } from "@/components/ui/stepper";
 import type { TripStatus } from "@/lib/api";
-import { cn } from "@/lib/utils";
 
 const STEPS = [
   { key: "collecting", label: "Collecting" },
@@ -20,8 +19,9 @@ const STEP_OF: Record<TripStatus, number> = {
   paying: 2,
   booking: 3,
   booked: 4,
-  disrupted: 4,
-  rebooking: 4,
+  // A disruption sends the trip back to buying: the booking step lights up as a warning.
+  disrupted: 3,
+  rebooking: 3,
   done: 4,
 };
 
@@ -32,31 +32,28 @@ const ACTIVE_LABEL: Partial<Record<TripStatus, string>> = {
   rebooking: "Rebooking",
 };
 
-export function StatusStepper({ status }: { status: TripStatus }): ReactNode {
+const ALERT: ReadonlySet<TripStatus> = new Set(["disrupted", "rebooking"]);
+
+export function stepsFor(status: TripStatus): Step[] {
   const current = STEP_OF[status];
-  return (
-    <ol className="flex flex-wrap items-center gap-x-2 gap-y-2" aria-label="Trip progress">
-      {STEPS.map((step, index) => {
-        const done = index < current || (index === current && status === "done");
-        const active = index === current && !done;
-        return (
-          <li key={step.key} className="flex items-center gap-2">
-            <span
-              aria-current={active ? "step" : undefined}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.12em]",
-                done && "border-live/40 bg-live/10 text-live",
-                active && "border-accent bg-accent text-accent-ink",
-                !done && !active && "border-line text-muted",
-              )}
-            >
-              {done && <Check className="size-3" aria-hidden />}
-              {(index === current && ACTIVE_LABEL[status]) || step.label}
-            </span>
-            {index < STEPS.length - 1 && <span className="h-px w-4 bg-line" aria-hidden />}
-          </li>
-        );
-      })}
-    </ol>
-  );
+  return STEPS.map((step, index) => {
+    const done =
+      index < current || (index === current && (status === "done" || status === "booked"));
+    const state = done
+      ? "done"
+      : index === current
+        ? ALERT.has(status)
+          ? "alert"
+          : "current"
+        : "upcoming";
+    return {
+      key: step.key,
+      label: (index === current && ACTIVE_LABEL[status]) || step.label,
+      state,
+    };
+  });
+}
+
+export function StatusStepper({ status }: { status: TripStatus }): ReactNode {
+  return <Stepper steps={stepsFor(status)} label="Trip progress" />;
 }

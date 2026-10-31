@@ -8,6 +8,7 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.domain.suppliers import TravellerField
+from app.core.domain.travellers import Gender
 from app.schemas.common import StrictRequest, normalize_text
 
 NAME_MAX_LENGTH = 120
@@ -24,6 +25,7 @@ class TravellerDetailsRequest(StrictRequest):
     nationality: str | None = Field(default=None, max_length=2)
     document_number: str | None = Field(default=None, max_length=20)
     document_expiry: date | None = None
+    gender: Gender | None = None
 
     @field_validator("full_name")
     @classmethod
@@ -75,4 +77,5 @@ class TravellerDetailsResponse(BaseModel):
     # `*******67` — the full number is never sent back.
     document_number_masked: str | None
     document_expiry: date | None
+    gender: Gender | None
     provided: list[TravellerField]

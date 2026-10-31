@@ -13,6 +13,7 @@ import pymongo
 from beanie import Document, PydanticObjectId
 from pydantic import Field
 
+from app.core.domain.travellers import Gender
 from app.db.documents import TimestampMixin
 
 NAME_MAX_LENGTH = 120
@@ -26,6 +27,7 @@ class TravellerProfile(TimestampMixin, Document):
     nationality: str | None = Field(default=None, max_length=2)
     document_number: str | None = Field(default=None, max_length=20)
     document_expiry: date | None = None
+    gender: Gender | None = None
 
     def __repr__(self) -> str:
         return f"TravellerProfile(user_id={self.user_id!s})"
