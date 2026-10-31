@@ -25,7 +25,8 @@ from app.services.proposals import ProposalService
 from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerService
 from app.services.trips import TripService
-from app.suppliers.providers import build_registry
+from app.suppliers.duffel import DuffelConfig
+from app.suppliers.providers import build_registry, duffel_config
 from app.suppliers.registry import SupplierRegistry
 
 # routes/ -> app/ -> src/ -> backend/: the agent subprocess runs from the backend directory.
@@ -79,14 +80,17 @@ OptionalUser = Annotated[AuthenticatedUser | None, Depends(get_optional_user)]
 
 
 @lru_cache
-def _registry(supplier_ids: tuple[str, ...], demo_rail_url: str | None) -> SupplierRegistry:
+def _registry(
+    supplier_ids: tuple[str, ...], demo_rail_url: str | None, duffel: DuffelConfig | None
+) -> SupplierRegistry:
     """One registry per configuration and process: a simulated supplier remembers its holds
     between requests, like the real one would."""
-    return build_registry(supplier_ids, demo_rail_url)
+    return build_registry(supplier_ids, demo_rail_url, duffel)
 
 
 def get_supplier_registry(settings: SettingsDep) -> SupplierRegistry:
-    return _registry(tuple(settings.supplier_ids), settings.demo_rail_url)
+    duffel = duffel_config(settings) if "duffel" in settings.supplier_ids else None
+    return _registry(tuple(settings.supplier_ids), settings.demo_rail_url, duffel)
 
 
 SupplierRegistryDep = Annotated[SupplierRegistry, Depends(get_supplier_registry)]

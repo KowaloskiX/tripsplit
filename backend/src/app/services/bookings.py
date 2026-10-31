@@ -1035,6 +1035,7 @@ class BookingService:
                     offer=offer_of(booking),
                     confirmation_ref=booking.confirmation_ref,
                     party_size=_party_size(booking, members),
+                    hold_ref=booking.hold_ref,
                 )
             )
             if notice is None:

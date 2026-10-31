@@ -1,0 +1,2468 @@
+{
+  "data": {
+    "id": "orq_0000BBxVQpWGTnV473ECQw",
+    "live_mode": false,
+    "cabin_class": "economy",
+    "passengers": [
+      {
+        "loyalty_programme_accounts": [],
+        "fare_type": null,
+        "family_name": null,
+        "given_name": null,
+        "user_id": null,
+        "age": null,
+        "type": "adult",
+        "id": "pas_0000BBxVQpWcSTme89OTyy"
+      },
+      {
+        "loyalty_programme_accounts": [],
+        "fare_type": null,
+        "family_name": null,
+        "given_name": null,
+        "user_id": null,
+        "age": null,
+        "type": "adult",
+        "id": "pas_0000BBxVQpWcSTme89OTzR"
+      },
+      {
+        "loyalty_programme_accounts": [],
+        "fare_type": null,
+        "family_name": null,
+        "given_name": null,
+        "user_id": null,
+        "age": null,
+        "type": "adult",
+        "id": "pas_0000BBxVQpWcSTme89OTzu"
+      },
+      {
+        "loyalty_programme_accounts": [],
+        "fare_type": null,
+        "family_name": null,
+        "given_name": null,
+        "user_id": null,
+        "age": null,
+        "type": "adult",
+        "id": "pas_0000BBxVQpWcSTme89OU0O"
+      },
+      {
+        "loyalty_programme_accounts": [],
+        "fare_type": null,
+        "family_name": null,
+        "given_name": null,
+        "user_id": null,
+        "age": null,
+        "type": "adult",
+        "id": "pas_0000BBxVQpWyRA4E9FYlXD"
+      },
+      {
+        "loyalty_programme_accounts": [],
+        "fare_type": null,
+        "family_name": null,
+        "given_name": null,
+        "user_id": null,
+        "age": null,
+        "type": "adult",
+        "id": "pas_0000BBxVQpWyRA4E9FYlXf"
+      }
+    ],
+    "slices": [
+      {
+        "origin_type": "airport",
+        "destination_type": "airport",
+        "departure_date": "2026-11-20",
+        "origin": {
+          "iata_code": "WAW",
+          "name": "Warsaw Chopin Airport",
+          "city_name": "Warsaw",
+          "iata_city_code": "WAW",
+          "time_zone": "Europe/Warsaw",
+          "type": "airport"
+        },
+        "destination": {
+          "iata_code": "BCN",
+          "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+          "city_name": "Barcelona",
+          "iata_city_code": "BCN",
+          "time_zone": "Europe/Madrid",
+          "type": "airport"
+        }
+      },
+      {
+        "origin_type": "airport",
+        "destination_type": "airport",
+        "departure_date": "2026-11-23",
+        "origin": {
+          "iata_code": "BCN",
+          "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+          "city_name": "Barcelona",
+          "iata_city_code": "BCN",
+          "time_zone": "Europe/Madrid",
+          "type": "airport"
+        },
+        "destination": {
+          "iata_code": "WAW",
+          "name": "Warsaw Chopin Airport",
+          "city_name": "Warsaw",
+          "iata_city_code": "WAW",
+          "time_zone": "Europe/Warsaw",
+          "type": "airport"
+        }
+      }
+    ],
+    "offers": [
+      {
+        "id": "off_034pFsnX9PX88kQbdGhcky",
+        "expires_at": "2026-10-31T04:16:20.292666Z",
+        "live_mode": false,
+        "total_amount": "938.46",
+        "total_currency": "EUR",
+        "base_amount": "795.31",
+        "tax_amount": "143.15",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "passport",
+          "known_traveler_number",
+          "passenger_redress_number"
+        ],
+        "conditions": {
+          "change_before_departure": {
+            "allowed": true,
+            "penalty_amount": "160.00",
+            "penalty_currency": "EUR"
+          },
+          "refund_before_departure": {
+            "allowed": true,
+            "penalty_amount": "160.00",
+            "penalty_currency": "EUR"
+          }
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-03T03:46:20Z",
+          "price_guarantee_expires_at": "2026-11-02T03:46:20Z"
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "BA",
+          "name": "British Airways",
+          "id": "arl_00009VME7DBKeMags5CliQ"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVQprBE2EL9v0u32",
+            "duration": "PT3H4M",
+            "fare_brand_name": "Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": true,
+                "penalty_amount": "160.00",
+                "penalty_currency": "EUR"
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQprBE2EL9v0u2X",
+                "departing_at": "2026-11-20T14:42:00",
+                "arriving_at": "2026-11-20T17:46:00",
+                "duration": "PT3H4M",
+                "marketing_carrier_flight_number": "0107",
+                "operating_carrier_flight_number": "0107",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "BA",
+                  "name": "British Airways",
+                  "id": "arl_00009VME7DBKeMags5CliQ"
+                },
+                "operating_carrier": {
+                  "iata_code": "BA",
+                  "name": "British Airways",
+                  "id": "arl_00009VME7DBKeMags5CliQ"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVQprXCiVvB1BBaY",
+            "duration": "PT3H4M",
+            "fare_brand_name": "Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": true,
+                "penalty_amount": "160.00",
+                "penalty_currency": "EUR"
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQprBE2EL9v0u3h",
+                "departing_at": "2026-11-23T17:01:00",
+                "arriving_at": "2026-11-23T20:05:00",
+                "duration": "PT3H4M",
+                "marketing_carrier_flight_number": "0107",
+                "operating_carrier_flight_number": "0107",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "BA",
+                  "name": "British Airways",
+                  "id": "arl_00009VME7DBKeMags5CliQ"
+                },
+                "operating_carrier": {
+                  "iata_code": "BA",
+                  "name": "British Airways",
+                  "id": "arl_00009VME7DBKeMags5CliQ"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFsnWxK6eUZCnKFM1nU",
+        "expires_at": "2026-10-31T04:16:20.290329Z",
+        "live_mode": false,
+        "total_amount": "942.24",
+        "total_currency": "EUR",
+        "base_amount": "798.51",
+        "tax_amount": "143.73",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "passport",
+          "known_traveler_number",
+          "passenger_redress_number"
+        ],
+        "conditions": {
+          "change_before_departure": {
+            "allowed": true,
+            "penalty_amount": "160.00",
+            "penalty_currency": "EUR"
+          },
+          "refund_before_departure": {
+            "allowed": true,
+            "penalty_amount": "160.00",
+            "penalty_currency": "EUR"
+          }
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-03T03:46:20Z",
+          "price_guarantee_expires_at": "2026-11-02T03:46:20Z"
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "ZZ",
+          "name": "Duffel Airways",
+          "id": "arl_00009VME7D6ivUu8dn35WK"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVQpq7HzNb6cW3P4",
+            "duration": "PT3H4M",
+            "fare_brand_name": "Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": true,
+                "penalty_amount": "160.00",
+                "penalty_currency": "EUR"
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQpq7HzNb6cW3OR",
+                "departing_at": "2026-11-20T14:42:00",
+                "arriving_at": "2026-11-20T17:46:00",
+                "duration": "PT3H4M",
+                "marketing_carrier_flight_number": "7426",
+                "operating_carrier_flight_number": "7426",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "ZZ",
+                  "name": "Duffel Airways",
+                  "id": "arl_00009VME7D6ivUu8dn35WK"
+                },
+                "operating_carrier": {
+                  "iata_code": "ZZ",
+                  "name": "Duffel Airways",
+                  "id": "arl_00009VME7D6ivUu8dn35WK"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVQpqTGffB7igKwN",
+            "duration": "PT3H4M",
+            "fare_brand_name": "Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": true,
+                "penalty_amount": "160.00",
+                "penalty_currency": "EUR"
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQpqTGffB7igKvu",
+                "departing_at": "2026-11-23T17:01:00",
+                "arriving_at": "2026-11-23T20:05:00",
+                "duration": "PT3H4M",
+                "marketing_carrier_flight_number": "7426",
+                "operating_carrier_flight_number": "7426",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "ZZ",
+                  "name": "Duffel Airways",
+                  "id": "arl_00009VME7D6ivUu8dn35WK"
+                },
+                "operating_carrier": {
+                  "iata_code": "ZZ",
+                  "name": "Duffel Airways",
+                  "id": "arl_00009VME7D6ivUu8dn35WK"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFsnXFSFMxq2Vmm7syO",
+        "expires_at": "2026-10-31T04:16:20.293026Z",
+        "live_mode": false,
+        "total_amount": "956.82",
+        "total_currency": "EUR",
+        "base_amount": "810.86",
+        "tax_amount": "145.96",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "passport",
+          "known_traveler_number",
+          "passenger_redress_number"
+        ],
+        "conditions": {
+          "change_before_departure": {
+            "allowed": true,
+            "penalty_amount": "160.00",
+            "penalty_currency": "EUR"
+          },
+          "refund_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          }
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-03T03:46:20Z",
+          "price_guarantee_expires_at": "2026-11-02T03:46:20Z"
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "IB",
+          "name": "Iberia",
+          "id": "arl_00009VME7DCOaPRQvNhcMu"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVQprBE2EL9v0u3e",
+            "duration": "PT3H4M",
+            "fare_brand_name": "Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": true,
+                "penalty_amount": "160.00",
+                "penalty_currency": "EUR"
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQprBE2EL9v0u39",
+                "departing_at": "2026-11-20T14:42:00",
+                "arriving_at": "2026-11-20T17:46:00",
+                "duration": "PT3H4M",
+                "marketing_carrier_flight_number": "3167",
+                "operating_carrier_flight_number": "3167",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "IB",
+                  "name": "Iberia",
+                  "id": "arl_00009VME7DCOaPRQvNhcMu"
+                },
+                "operating_carrier": {
+                  "iata_code": "IB",
+                  "name": "Iberia",
+                  "id": "arl_00009VME7DCOaPRQvNhcMu"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVQprXCiVvB1BBbN",
+            "duration": "PT3H4M",
+            "fare_brand_name": "Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": true,
+                "penalty_amount": "160.00",
+                "penalty_currency": "EUR"
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQprXCiVvB1BBam",
+                "departing_at": "2026-11-23T17:01:00",
+                "arriving_at": "2026-11-23T20:05:00",
+                "duration": "PT3H4M",
+                "marketing_carrier_flight_number": "3167",
+                "operating_carrier_flight_number": "3167",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "IB",
+                  "name": "Iberia",
+                  "id": "arl_00009VME7DCOaPRQvNhcMu"
+                },
+                "operating_carrier": {
+                  "iata_code": "IB",
+                  "name": "Iberia",
+                  "id": "arl_00009VME7DCOaPRQvNhcMu"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFssY0yzc0N7skJIHzM",
+        "expires_at": "2026-10-31T04:16:20.000000Z",
+        "live_mode": false,
+        "total_amount": "960.08",
+        "total_currency": "EUR",
+        "base_amount": "316.63",
+        "tax_amount": "643.45",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "passport",
+          "passenger_redress_number",
+          "known_traveler_number"
+        ],
+        "conditions": {
+          "change_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          },
+          "refund_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          }
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-01T02:46:00Z",
+          "price_guarantee_expires_at": null
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "LH",
+          "name": "Lufthansa",
+          "id": "arl_00009VME7DCkZ5j0wTrtvG"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVR7zHodPTOGwdAc",
+            "duration": "PT8H30M",
+            "fare_brand_name": "Economy Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": false,
+                "penalty_amount": null,
+                "penalty_currency": null
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVR7zHodPTOGwdAL",
+                "departing_at": "2026-11-20T14:30:00",
+                "arriving_at": "2026-11-20T16:35:00",
+                "duration": "PT2H5M",
+                "marketing_carrier_flight_number": "1349",
+                "operating_carrier_flight_number": "1349",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              },
+              {
+                "id": "seg_0000BBxVR7zHodPTOGwdAU",
+                "departing_at": "2026-11-20T21:10:00",
+                "arriving_at": "2026-11-20T23:00:00",
+                "duration": "PT1H50M",
+                "marketing_carrier_flight_number": "1950",
+                "operating_carrier_flight_number": "1950",
+                "origin": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVR7zHodPTOGwdBB",
+            "duration": "PT7H25M",
+            "fare_brand_name": "Economy Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": false,
+                "penalty_amount": null,
+                "penalty_currency": null
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVR7zHodPTOGwdAl",
+                "departing_at": "2026-11-23T06:20:00",
+                "arriving_at": "2026-11-23T08:05:00",
+                "duration": "PT1H45M",
+                "marketing_carrier_flight_number": "1951",
+                "operating_carrier_flight_number": "1951",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              },
+              {
+                "id": "seg_0000BBxVR7zHodPTOGwdB3",
+                "departing_at": "2026-11-23T11:50:00",
+                "arriving_at": "2026-11-23T13:45:00",
+                "duration": "PT1H55M",
+                "marketing_carrier_flight_number": "1348",
+                "operating_carrier_flight_number": "1348",
+                "origin": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFssY0yzc0N7skJIHzN",
+        "expires_at": "2026-10-31T04:16:20.000000Z",
+        "live_mode": false,
+        "total_amount": "965.24",
+        "total_currency": "EUR",
+        "base_amount": "271.58",
+        "tax_amount": "693.66",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "passport",
+          "passenger_redress_number",
+          "known_traveler_number"
+        ],
+        "conditions": {
+          "change_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          },
+          "refund_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          }
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-01T02:46:00Z",
+          "price_guarantee_expires_at": null
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "LH",
+          "name": "Lufthansa",
+          "id": "arl_00009VME7DCkZ5j0wTrtvG"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVR5QpJmenSoo5BK",
+            "duration": "PT8H30M",
+            "fare_brand_name": "Economy Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": false,
+                "penalty_amount": null,
+                "penalty_currency": null
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVR5QpJmenSoo5Ap",
+                "departing_at": "2026-11-20T14:30:00",
+                "arriving_at": "2026-11-20T16:35:00",
+                "duration": "PT2H5M",
+                "marketing_carrier_flight_number": "1349",
+                "operating_carrier_flight_number": "1349",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              },
+              {
+                "id": "seg_0000BBxVR5QpJmenSoo5B6",
+                "departing_at": "2026-11-20T21:10:00",
+                "arriving_at": "2026-11-20T23:00:00",
+                "duration": "PT1H50M",
+                "marketing_carrier_flight_number": "1950",
+                "operating_carrier_flight_number": "1950",
+                "origin": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVR5QpJmenSoo5CF",
+            "duration": "PT4H20M",
+            "fare_brand_name": "Economy Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": false,
+                "penalty_amount": null,
+                "penalty_currency": null
+              },
+              "advance_seat_selection": false,
+              "priority_boarding": false,
+              "priority_check_in": false
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVR5QpJmenSoo5Bg",
+                "departing_at": "2026-11-23T09:55:00",
+                "arriving_at": "2026-11-23T12:10:00",
+                "duration": "PT2H15M",
+                "marketing_carrier_flight_number": "0402",
+                "operating_carrier_flight_number": "0402",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "VIE",
+                  "name": "Vienna International Airport",
+                  "city_name": "Vienna",
+                  "iata_city_code": "VIE",
+                  "time_zone": "Europe/Vienna",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                },
+                "operating_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                }
+              },
+              {
+                "id": "seg_0000BBxVR5QpJmenSoo5Bx",
+                "departing_at": "2026-11-23T13:00:00",
+                "arriving_at": "2026-11-23T14:15:00",
+                "duration": "PT1H15M",
+                "marketing_carrier_flight_number": "0663",
+                "operating_carrier_flight_number": "0663",
+                "origin": {
+                  "iata_code": "VIE",
+                  "name": "Vienna International Airport",
+                  "city_name": "Vienna",
+                  "iata_city_code": "VIE",
+                  "time_zone": "Europe/Vienna",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                },
+                "operating_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFssY0yzc0N7skJIHzO",
+        "expires_at": "2026-10-31T04:16:20.000000Z",
+        "live_mode": false,
+        "total_amount": "970.98",
+        "total_currency": "EUR",
+        "base_amount": "271.58",
+        "tax_amount": "699.40",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "passport",
+          "passenger_redress_number",
+          "known_traveler_number"
+        ],
+        "conditions": {
+          "change_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          },
+          "refund_before_departure": {
+            "allowed": false,
+            "penalty_amount": null,
+            "penalty_currency": null
+          }
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-01T02:46:00Z",
+          "price_guarantee_expires_at": null
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "LH",
+          "name": "Lufthansa",
+          "id": "arl_00009VME7DCkZ5j0wTrtvG"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVR7yZrGqJM4c44g",
+            "duration": "PT4H45M",
+            "fare_brand_name": "Economy Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": false,
+                "penalty_amount": null,
+                "penalty_currency": null
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVR7yZrGqJM4c44U",
+                "departing_at": "2026-11-20T15:00:00",
+                "arriving_at": "2026-11-20T16:20:00",
+                "duration": "PT1H20M",
+                "marketing_carrier_flight_number": "0664",
+                "operating_carrier_flight_number": "0664",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "VIE",
+                  "name": "Vienna International Airport",
+                  "city_name": "Vienna",
+                  "iata_city_code": "VIE",
+                  "time_zone": "Europe/Vienna",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                },
+                "operating_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                }
+              },
+              {
+                "id": "seg_0000BBxVR7yZrGqJM4c44d",
+                "departing_at": "2026-11-20T17:25:00",
+                "arriving_at": "2026-11-20T19:45:00",
+                "duration": "PT2H20M",
+                "marketing_carrier_flight_number": "0405",
+                "operating_carrier_flight_number": "0405",
+                "origin": {
+                  "iata_code": "VIE",
+                  "name": "Vienna International Airport",
+                  "city_name": "Vienna",
+                  "iata_city_code": "VIE",
+                  "time_zone": "Europe/Vienna",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                },
+                "operating_carrier": {
+                  "iata_code": "OS",
+                  "name": "Austrian",
+                  "id": "arl_00009VME7DAch01WpssCcW"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVR7yZrGqJM4c45A",
+            "duration": "PT7H25M",
+            "fare_brand_name": "Economy Basic",
+            "conditions": {
+              "change_before_departure": {
+                "allowed": false,
+                "penalty_amount": null,
+                "penalty_currency": null
+              },
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVR7yZrGqJM4c44r",
+                "departing_at": "2026-11-23T06:20:00",
+                "arriving_at": "2026-11-23T08:05:00",
+                "duration": "PT1H45M",
+                "marketing_carrier_flight_number": "1951",
+                "operating_carrier_flight_number": "1951",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              },
+              {
+                "id": "seg_0000BBxVR7yZrGqJM4c450",
+                "departing_at": "2026-11-23T11:50:00",
+                "arriving_at": "2026-11-23T13:45:00",
+                "duration": "PT1H55M",
+                "marketing_carrier_flight_number": "1348",
+                "operating_carrier_flight_number": "1348",
+                "origin": {
+                  "iata_code": "ZRH",
+                  "name": "Z\u00fcrich Airport",
+                  "city_name": "Z\u00fcrich",
+                  "iata_city_code": "ZRH",
+                  "time_zone": "Europe/Zurich",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                },
+                "operating_carrier": {
+                  "iata_code": "LX",
+                  "name": "SWISS",
+                  "id": "arl_00009VME7DDSWSIAygCT1z"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFsqGNOECfrmttLn90q",
+        "expires_at": "2026-10-31T04:46:21.974151Z",
+        "live_mode": false,
+        "total_amount": "1555.46",
+        "total_currency": "EUR",
+        "base_amount": "1070.88",
+        "tax_amount": "484.58",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "known_traveler_number",
+          "passenger_redress_number",
+          "passport"
+        ],
+        "conditions": {
+          "change_before_departure": null,
+          "refund_before_departure": null
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-01T03:46:00Z",
+          "price_guarantee_expires_at": null
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "LO",
+          "name": "LOT Polish Airlines",
+          "id": "arl_00009VME7DCkZ5j0wTrtuw"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVQzmELIDFvSm5i6",
+            "duration": "PT3H10M",
+            "fare_brand_name": "Am Plus Clasica",
+            "conditions": {
+              "change_before_departure": null,
+              "advance_seat_selection": null,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQzmELIDFvSm5hq",
+                "departing_at": "2026-11-20T14:45:00",
+                "arriving_at": "2026-11-20T17:55:00",
+                "duration": "PT3H10M",
+                "marketing_carrier_flight_number": "0437",
+                "operating_carrier_flight_number": "0437",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LO",
+                  "name": "LOT Polish Airlines",
+                  "id": "arl_00009VME7DCkZ5j0wTrtuw"
+                },
+                "operating_carrier": {
+                  "iata_code": "LO",
+                  "name": "LOT Polish Airlines",
+                  "id": "arl_00009VME7DCkZ5j0wTrtuw"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVQzmELIDFvSm5it",
+            "duration": "PT3H",
+            "fare_brand_name": "Am Plus Clasica",
+            "conditions": {
+              "change_before_departure": null,
+              "advance_seat_selection": false,
+              "priority_boarding": null,
+              "priority_check_in": null
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQzmELIDFvSm5ij",
+                "departing_at": "2026-11-23T18:50:00",
+                "arriving_at": "2026-11-23T21:50:00",
+                "duration": "PT3H",
+                "marketing_carrier_flight_number": "0438",
+                "operating_carrier_flight_number": "0438",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "LO",
+                  "name": "LOT Polish Airlines",
+                  "id": "arl_00009VME7DCkZ5j0wTrtuw"
+                },
+                "operating_carrier": {
+                  "iata_code": "LO",
+                  "name": "LOT Polish Airlines",
+                  "id": "arl_00009VME7DCkZ5j0wTrtuw"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_034pFsqGNOECfrmttLn90r",
+        "expires_at": "2026-10-31T04:46:21.977256Z",
+        "live_mode": false,
+        "total_amount": "1736.44",
+        "total_currency": "EUR",
+        "base_amount": "835.29",
+        "tax_amount": "901.15",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "known_traveler_number",
+          "passenger_redress_number",
+          "passport"
+        ],
+        "conditions": {
+          "change_before_departure": null,
+          "refund_before_departure": null
+        },
+        "payment_requirements": {
+          "requires_instant_payment": false,
+          "payment_required_by": "2026-11-01T03:46:21.977222Z",
+          "price_guarantee_expires_at": null
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "SK",
+          "name": "SAS",
+          "id": "arl_00009VME7DDSWSIAygCT1S"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVQzk6TCVlormOOl",
+            "duration": "PT8H5M",
+            "fare_brand_name": "Standard",
+            "conditions": {
+              "change_before_departure": null,
+              "advance_seat_selection": false,
+              "priority_boarding": false,
+              "priority_check_in": false
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOOF",
+                "departing_at": "2026-11-20T10:15:00",
+                "arriving_at": "2026-11-20T11:40:00",
+                "duration": "PT1H25M",
+                "marketing_carrier_flight_number": "0752",
+                "operating_carrier_flight_number": "0752",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              },
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOOU",
+                "departing_at": "2026-11-20T15:25:00",
+                "arriving_at": "2026-11-20T18:20:00",
+                "duration": "PT2H55M",
+                "marketing_carrier_flight_number": "1585",
+                "operating_carrier_flight_number": "1585",
+                "origin": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVQzk6TCVlormOPw",
+            "duration": "PT14H25M",
+            "fare_brand_name": "Standard",
+            "conditions": {
+              "change_before_departure": null,
+              "advance_seat_selection": false,
+              "priority_boarding": false,
+              "priority_check_in": false
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOPL",
+                "departing_at": "2026-11-23T19:10:00",
+                "arriving_at": "2026-11-23T22:05:00",
+                "duration": "PT2H55M",
+                "marketing_carrier_flight_number": "1586",
+                "operating_carrier_flight_number": "1586",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              },
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOPg",
+                "departing_at": "2026-11-24T08:15:00",
+                "arriving_at": "2026-11-24T09:35:00",
+                "duration": "PT1H20M",
+                "marketing_carrier_flight_number": "0751",
+                "operating_carrier_flight_number": "0751",
+                "origin": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "off_handmade_instant_only",
+        "expires_at": "2026-10-31T04:46:21.977256Z",
+        "live_mode": false,
+        "total_amount": "500.00",
+        "total_currency": "EUR",
+        "base_amount": "835.29",
+        "tax_amount": "901.15",
+        "passenger_identity_documents_required": false,
+        "supported_passenger_identity_document_types": [
+          "known_traveler_number",
+          "passenger_redress_number",
+          "passport"
+        ],
+        "conditions": {
+          "change_before_departure": null,
+          "refund_before_departure": null
+        },
+        "payment_requirements": {
+          "requires_instant_payment": true,
+          "payment_required_by": null,
+          "price_guarantee_expires_at": null
+        },
+        "passengers": [
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTyy",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzR",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OTzu",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWcSTme89OU0O",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXD",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          },
+          {
+            "id": "pas_0000BBxVQpWyRA4E9FYlXf",
+            "type": "adult",
+            "fare_type": null,
+            "age": null,
+            "given_name": null,
+            "family_name": null,
+            "loyalty_programme_accounts": []
+          }
+        ],
+        "owner": {
+          "iata_code": "SK",
+          "name": "SAS",
+          "id": "arl_00009VME7DDSWSIAygCT1S"
+        },
+        "slices": [
+          {
+            "id": "sli_0000BBxVQzk6TCVlormOOl",
+            "duration": "PT8H5M",
+            "fare_brand_name": "Standard",
+            "conditions": {
+              "change_before_departure": null,
+              "advance_seat_selection": false,
+              "priority_boarding": false,
+              "priority_check_in": false
+            },
+            "origin": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOOF",
+                "departing_at": "2026-11-20T10:15:00",
+                "arriving_at": "2026-11-20T11:40:00",
+                "duration": "PT1H25M",
+                "marketing_carrier_flight_number": "0752",
+                "operating_carrier_flight_number": "0752",
+                "origin": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              },
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOOU",
+                "departing_at": "2026-11-20T15:25:00",
+                "arriving_at": "2026-11-20T18:20:00",
+                "duration": "PT2H55M",
+                "marketing_carrier_flight_number": "1585",
+                "operating_carrier_flight_number": "1585",
+                "origin": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              }
+            ]
+          },
+          {
+            "id": "sli_0000BBxVQzk6TCVlormOPw",
+            "duration": "PT14H25M",
+            "fare_brand_name": "Standard",
+            "conditions": {
+              "change_before_departure": null,
+              "advance_seat_selection": false,
+              "priority_boarding": false,
+              "priority_check_in": false
+            },
+            "origin": {
+              "iata_code": "BCN",
+              "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+              "city_name": "Barcelona",
+              "iata_city_code": "BCN",
+              "time_zone": "Europe/Madrid",
+              "type": "airport"
+            },
+            "destination": {
+              "iata_code": "WAW",
+              "name": "Warsaw Chopin Airport",
+              "city_name": "Warsaw",
+              "iata_city_code": "WAW",
+              "time_zone": "Europe/Warsaw",
+              "type": "airport"
+            },
+            "segments": [
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOPL",
+                "departing_at": "2026-11-23T19:10:00",
+                "arriving_at": "2026-11-23T22:05:00",
+                "duration": "PT2H55M",
+                "marketing_carrier_flight_number": "1586",
+                "operating_carrier_flight_number": "1586",
+                "origin": {
+                  "iata_code": "BCN",
+                  "name": "Barcelona\u2013El Prat Josep Tarradellas Airport",
+                  "city_name": "Barcelona",
+                  "iata_city_code": "BCN",
+                  "time_zone": "Europe/Madrid",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              },
+              {
+                "id": "seg_0000BBxVQzk6TCVlormOPg",
+                "departing_at": "2026-11-24T08:15:00",
+                "arriving_at": "2026-11-24T09:35:00",
+                "duration": "PT1H20M",
+                "marketing_carrier_flight_number": "0751",
+                "operating_carrier_flight_number": "0751",
+                "origin": {
+                  "iata_code": "CPH",
+                  "name": "Copenhagen Airport",
+                  "city_name": "Copenhagen",
+                  "iata_city_code": "CPH",
+                  "time_zone": "Europe/Copenhagen",
+                  "type": "airport"
+                },
+                "destination": {
+                  "iata_code": "WAW",
+                  "name": "Warsaw Chopin Airport",
+                  "city_name": "Warsaw",
+                  "iata_city_code": "WAW",
+                  "time_zone": "Europe/Warsaw",
+                  "type": "airport"
+                },
+                "marketing_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                },
+                "operating_carrier": {
+                  "iata_code": "SK",
+                  "name": "SAS",
+                  "id": "arl_00009VME7DDSWSIAygCT1S"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

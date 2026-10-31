@@ -44,6 +44,11 @@ class SupplierCapabilities:
     required_traveller_fields: frozenset[TravellerField] = NAME_ONLY
     refund_policy_known: bool = False
     reports_disruptions: bool = False
+    # A hold is a named booking at the supplier (an airline hold order needs every
+    # passenger's name, birth date, ...): it is placed only once the passengers' required
+    # traveller details are complete — at voting close if they are, else when the purchase
+    # starts. False = a hold needs nothing but the party size.
+    hold_needs_traveller_details: bool = False
 
     def __post_init__(self) -> None:
         if (self.kind is BookingKind.TRANSPORT) != (self.mode is not None):

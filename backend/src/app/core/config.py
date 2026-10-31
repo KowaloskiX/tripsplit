@@ -8,7 +8,7 @@ an open endpoint for any origin.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.domain.environments import AppEnv
@@ -104,11 +104,21 @@ class Settings(BaseSettings):
     demo_supplier_url: str = ""
     # The supplier plugins, comma-separated ids (see app.suppliers.providers): the simulators
     # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`; the
-    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`.
+    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `duffel`
+    # (real flights through the Duffel API — needs `duffel_api_key`).
     suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
     # How far (in percent of the stored amount) a re-quote may move before the group's shares
     # are re-split. 0 = any change re-splits.
     price_tolerance_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    # The `duffel` flights supplier (app.suppliers.duffel). A TEST key (`duffel_test_...`) is
+    # required; a live key is refused unless `duffel_allow_live` — real tickets, real money.
+    duffel_api_key: SecretStr | None = None
+    duffel_allow_live: bool = False
+    # PLN per EUR: Duffel prices in the account's currency, trips are in PLN.
+    duffel_fx_eur_pln: float = Field(default=4.30, gt=0.0)
+    # Sent as every passenger's contact (TripSplit keeps no per-passenger e-mail or phone).
+    duffel_contact_email: str = "trips@tripsplit.example"
+    duffel_contact_phone: str = "+48500100200"
 
     @field_validator("researcher", mode="before")
     @classmethod
