@@ -289,6 +289,37 @@
         "title": "CastVoteRequest",
         "type": "object"
       },
+      "CheckoutResponse": {
+        "description": "`payment` when the wallet covered the share right away; otherwise `top_up` is pending\nand the share is paid as soon as the bank confirms it (poll the top-up, then the room).",
+        "properties": {
+          "payment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaymentResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "top_up": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WalletTransactionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "payment",
+          "top_up"
+        ],
+        "title": "CheckoutResponse",
+        "type": "object"
+      },
       "CompleteManuallyRequest": {
         "additionalProperties": false,
         "properties": {
@@ -795,6 +826,46 @@
         "title": "HealthStatus",
         "type": "object"
       },
+      "InsufficientFundsResponse": {
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Request Id"
+          },
+          "shortfall_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shortfall Minor"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "InsufficientFundsResponse",
+        "type": "object"
+      },
       "JoinTripRequest": {
         "additionalProperties": false,
         "properties": {
@@ -981,6 +1052,15 @@
         "title": "OrganizationSummary",
         "type": "object"
       },
+      "PaymentMethod": {
+        "enum": [
+          "blik",
+          "card",
+          "wallet"
+        ],
+        "title": "PaymentMethod",
+        "type": "string"
+      },
       "PaymentResponse": {
         "properties": {
           "all_paid": {
@@ -1022,6 +1102,35 @@
           "text"
         ],
         "title": "PostMessageRequest",
+        "type": "object"
+      },
+      "PotResponse": {
+        "description": "The trip wallet: paid in from members' wallets, spent on confirmed bookings, paid back,\nand what it still holds.",
+        "properties": {
+          "collected_minor": {
+            "title": "Collected Minor",
+            "type": "integer"
+          },
+          "held_minor": {
+            "title": "Held Minor",
+            "type": "integer"
+          },
+          "refunded_minor": {
+            "title": "Refunded Minor",
+            "type": "integer"
+          },
+          "spent_minor": {
+            "title": "Spent Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "collected_minor",
+          "spent_minor",
+          "refunded_minor",
+          "held_minor"
+        ],
+        "title": "PotResponse",
         "type": "object"
       },
       "ProposalItemResponse": {
@@ -1267,6 +1376,9 @@
             "title": "Paid Count",
             "type": "integer"
           },
+          "pot": {
+            "$ref": "#/components/schemas/PotResponse"
+          },
           "proposals": {
             "items": {
               "$ref": "#/components/schemas/ProposalResponse"
@@ -1288,7 +1400,8 @@
           "my_vote_proposal_id",
           "contributions",
           "my_contribution",
-          "paid_count"
+          "paid_count",
+          "pot"
         ],
         "title": "RoomResponse",
         "type": "object"
@@ -1439,6 +1552,95 @@
         ],
         "title": "SupplierChannel",
         "type": "string"
+      },
+      "TopUpAndPayRequest": {
+        "additionalProperties": false,
+        "description": "Tops the wallet up by exactly what the share is missing, then pays the share.",
+        "properties": {
+          "blik_code": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blik Code"
+          },
+          "card_last4": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Last4"
+          },
+          "method": {
+            "$ref": "#/components/schemas/TopUpMethodField"
+          }
+        },
+        "required": [
+          "method"
+        ],
+        "title": "TopUpAndPayRequest",
+        "type": "object"
+      },
+      "TopUpMethodField": {
+        "enum": [
+          "blik",
+          "card"
+        ],
+        "type": "string"
+      },
+      "TopUpRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "amount_minor": {
+            "maximum": 1000000.0,
+            "minimum": 100.0,
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "blik_code": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{6}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blik Code"
+          },
+          "card_last4": {
+            "anyOf": [
+              {
+                "pattern": "^\\d{4}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Last4"
+          },
+          "method": {
+            "$ref": "#/components/schemas/TopUpMethodField"
+          }
+        },
+        "required": [
+          "amount_minor",
+          "method"
+        ],
+        "title": "TopUpRequest",
+        "type": "object"
       },
       "TransportMode": {
         "enum": [
@@ -1884,6 +2086,153 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "WalletResponse": {
+        "properties": {
+          "balance_minor": {
+            "title": "Balance Minor",
+            "type": "integer"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "transactions": {
+            "items": {
+              "$ref": "#/components/schemas/WalletTransactionResponse"
+            },
+            "title": "Transactions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "balance_minor",
+          "currency",
+          "transactions"
+        ],
+        "title": "WalletResponse",
+        "type": "object"
+      },
+      "WalletTransactionKind": {
+        "enum": [
+          "top_up",
+          "share_payment",
+          "refund",
+          "adjustment"
+        ],
+        "title": "WalletTransactionKind",
+        "type": "string"
+      },
+      "WalletTransactionResponse": {
+        "properties": {
+          "amount_minor": {
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "balance_after_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Balance After Minor"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WalletTransactionKind"
+          },
+          "method": {
+            "$ref": "#/components/schemas/PaymentMethod"
+          },
+          "reference": {
+            "title": "Reference",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WalletTransactionStatus"
+          },
+          "trip_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Id"
+          },
+          "trip_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Title"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amount_minor",
+          "balance_after_minor",
+          "trip_id",
+          "trip_title",
+          "method",
+          "status",
+          "reference",
+          "failure_reason",
+          "created_at",
+          "completed_at"
+        ],
+        "title": "WalletTransactionResponse",
+        "type": "object"
+      },
+      "WalletTransactionStatus": {
+        "enum": [
+          "pending",
+          "completed",
+          "failed"
+        ],
+        "title": "WalletTransactionStatus",
+        "type": "string"
       }
     }
   },
@@ -2920,7 +3269,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/InsufficientFundsResponse"
                 }
               }
             },
@@ -2938,6 +3287,79 @@
           }
         },
         "summary": "Pay My Share",
+        "tags": [
+          "contributions"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/contributions/top-up-and-pay": {
+      "post": {
+        "description": "Tops the wallet up by exactly the shortfall (BLIK / card) and pays the share once the\nbank confirms; pays right away when the wallet already covers it.",
+        "operationId": "contributions-top-up-and-pay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopUpAndPayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckoutResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientFundsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Top Up And Pay",
         "tags": [
           "contributions"
         ]
@@ -3677,6 +4099,123 @@
         "summary": "Close Voting",
         "tags": [
           "proposals"
+        ]
+      }
+    },
+    "/api/wallet": {
+      "get": {
+        "description": "The caller's balance and their newest 50 ledger entries.",
+        "operationId": "wallet-read",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Wallet",
+        "tags": [
+          "wallet"
+        ]
+      }
+    },
+    "/api/wallet/top-ups": {
+      "post": {
+        "description": "Starts a dummy BLIK / card top-up: pending now, completed (or declined) in ~1.5 s.",
+        "operationId": "wallet-top-up",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopUpRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletTransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Top Up",
+        "tags": [
+          "wallet"
+        ]
+      }
+    },
+    "/api/wallet/top-ups/{transaction_id}": {
+      "get": {
+        "description": "Polled by the top-up sheet until the status leaves `pending`.",
+        "operationId": "wallet-top-up-status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "transaction_id",
+            "required": true,
+            "schema": {
+              "title": "Transaction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletTransactionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Top Up Status",
+        "tags": [
+          "wallet"
         ]
       }
     }

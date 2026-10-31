@@ -45,11 +45,19 @@ class ErrorResponse(BaseModel):
 
 
 class DomainHTTPError(Exception):
-    def __init__(self, code: StrEnum, status_code: int, message: str) -> None:
+    def __init__(
+        self,
+        code: StrEnum,
+        status_code: int,
+        message: str,
+        extra: dict[str, int] | None = None,
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.status_code = status_code
         self.message = message
+        # Numeric details next to the code (e.g. `shortfall_minor` of `insufficient_funds`).
+        self.extra = extra or {}
 
 
 def error_response(status_code: int, code: StrEnum, message: str, **extra: Any) -> JSONResponse:
@@ -83,7 +91,7 @@ def _without_submitted_values(errors: Sequence[Any]) -> list[dict[str, Any]]:
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DomainHTTPError)
     async def _handle_domain_error(_: Request, exc: DomainHTTPError) -> JSONResponse:
-        return error_response(exc.status_code, exc.code, exc.message)
+        return error_response(exc.status_code, exc.code, exc.message, **exc.extra)
 
     @app.exception_handler(RequestValidationError)
     async def _handle_validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:

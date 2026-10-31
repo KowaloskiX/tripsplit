@@ -9,6 +9,7 @@ from starlette import status
 
 from app.core.domain.errors import AuthError, BookingError, TripError
 from app.core.domain.result import Ok, Result
+from app.core.domain.wallet import InsufficientFunds, TopUpFailure, WalletError
 from app.core.errors_http import DomainHTTPError
 
 _STATUS: dict[AuthError, int] = {
@@ -107,3 +108,42 @@ _BOOKING_MESSAGE: dict[BookingError, str] = {
 
 def booking_failure(error: BookingError) -> DomainHTTPError:
     return DomainHTTPError(error, _BOOKING_STATUS[error], _BOOKING_MESSAGE[error])
+
+
+_TOP_UP_STATUS: dict[TopUpFailure, int] = {
+    TopUpFailure.AMOUNT_OUT_OF_RANGE: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    TopUpFailure.INVALID_BLIK_CODE: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    TopUpFailure.INVALID_CARD: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    TopUpFailure.DECLINED: status.HTTP_402_PAYMENT_REQUIRED,
+    TopUpFailure.NOT_FOUND: status.HTTP_404_NOT_FOUND,
+}
+
+_TOP_UP_MESSAGE: dict[TopUpFailure, str] = {
+    TopUpFailure.AMOUNT_OUT_OF_RANGE: "A top-up is between 1 zł and 10 000 zł.",
+    TopUpFailure.INVALID_BLIK_CODE: "Enter the 6-digit BLIK code from your bank app.",
+    TopUpFailure.INVALID_CARD: "Enter a valid card.",
+    TopUpFailure.DECLINED: "Your bank declined the payment.",
+    TopUpFailure.NOT_FOUND: "No such top-up.",
+}
+
+
+def top_up_failure(error: TopUpFailure) -> DomainHTTPError:
+    return DomainHTTPError(error, _TOP_UP_STATUS[error], _TOP_UP_MESSAGE[error])
+
+
+def payment_value[T](result: Result[T, TripError | InsufficientFunds | TopUpFailure]) -> T:
+    """`trip_value` for money paths: also maps a short wallet (409 with `shortfall_minor`) and
+    a refused top-up."""
+    if isinstance(result, Ok):
+        return result.value
+    error = result.error
+    if isinstance(error, InsufficientFunds):
+        raise DomainHTTPError(
+            WalletError.INSUFFICIENT_FUNDS,
+            status.HTTP_409_CONFLICT,
+            "Your wallet does not cover your share — top up first.",
+            extra={"shortfall_minor": error.shortfall_minor},
+        )
+    if isinstance(error, TopUpFailure):
+        raise top_up_failure(error)
+    raise trip_failure(error)

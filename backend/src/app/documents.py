@@ -12,6 +12,7 @@ from app.models.bookings import AgentRun, Booking
 from app.models.organizations import Membership, Organization
 from app.models.travellers import TravellerProfile
 from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember, Vote
+from app.models.wallet import Wallet, WalletTransaction
 
 DOCUMENT_MODELS: tuple[type[Any], ...] = (
     User,
@@ -27,4 +28,6 @@ DOCUMENT_MODELS: tuple[type[Any], ...] = (
     Booking,
     AgentRun,
     TravellerProfile,
+    Wallet,
+    WalletTransaction,
 )
