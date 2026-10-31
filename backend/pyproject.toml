@@ -16,6 +16,8 @@ dependencies = [
     "playwright>=1.44.0",
     "openai>=1.40.0",
     "python-dotenv>=1.0.0",
+    # Supplier JSON clients (app.suppliers).
+    "httpx>=0.27",
 ]
 
 [dependency-groups]
@@ -36,6 +38,7 @@ ensure-indexes = "scripts.ensure_indexes:main"
 strict-queries = "scripts.strict_queries:main"
 agent-run = "app.agent.runner:main"
 agent-login = "app.agent.login:main"
+intercity-search = "app.suppliers.intercity_cli:main"
 
 [build-system]
 requires = ["hatchling"]
