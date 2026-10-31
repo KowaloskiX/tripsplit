@@ -10,6 +10,91 @@ export type ClientOptions = {
 export type AppEnv = 'dev' | 'test' | 'staging' | 'prod';
 
 /**
+ * BookingKind
+ */
+export type BookingKind = 'train' | 'stay' | 'activity';
+
+/**
+ * CastVoteRequest
+ */
+export type CastVoteRequest = {
+    /**
+     * Proposal Id
+     */
+    proposal_id: string;
+};
+
+/**
+ * ContributionResponse
+ */
+export type ContributionResponse = {
+    /**
+     * Amount Minor
+     */
+    amount_minor: number;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Outstanding Minor
+     */
+    outstanding_minor: number;
+    /**
+     * Paid Minor
+     */
+    paid_minor: number;
+    status: ContributionStatus;
+    /**
+     * User Id
+     */
+    user_id: string;
+};
+
+/**
+ * ContributionStatus
+ */
+export type ContributionStatus = 'pending' | 'paid' | 'refund_due';
+
+/**
+ * CreateTripRequest
+ */
+export type CreateTripRequest = {
+    /**
+     * Brief
+     */
+    brief?: string;
+    /**
+     * Budget Per Person Minor
+     */
+    budget_per_person_minor?: number | null;
+    /**
+     * Date From
+     */
+    date_from: string;
+    /**
+     * Date To
+     */
+    date_to: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Group Size
+     */
+    group_size: number;
+    /**
+     * Origin
+     */
+    origin: string;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
  * CurrentUserResponse
  */
 export type CurrentUserResponse = {
@@ -25,6 +110,16 @@ export type CurrentUserResponse = {
      * Organizations
      */
     organizations: Array<OrganizationSummary>;
+};
+
+/**
+ * DemoResultResponse
+ */
+export type DemoResultResponse = {
+    /**
+     * Affected
+     */
+    affected: number;
 };
 
 /**
@@ -64,6 +159,50 @@ export type ErrorResponse = {
 };
 
 /**
+ * EventActor
+ */
+export type EventActor = 'agent' | 'member' | 'system';
+
+/**
+ * EventKind
+ */
+export type EventKind = 'trip_created' | 'member_joined' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit';
+
+/**
+ * EventResponse
+ */
+export type EventResponse = {
+    actor: EventActor;
+    /**
+     * Actor Name
+     */
+    actor_name: string | null;
+    /**
+     * Actor User Id
+     */
+    actor_user_id: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Id
+     */
+    id: string;
+    kind: EventKind;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Payload
+     */
+    payload: {
+        [key: string]: JsonValue;
+    };
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -85,6 +224,22 @@ export type HealthStatus = {
 };
 
 /**
+ * JoinTripRequest
+ */
+export type JoinTripRequest = {
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Invite Code
+     */
+    invite_code: string;
+};
+
+export type JsonValue = unknown;
+
+/**
  * LoginRequest
  */
 export type LoginRequest = {
@@ -97,6 +252,26 @@ export type LoginRequest = {
      */
     password: string;
 };
+
+/**
+ * MemberResponse
+ */
+export type MemberResponse = {
+    /**
+     * Display Name
+     */
+    display_name: string;
+    role: MemberRole;
+    /**
+     * User Id
+     */
+    user_id: string;
+};
+
+/**
+ * MemberRole
+ */
+export type MemberRole = 'organizer' | 'member';
 
 /**
  * MessageResponse
@@ -125,6 +300,108 @@ export type OrganizationSummary = {
      * Slug
      */
     slug: string;
+};
+
+/**
+ * PaymentResponse
+ */
+export type PaymentResponse = {
+    /**
+     * All Paid
+     */
+    all_paid: boolean;
+    /**
+     * Paid Minor
+     */
+    paid_minor: number;
+    status: TripStatus;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+};
+
+/**
+ * PostMessageRequest
+ */
+export type PostMessageRequest = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * ProposalItemResponse
+ */
+export type ProposalItemResponse = {
+    /**
+     * Details
+     */
+    details: string;
+    kind: BookingKind;
+    /**
+     * Price Minor
+     */
+    price_minor: number;
+    /**
+     * Starts At
+     */
+    starts_at: string | null;
+    /**
+     * Supplier
+     */
+    supplier: string;
+    /**
+     * Supplier Url
+     */
+    supplier_url: string;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * ProposalResponse
+ */
+export type ProposalResponse = {
+    /**
+     * Chosen
+     */
+    chosen: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Items
+     */
+    items: Array<ProposalItemResponse>;
+    /**
+     * Per Person Minor
+     */
+    per_person_minor: number;
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
+    /**
+     * Voted By Me
+     */
+    voted_by_me: boolean;
+    /**
+     * Votes
+     */
+    votes: number;
 };
 
 /**
@@ -168,12 +445,141 @@ export type RegisterRequest = {
 export type Role = 'owner' | 'admin' | 'member';
 
 /**
+ * RoomResponse
+ */
+export type RoomResponse = {
+    /**
+     * Contributions
+     */
+    contributions: Array<ContributionResponse>;
+    /**
+     * Invite Code
+     */
+    invite_code: string;
+    /**
+     * Members
+     */
+    members: Array<MemberResponse>;
+    my_contribution: ContributionResponse | null;
+    my_role: MemberRole;
+    /**
+     * My User Id
+     */
+    my_user_id: string;
+    /**
+     * My Vote Proposal Id
+     */
+    my_vote_proposal_id: string | null;
+    /**
+     * Paid Count
+     */
+    paid_count: number;
+    /**
+     * Proposals
+     */
+    proposals: Array<ProposalResponse>;
+    trip: TripResponse;
+};
+
+/**
+ * SeedMembersRequest
+ */
+export type SeedMembersRequest = {
+    /**
+     * Count
+     */
+    count?: number;
+};
+
+/**
  * SessionResponse
  *
  * Response of `GET /api/auth/session` — `user: null` means "not signed in".
  */
 export type SessionResponse = {
     user: CurrentUserResponse | null;
+};
+
+/**
+ * TripResponse
+ */
+export type TripResponse = {
+    /**
+     * Brief
+     */
+    brief: string;
+    /**
+     * Budget Per Person Minor
+     */
+    budget_per_person_minor: number | null;
+    /**
+     * Chosen Proposal Id
+     */
+    chosen_proposal_id: string | null;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Date From
+     */
+    date_from: string;
+    /**
+     * Date To
+     */
+    date_to: string;
+    /**
+     * Group Size
+     */
+    group_size: number;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Organizer Id
+     */
+    organizer_id: string;
+    /**
+     * Origin
+     */
+    origin: string;
+    status: TripStatus;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
+};
+
+/**
+ * TripStatus
+ *
+ * collecting -> proposing -> voting -> paying -> booking -> booked -> done,
+ * with booked -> disrupted -> rebooking -> booked for post-purchase care.
+ */
+export type TripStatus = 'collecting' | 'proposing' | 'voting' | 'paying' | 'booking' | 'booked' | 'disrupted' | 'rebooking' | 'done';
+
+/**
+ * TripStatusResponse
+ */
+export type TripStatusResponse = {
+    status: TripStatus;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+};
+
+/**
+ * TripSummaryResponse
+ */
+export type TripSummaryResponse = {
+    my_role: MemberRole;
+    trip: TripResponse;
 };
 
 /**
@@ -359,3 +765,442 @@ export type HealthReadyResponses = {
 };
 
 export type HealthReadyResponse = HealthReadyResponses[keyof HealthReadyResponses];
+
+export type TripsListData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/trips';
+};
+
+export type TripsListResponses = {
+    /**
+     * Response Trips-List
+     *
+     * Successful Response
+     */
+    200: Array<TripSummaryResponse>;
+};
+
+export type TripsListResponse = TripsListResponses[keyof TripsListResponses];
+
+export type TripsCreateData = {
+    body: CreateTripRequest;
+    path?: never;
+    query?: never;
+    url: '/api/trips';
+};
+
+export type TripsCreateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsCreateError = TripsCreateErrors[keyof TripsCreateErrors];
+
+export type TripsCreateResponses = {
+    /**
+     * Successful Response
+     */
+    201: TripStatusResponse;
+};
+
+export type TripsCreateResponse = TripsCreateResponses[keyof TripsCreateResponses];
+
+export type TripsJoinData = {
+    body: JoinTripRequest;
+    path?: never;
+    query?: never;
+    url: '/api/trips/join';
+};
+
+export type TripsJoinErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsJoinError = TripsJoinErrors[keyof TripsJoinErrors];
+
+export type TripsJoinResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type TripsJoinResponse = TripsJoinResponses[keyof TripsJoinResponses];
+
+export type TripsRoomData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}';
+};
+
+export type TripsRoomErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsRoomError = TripsRoomErrors[keyof TripsRoomErrors];
+
+export type TripsRoomResponses = {
+    /**
+     * Successful Response
+     */
+    200: RoomResponse;
+};
+
+export type TripsRoomResponse = TripsRoomResponses[keyof TripsRoomResponses];
+
+export type ContributionsPayData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/contributions/pay';
+};
+
+export type ContributionsPayErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ContributionsPayError = ContributionsPayErrors[keyof ContributionsPayErrors];
+
+export type ContributionsPayResponses = {
+    /**
+     * Successful Response
+     */
+    200: PaymentResponse;
+};
+
+export type ContributionsPayResponse = ContributionsPayResponses[keyof ContributionsPayResponses];
+
+export type DemoPayAllData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/pay-all';
+};
+
+export type DemoPayAllErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoPayAllError = DemoPayAllErrors[keyof DemoPayAllErrors];
+
+export type DemoPayAllResponses = {
+    /**
+     * Successful Response
+     */
+    200: DemoResultResponse;
+};
+
+export type DemoPayAllResponse = DemoPayAllResponses[keyof DemoPayAllResponses];
+
+export type DemoSeedMembersData = {
+    body: SeedMembersRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/seed-members';
+};
+
+export type DemoSeedMembersErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoSeedMembersError = DemoSeedMembersErrors[keyof DemoSeedMembersErrors];
+
+export type DemoSeedMembersResponses = {
+    /**
+     * Successful Response
+     */
+    200: DemoResultResponse;
+};
+
+export type DemoSeedMembersResponse = DemoSeedMembersResponses[keyof DemoSeedMembersResponses];
+
+export type DemoVoteAllData = {
+    body: CastVoteRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/vote-all';
+};
+
+export type DemoVoteAllErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoVoteAllError = DemoVoteAllErrors[keyof DemoVoteAllErrors];
+
+export type DemoVoteAllResponses = {
+    /**
+     * Successful Response
+     */
+    200: DemoResultResponse;
+};
+
+export type DemoVoteAllResponse = DemoVoteAllResponses[keyof DemoVoteAllResponses];
+
+export type TripsFeedData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: string | null;
+    };
+    url: '/api/trips/{trip_id}/feed';
+};
+
+export type TripsFeedErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsFeedError = TripsFeedErrors[keyof TripsFeedErrors];
+
+export type TripsFeedResponses = {
+    /**
+     * Response Trips-Feed
+     *
+     * Successful Response
+     */
+    200: Array<EventResponse>;
+};
+
+export type TripsFeedResponse = TripsFeedResponses[keyof TripsFeedResponses];
+
+export type TripsPostMessageData = {
+    body: PostMessageRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/messages';
+};
+
+export type TripsPostMessageErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsPostMessageError = TripsPostMessageErrors[keyof TripsPostMessageErrors];
+
+export type TripsPostMessageResponses = {
+    /**
+     * Successful Response
+     */
+    201: EventResponse;
+};
+
+export type TripsPostMessageResponse = TripsPostMessageResponses[keyof TripsPostMessageResponses];
+
+export type ProposalsGenerateData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/proposals/generate';
+};
+
+export type ProposalsGenerateErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProposalsGenerateError = ProposalsGenerateErrors[keyof ProposalsGenerateErrors];
+
+export type ProposalsGenerateResponses = {
+    /**
+     * Successful Response
+     */
+    202: TripStatusResponse;
+};
+
+export type ProposalsGenerateResponse = ProposalsGenerateResponses[keyof ProposalsGenerateResponses];
+
+export type ProposalsVoteData = {
+    body: CastVoteRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/votes';
+};
+
+export type ProposalsVoteErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProposalsVoteError = ProposalsVoteErrors[keyof ProposalsVoteErrors];
+
+export type ProposalsVoteResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type ProposalsVoteResponse = ProposalsVoteResponses[keyof ProposalsVoteResponses];
+
+export type ProposalsCloseVotingData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/voting/close';
+};
+
+export type ProposalsCloseVotingErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProposalsCloseVotingError = ProposalsCloseVotingErrors[keyof ProposalsCloseVotingErrors];
+
+export type ProposalsCloseVotingResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type ProposalsCloseVotingResponse = ProposalsCloseVotingResponses[keyof ProposalsCloseVotingResponses];

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { StatusScreen } from "@/components/ui/status-screen";
 import { sessionQueryOptions, useSession } from "@/features/auth";
+import { CreateTripForm, TripList } from "@/features/trips";
 
 export const Route = createFileRoute("/app")({
   // No SSR: the session lives in a browser cookie, so the guard has to run on the client.
@@ -40,33 +41,27 @@ function AppPage(): ReactNode {
   if (!user) return null;
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-16 lg:py-20">
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">dashboard</p>
-      <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">{user.email}</h1>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">
-        A route protected by a guard in <code className="font-mono text-xs">beforeLoad</code>. Sign
-        out in the header — the session dies on the server, not just in the browser.
+    <div className="mx-auto w-full max-w-5xl px-6 py-12 lg:py-16">
+      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">trips</p>
+      <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">
+        From group chat to tickets
+      </h1>
+      <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted">
+        Create a trip, send the invite link, and the agent proposes three packages. The group votes,
+        everyone pays their own share, and only then does the agent book.
       </p>
 
-      <Panel className="mt-8">
-        <PanelHeader>
-          <span>organizations</span>
-          <span>{user.organizations.length}</span>
-        </PanelHeader>
-        <ul className="divide-y divide-line">
-          {user.organizations.map((organization) => (
-            <li
-              key={organization.id}
-              className="flex items-baseline justify-between gap-4 px-4 py-3"
-            >
-              <span className="text-sm text-ink">{organization.name}</span>
-              <span className="font-mono text-xs text-muted">
-                {organization.slug} · {organization.role}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </Panel>
+      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+        <TripList />
+        <Panel>
+          <PanelHeader>
+            <span>new trip</span>
+          </PanelHeader>
+          <div className="p-5">
+            <CreateTripForm defaultDisplayName={user.email.split("@")[0] ?? ""} />
+          </div>
+        </Panel>
+      </div>
     </div>
   );
 }

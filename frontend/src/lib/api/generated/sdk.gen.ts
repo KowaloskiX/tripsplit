@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses } from './types.gen';
+import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -80,3 +80,118 @@ export const healthGet = <ThrowOnError extends boolean = false>(options?: Option
  * when the database dies: pods wait instead of restarting over and over.
  */
 export const healthReady = <ThrowOnError extends boolean = false>(options?: Options<HealthReadyData, ThrowOnError>): RequestResult<HealthReadyResponses, HealthReadyErrors, ThrowOnError> => (options?.client ?? client).get<HealthReadyResponses, HealthReadyErrors, ThrowOnError>({ url: '/api/health/ready', ...options });
+
+/**
+ * List Trips
+ */
+export const tripsList = <ThrowOnError extends boolean = false>(options?: Options<TripsListData, ThrowOnError>): RequestResult<TripsListResponses, unknown, ThrowOnError> => (options?.client ?? client).get<TripsListResponses, unknown, ThrowOnError>({ url: '/api/trips', ...options });
+
+/**
+ * Create Trip
+ */
+export const tripsCreate = <ThrowOnError extends boolean = false>(options: Options<TripsCreateData, ThrowOnError>): RequestResult<TripsCreateResponses, TripsCreateErrors, ThrowOnError> => (options.client ?? client).post<TripsCreateResponses, TripsCreateErrors, ThrowOnError>({
+    url: '/api/trips',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Join Trip
+ *
+ * Idempotent: a member opening the invite link again just gets the trip back.
+ */
+export const tripsJoin = <ThrowOnError extends boolean = false>(options: Options<TripsJoinData, ThrowOnError>): RequestResult<TripsJoinResponses, TripsJoinErrors, ThrowOnError> => (options.client ?? client).post<TripsJoinResponses, TripsJoinErrors, ThrowOnError>({
+    url: '/api/trips/join',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Read Room
+ *
+ * The whole room in one response — the UI polls this one endpoint.
+ */
+export const tripsRoom = <ThrowOnError extends boolean = false>(options: Options<TripsRoomData, ThrowOnError>): RequestResult<TripsRoomResponses, TripsRoomErrors, ThrowOnError> => (options.client ?? client).get<TripsRoomResponses, TripsRoomErrors, ThrowOnError>({ url: '/api/trips/{trip_id}', ...options });
+
+/**
+ * Pay My Share
+ *
+ * Charges the caller's outstanding share; the last payment moves the trip to booking.
+ */
+export const contributionsPay = <ThrowOnError extends boolean = false>(options: Options<ContributionsPayData, ThrowOnError>): RequestResult<ContributionsPayResponses, ContributionsPayErrors, ThrowOnError> => (options.client ?? client).post<ContributionsPayResponses, ContributionsPayErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/contributions/pay', ...options });
+
+/**
+ * Pay All
+ */
+export const demoPayAll = <ThrowOnError extends boolean = false>(options: Options<DemoPayAllData, ThrowOnError>): RequestResult<DemoPayAllResponses, DemoPayAllErrors, ThrowOnError> => (options.client ?? client).post<DemoPayAllResponses, DemoPayAllErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/demo/pay-all', ...options });
+
+/**
+ * Seed Members
+ */
+export const demoSeedMembers = <ThrowOnError extends boolean = false>(options: Options<DemoSeedMembersData, ThrowOnError>): RequestResult<DemoSeedMembersResponses, DemoSeedMembersErrors, ThrowOnError> => (options.client ?? client).post<DemoSeedMembersResponses, DemoSeedMembersErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/demo/seed-members',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Vote All
+ */
+export const demoVoteAll = <ThrowOnError extends boolean = false>(options: Options<DemoVoteAllData, ThrowOnError>): RequestResult<DemoVoteAllResponses, DemoVoteAllErrors, ThrowOnError> => (options.client ?? client).post<DemoVoteAllResponses, DemoVoteAllErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/demo/vote-all',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Read Feed
+ */
+export const tripsFeed = <ThrowOnError extends boolean = false>(options: Options<TripsFeedData, ThrowOnError>): RequestResult<TripsFeedResponses, TripsFeedErrors, ThrowOnError> => (options.client ?? client).get<TripsFeedResponses, TripsFeedErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/feed', ...options });
+
+/**
+ * Post Message
+ */
+export const tripsPostMessage = <ThrowOnError extends boolean = false>(options: Options<TripsPostMessageData, ThrowOnError>): RequestResult<TripsPostMessageResponses, TripsPostMessageErrors, ThrowOnError> => (options.client ?? client).post<TripsPostMessageResponses, TripsPostMessageErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/messages',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Generate Proposals
+ *
+ * Starts the research and returns at once; the packages arrive in the feed.
+ */
+export const proposalsGenerate = <ThrowOnError extends boolean = false>(options: Options<ProposalsGenerateData, ThrowOnError>): RequestResult<ProposalsGenerateResponses, ProposalsGenerateErrors, ThrowOnError> => (options.client ?? client).post<ProposalsGenerateResponses, ProposalsGenerateErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/proposals/generate', ...options });
+
+/**
+ * Cast Vote
+ */
+export const proposalsVote = <ThrowOnError extends boolean = false>(options: Options<ProposalsVoteData, ThrowOnError>): RequestResult<ProposalsVoteResponses, ProposalsVoteErrors, ThrowOnError> => (options.client ?? client).post<ProposalsVoteResponses, ProposalsVoteErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/votes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Close Voting
+ */
+export const proposalsCloseVoting = <ThrowOnError extends boolean = false>(options: Options<ProposalsCloseVotingData, ThrowOnError>): RequestResult<ProposalsCloseVotingResponses, ProposalsCloseVotingErrors, ThrowOnError> => (options.client ?? client).post<ProposalsCloseVotingResponses, ProposalsCloseVotingErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/voting/close', ...options });
