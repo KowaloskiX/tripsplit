@@ -17,6 +17,8 @@ secrets never enter the model context.
 import contextlib
 import re
 
+from app.agent.vault import Vault
+
 _PLACEHOLDER = re.compile(r"\{\{\s*vault\.([a-zA-Z0-9_.]+)\s*\}\}")
 
 
@@ -28,7 +30,7 @@ class UnknownVaultKey(ValueError):
     """
 
 
-def _resolve(text, vault):
+def _resolve(text: str | None, vault: Vault) -> str | None:
     if not text:
         return text
 

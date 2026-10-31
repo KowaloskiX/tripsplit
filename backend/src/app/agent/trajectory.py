@@ -14,6 +14,7 @@ re-recorded on success.
 
 import json
 import os
+from typing import Any
 from urllib.parse import urlparse
 
 from app.agent.paths import trajectories_dir
@@ -136,7 +137,9 @@ def _find_ref(elements, d):
     return None
 
 
-def action_from_cache(cached, elements):
+def action_from_cache(
+    cached: dict[str, Any], elements: list[dict[str, Any]]
+) -> dict[str, Any] | None:
     """Turn a cached step into an executable action for the CURRENT page, or None
     (a miss) if it can't be resolved — caller then self-heals via the planner."""
     kind = cached.get("action")
@@ -171,7 +174,7 @@ def action_from_cache(cached, elements):
     return None
 
 
-def record_step(action, elements):
+def record_step(action: dict[str, Any], elements: list[dict[str, Any]]) -> dict[str, Any]:
     """Capture a taken action as a replayable step (stable descriptor, no live ref)."""
     step = {
         "action": action.get("action"),

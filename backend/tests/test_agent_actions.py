@@ -1,5 +1,7 @@
 """Agent action plumbing that needs no browser: vault substitution and trajectory replay."""
 
+from typing import Any
+
 import pytest
 
 from app.agent import trajectory
@@ -19,7 +21,7 @@ def test_unknown_placeholder_fails_loudly_and_lists_the_real_keys() -> None:
 
 
 def test_fill_form_is_recorded_and_replayed_by_stable_descriptors() -> None:
-    recorded_page = [
+    recorded_page: list[dict[str, Any]] = [
         {"ref": 1, "tag": "input", "type": "text", "name": "p1_first", "text": "", "href": ""},
         {"ref": 2, "tag": "input", "type": "text", "name": "p1_last", "text": "", "href": ""},
     ]
@@ -43,7 +45,9 @@ def test_fill_form_is_recorded_and_replayed_by_stable_descriptors() -> None:
 
 
 def test_fill_form_replay_misses_when_a_field_is_gone() -> None:
-    page = [{"ref": 1, "tag": "input", "type": "text", "name": "p1_first", "text": "", "href": ""}]
+    page: list[dict[str, Any]] = [
+        {"ref": 1, "tag": "input", "type": "text", "name": "p1_first", "text": "", "href": ""}
+    ]
     step = trajectory.record_step(
         {"action": "fill_form", "fields": [{"ref": 1, "text": "x"}]}, page
     )
