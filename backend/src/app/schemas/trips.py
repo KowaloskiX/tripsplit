@@ -191,9 +191,10 @@ class ProposalItemResponse(_ReadModel):
     details: str
     starts_at: datetime | None
     segments: list[SegmentResponse]
-    links: list[LinkResponse]
-    images: list[str]
-    provenance: ProvenanceResponse | None
+    # Always sent; optional in the schema so clients built before them keep compiling.
+    links: list[LinkResponse] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
+    provenance: ProvenanceResponse | None = None
 
 
 class ProposalResponse(_ReadModel):
