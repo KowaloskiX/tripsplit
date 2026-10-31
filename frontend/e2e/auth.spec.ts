@@ -7,13 +7,13 @@ function uniqueEmail(): string {
   return `e2e-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 }
 
-test("registration creates an organization, sign-out and sign-in work", async ({ page }) => {
+test("registration opens the dashboard, sign-out and sign-in work", async ({ page }) => {
   const email = uniqueEmail();
 
-  await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Sign-in works");
-  // The readout reads the real /api/health — if the backend is down, the test fails here.
-  await expect(page.getByText(/ok · (dev|test|staging|prod)/)).toBeVisible();
+  await page.goto("/", { waitUntil: "networkidle" });
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("From group chat to tickets");
+  // The backend is reachable through the dev proxy — if it is down, the test fails here.
+  expect((await page.request.get("/api/health")).ok()).toBe(true);
 
   await page.getByRole("link", { name: "Create account" }).first().click();
   await page.getByLabel("Organization").fill("Acme E2E");
@@ -22,9 +22,9 @@ test("registration creates an organization, sign-out and sign-in work", async ({
   await page.getByRole("button", { name: "Create account" }).click();
 
   await expect(page).toHaveURL(/\/app$/);
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText(email);
-  await expect(page.getByText("Acme E2E")).toBeVisible();
-  await expect(page.getByText("owner")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Where to next?");
+  // The create-trip form greets the user with the part of the email before the @.
+  await expect(page.getByLabel("Your name")).toHaveValue(email.split("@")[0] ?? "");
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL("/");
@@ -96,7 +96,12 @@ test("an expired session redirects to sign-in instead of failing silently", asyn
   // longer exists, so the backend bounces the mutation as 403 csrf_invalid.
   await context.clearCookies({ name: "session" });
 
-  await page.getByRole("button", { name: "Sign out" }).click();
+  // A background refetch may hit the 401 first and redirect on its own before the click lands
+  // (the header re-renders under the pointer) — either path has to end on the sign-in page.
+  await page
+    .getByRole("button", { name: "Sign out" })
+    .click({ timeout: 5_000 })
+    .catch(() => undefined);
   await expect(page).toHaveURL(/\/login$/);
 });
 

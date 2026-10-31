@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:fast": "E2E_FAST=1 playwright test",
     "generate:api": "openapi-ts && node scripts/stamp-generated.mjs"
   },
   "dependencies": {
