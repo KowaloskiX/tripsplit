@@ -68,9 +68,13 @@ def _without_submitted_values(errors: Sequence[Any]) -> list[dict[str, Any]]:
     Pydantic v2 puts the RAW submitted value there, so FastAPI's default 422 response was
     echoing the user's own password back — straight into proxy logs, Sentry and HAR files sent
     to support.
+
+    `ctx` is dropped as well: for a `ValueError` raised in a validator it carries the exception
+    OBJECT, which is not JSON-serialisable — the 422 turned into a 500. The human-readable
+    reason is already in `msg`.
     """
     return [
-        {key: value for key, value in error.items() if key != "input"}
+        {key: value for key, value in error.items() if key not in {"input", "ctx"}}
         for error in errors
         if isinstance(error, dict)
     ]
