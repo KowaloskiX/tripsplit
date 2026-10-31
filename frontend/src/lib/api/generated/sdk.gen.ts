@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
+import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -147,6 +147,20 @@ export const bookingsApprove = <ThrowOnError extends boolean = false>(options: O
 });
 
 /**
+ * Complete Booking Manually
+ *
+ * After a handoff (or a failure) the organizer finished the purchase by hand.
+ */
+export const bookingsCompleteManually = <ThrowOnError extends boolean = false>(options: Options<BookingsCompleteManuallyData, ThrowOnError>): RequestResult<BookingsCompleteManuallyResponses, BookingsCompleteManuallyErrors, ThrowOnError> => (options.client ?? client).post<BookingsCompleteManuallyResponses, BookingsCompleteManuallyErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/bookings/{booking_id}/complete',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Start Booking
  */
 export const bookingsStart = <ThrowOnError extends boolean = false>(options: Options<BookingsStartData, ThrowOnError>): RequestResult<BookingsStartResponses, BookingsStartErrors, ThrowOnError> => (options.client ?? client).post<BookingsStartResponses, BookingsStartErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings/{booking_id}/start', ...options });
@@ -165,6 +179,20 @@ export const contributionsPay = <ThrowOnError extends boolean = false>(options: 
  */
 export const demoDisruption = <ThrowOnError extends boolean = false>(options: Options<DemoDisruptionData, ThrowOnError>): RequestResult<DemoDisruptionResponses, DemoDisruptionErrors, ThrowOnError> => (options.client ?? client).post<DemoDisruptionResponses, DemoDisruptionErrors, ThrowOnError>({
     url: '/api/trips/{trip_id}/demo/disruption',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Make Member Leave
+ *
+ * A seeded member drops out — the organizer drives it from the demo panel.
+ */
+export const demoLeave = <ThrowOnError extends boolean = false>(options: Options<DemoLeaveData, ThrowOnError>): RequestResult<DemoLeaveResponses, DemoLeaveErrors, ThrowOnError> => (options.client ?? client).post<DemoLeaveResponses, DemoLeaveErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/demo/leave',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -205,6 +233,13 @@ export const demoVoteAll = <ThrowOnError extends boolean = false>(options: Optio
  * Read Feed
  */
 export const tripsFeed = <ThrowOnError extends boolean = false>(options: Options<TripsFeedData, ThrowOnError>): RequestResult<TripsFeedResponses, TripsFeedErrors, ThrowOnError> => (options.client ?? client).get<TripsFeedResponses, TripsFeedErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/feed', ...options });
+
+/**
+ * Leave Trip
+ *
+ * The caller drops out before anything is bought; the rest re-split the total.
+ */
+export const tripsLeave = <ThrowOnError extends boolean = false>(options: Options<TripsLeaveData, ThrowOnError>): RequestResult<TripsLeaveResponses, TripsLeaveErrors, ThrowOnError> => (options.client ?? client).post<TripsLeaveResponses, TripsLeaveErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/leave', ...options });
 
 /**
  * Post Message
