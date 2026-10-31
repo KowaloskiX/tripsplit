@@ -22,7 +22,7 @@ from app.agent.act import act
 from app.agent.browser import Browser
 from app.agent.observe import observe, render_for_planner
 from app.agent.paths import run_dir
-from app.agent.planner import Planner
+from app.agent.planner import make_planner
 from app.agent.recover import auto_dismiss, detect_block
 from app.agent.skills import notes_for
 from app.agent.vault import Vault
@@ -86,7 +86,7 @@ def run(req: RunRequest) -> RunResult:
     result = RunResult(run_id=req.run_id, url=req.url, goal=req.goal, artifacts_dir=artifacts)
 
     vault = Vault(req.vault or None)
-    planner = Planner()
+    planner = make_planner()
     browser = Browser(headless=req.headless)
     browser.live_frame_path = os.path.join(artifacts, "live.jpg")
     prefs_text = "; ".join(f"{k}: {v}" for k, v in req.preferences.items() if v)
@@ -170,6 +170,7 @@ def run(req: RunRequest) -> RunResult:
                     vault.planner_keys(),
                     history,
                     screenshot_png=png,
+                    screenshot_path=shot,
                     site_notes=notes,
                     preferences=prefs_text,
                 )
@@ -288,11 +289,18 @@ def main() -> None:
     ap.add_argument("--max-steps", type=int, default=40)
     ap.add_argument("--headful", action="store_true", help="show the browser window")
     ap.add_argument("--engine", choices=["camoufox", "chromium", "firefox"])
+    ap.add_argument(
+        "--planner",
+        choices=["openai", "claude-cli", "manual"],
+        help="overrides PLANNER from the environment",
+    )
     ap.add_argument("--vault", help="path to a JSON file with vault values (never committed)")
     ap.add_argument("--no-cache", action="store_true", help="ignore the trajectory cache")
     ap.add_argument("--json", action="store_true", help="emit a machine-readable result line")
     args = ap.parse_args()
 
+    if args.planner:
+        os.environ["PLANNER"] = args.planner
     vault: dict[str, Any] = {}
     if args.vault:
         with open(args.vault, encoding="utf-8") as fh:

@@ -24,8 +24,11 @@ class Browser:
         if self.engine == "camoufox":
             from camoufox.sync_api import Camoufox
 
-            # humanize=True adds human-like cursor movement; os spoofs fingerprint.
-            self._ctx = Camoufox(headless=self.headless, humanize=True, os=["windows", "macos"])
+            # humanize=True adds human-like cursor movement; os spoofs the fingerprint. A single
+            # OS, not a list: the current browserforge data yields no fingerprint for a list.
+            self._ctx = Camoufox(
+                headless=self.headless, humanize=True, os=os.getenv("CAMOUFOX_OS", "macos")
+            )
             self.browser = self._ctx.__enter__()
             self.page = self.browser.new_page()
         else:

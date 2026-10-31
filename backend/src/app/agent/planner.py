@@ -1,20 +1,28 @@
 """The decide step: page state + goal -> exactly one next action (JSON).
 
-Backend is OpenAI. The planner only needs to return a single JSON action object,
-so swapping providers (or back to Anthropic) means rewriting only `_complete()` —
-the SYSTEM prompt, schema, and `next_action()` interface stay put. It is given
-vault KEY NAMES (never values) and told to emit {{vault.<key>}} placeholders for
-anything sensitive; harness/act.py substitutes real values at action time.
+The prompt, the action schema and the parsing are shared; only `_complete()` differs per
+backend. Select one with `PLANNER=`:
+
+  openai      the OpenAI API (`OPENAI_API_KEY`, `OPENAI_BASE_URL` for compatible endpoints)
+  claude-cli  Claude Code in non-interactive mode (`claude -p`) — runs on a Claude subscription,
+              no API key. Dev/demo only: it is a consumer subscription, not a production backend.
+  manual      actions are read from stdin — a human (or an assistant driving the terminal) is
+              the planner. Used to record trajectories and write supplier playbooks.
+
+The planner is given vault KEY NAMES (never values) and told to emit `{{vault.<key>}}`
+placeholders for anything sensitive; `act.py` substitutes real values at action time.
 """
 
 import base64
 import json
 import os
 import re
+import subprocess
+import sys
 import time
 
-SYSTEM = """You are the planner for an autonomous purchasing agent driving a real browser.
-Your job: get the target product to a completed (or ready-to-submit) checkout.
+SYSTEM = """You are the planner for an autonomous booking agent driving a real browser for a group trip.
+Your job: get the requested train / stay / activity to a completed (or ready-to-submit) checkout.
 
 You are given a SCREENSHOT of the current page, a compact list of INTERACTIVE ELEMENTS
 (each with a #ref), and the page text. LOOK AT THE SCREENSHOT FIRST, then act.
@@ -34,18 +42,18 @@ Rules:
 - For sensitive values use placeholders, NEVER literals: e.g. {"action":"type","ref":4,"text":"{{vault.email}}"}.
   The available vault keys are listed in the user message. Login username/password are {{vault.username}} / {{vault.password}}.
 - Prefer testid/aria labels to guess intent. One logical step at a time.
-- Prefer #ref actions. For something you can SEE but that has NO usable #ref (an option inside a custom dropdown/flyout, a size tile, a canvas control), use click_xy with x,y as integers 0-1000 (fraction of image width/height). A fresh screenshot follows every action so you can verify it worked.
+- Prefer #ref actions. For something you can SEE but that has NO usable #ref (an option inside a custom dropdown/flyout, a date tile, a canvas control), use click_xy with x,y as integers 0-1000 (fraction of image width/height). A fresh screenshot follows every action so you can verify it worked.
 - Fill ONE field per step with a SINGLE value. NEVER concatenate multiple values into one field.
 - Check RECENT ACTIONS: if you already typed a value into a field, do not type it again — move to the next field or the next step (e.g. click Continue). Never repeat the exact same action.
-- Dismiss nothing manually — banners are handled for you. Focus on the purchase path.
-- If stop_before_pay is set, do NOT submit the final order; call done once the review page is fully populated.
-- If you see an order number / "thank you" / confirmation, call done.
-- If you hit a captcha, OTP/2FA, SMS code, or 3-D Secure, call handoff — you cannot solve those.
-- Always set "milestone" to the checkout phase of the CURRENT page (browsing, cart, account, address, delivery, payment, review, done, blocked) so progress can be tracked.
+- Dismiss nothing manually — banners are handled for you. Focus on the booking path.
+- If stop_before_pay is set, do NOT submit the final order; call done once the summary page is fully populated and matches the goal.
+- If you see a booking number / "thank you" / confirmation, call done.
+- If you hit a captcha, OTP/2FA, SMS code, BLIK code, or 3-D Secure, call handoff — you cannot solve those.
+- Always set "milestone" to the checkout phase of the CURRENT page (browsing, search, results, cart, account, passengers, address, delivery, payment, review, done, blocked) so progress can be tracked.
 Think silently; output ONLY the JSON object."""
 
-# Strict schema so the model always returns exactly this shape. Optional fields
-# are nullable (OpenAI strict mode requires every property in `required`).
+# Strict schema so the model always returns exactly this shape. Optional fields are nullable
+# (OpenAI strict mode requires every property in `required`).
 ACTION_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
@@ -80,24 +88,28 @@ ACTION_SCHEMA = {
         },
         "milestone": {
             "type": ["string", "null"],
-            "description": "checkout phase of the CURRENT page: browsing|cart|account|address|delivery|payment|review|done|blocked",
+            "description": "checkout phase of the CURRENT page: browsing|search|results|cart|account|passengers|address|delivery|payment|review|done|blocked",
         },
     },
     "required": ["action", "ref", "text", "direction", "url", "reason", "x", "y", "milestone"],
 }
 
 
-class Planner:
-    def __init__(self):
-        self.model = os.getenv("PLANNER_MODEL", "gpt-5.5")
-        # reasoning_effort keeps per-step latency sane over a long loop; "low" is
-        # plenty for "pick the next action". Set PLANNER_EFFORT="" to omit it.
-        env_effort = os.getenv("PLANNER_EFFORT", "low")
-        self.effort = env_effort or None
-        from openai import OpenAI
+def make_planner():
+    """Pick the backend from `PLANNER` (default: openai)."""
+    kind = (os.getenv("PLANNER") or "openai").lower()
+    if kind == "openai":
+        return OpenAIPlanner()
+    if kind in ("claude-cli", "claude"):
+        return ClaudeCliPlanner()
+    if kind == "manual":
+        return ManualPlanner()
+    raise ValueError(f"unknown PLANNER={kind!r}; use openai | claude-cli | manual")
 
-        self.client = OpenAI()  # reads OPENAI_API_KEY from the environment
-        self.tokens = {"in": 0, "out": 0, "total": 0}  # cumulative planner usage
+
+class BasePlanner:
+    def __init__(self):
+        self.tokens = {"in": 0, "out": 0, "total": 0}  # cumulative usage
         self.calls = 0
 
     def next_action(
@@ -108,19 +120,20 @@ class Planner:
         vault_keys,
         history,
         screenshot_png=None,
+        screenshot_path=None,
         site_notes="",
         preferences="",
     ):
-        # No str.format here: SYSTEM contains literal JSON braces and {{vault.x}}
-        # placeholders that must reach the model verbatim (act.py matches {{...}}).
+        # No str.format here: SYSTEM contains literal JSON braces and {{vault.x}} placeholders
+        # that must reach the model verbatim (act.py matches {{...}}).
         notes = (
             f"SITE NOTES for this host (a trusted playbook — follow it):\n{site_notes}\n\n"
             if site_notes
             else ""
         )
         prefs = (
-            f"USER PREFERENCES (honor these when a page offers a choice, e.g. delivery "
-            f"method or payment method — pick the option matching the preference; if none "
+            f"USER PREFERENCES (honor these when a page offers a choice, e.g. class, "
+            f"cancellation policy, payment method — pick the matching option; if none "
             f"matches, pick the closest sensible one): {preferences}\n\n"
             if preferences
             else ""
@@ -135,21 +148,33 @@ class Planner:
             f"CURRENT PAGE:\n{page_render}\n\n"
             "Look at the screenshot, then return the single next action as JSON."
         )
-        return self._complete(SYSTEM, user, screenshot_png)
+        self.calls += 1
+        return _sanitize(self._complete(SYSTEM, user, screenshot_png, screenshot_path))
 
-    # ---- the only provider-specific code ------------------------------------
-    def _complete(self, system, user, screenshot_png=None):
+    def _complete(self, system, user, screenshot_png, screenshot_path):
+        raise NotImplementedError
+
+
+class OpenAIPlanner(BasePlanner):
+    """The OpenAI API — or any OpenAI-compatible endpoint via OPENAI_BASE_URL."""
+
+    def __init__(self):
+        super().__init__()
+        self.model = os.getenv("PLANNER_MODEL", "gpt-5.5")
+        # reasoning_effort keeps per-step latency sane over a long loop; "low" is plenty for
+        # "pick the next action". Set PLANNER_EFFORT="" to omit it.
+        self.effort = os.getenv("PLANNER_EFFORT", "low") or None
+        from openai import OpenAI
+
+        self.client = OpenAI()  # OPENAI_API_KEY / OPENAI_BASE_URL from the environment
+
+    def _complete(self, system, user, screenshot_png, screenshot_path):
         if screenshot_png:
             data_url = "data:image/png;base64," + base64.b64encode(screenshot_png).decode()
+            detail = os.getenv("PLANNER_IMAGE_DETAIL", "low")
             user_content = [
                 {"type": "text", "text": user},
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": data_url,
-                        "detail": os.getenv("PLANNER_IMAGE_DETAIL", "low"),
-                    },
-                },
+                {"type": "image_url", "image_url": {"url": data_url, "detail": detail}},
             ]
         else:
             user_content = user
@@ -167,11 +192,9 @@ class Planner:
         )
         if self.effort:
             kwargs["reasoning_effort"] = self.effort
-        # Retry transient API failures (connection blips, 5xx, rate spikes) so a
-        # single hiccup doesn't kill a long checkout run. First retry also drops
-        # reasoning_effort in case a non-reasoning model rejected it.
-        resp = None
-        last_err = None
+        # Retry transient API failures so a single hiccup doesn't kill a long run. The first
+        # retry also drops reasoning_effort in case a non-reasoning model rejected it.
+        resp, last_err = None, None
         for attempt in range(4):
             try:
                 resp = self.client.chat.completions.create(**kwargs)
@@ -187,31 +210,104 @@ class Planner:
             self.tokens["in"] += u.prompt_tokens or 0
             self.tokens["out"] += u.completion_tokens or 0
             self.tokens["total"] += u.total_tokens or 0
-            self.calls += 1
         except Exception:
             pass
-        return self._sanitize(self._parse(resp.choices[0].message.content))
+        return _parse(resp.choices[0].message.content)
 
-    @staticmethod
-    def _sanitize(action):
-        # Guard against a model degenerating into a runaway repeated string in a
-        # type/select field — cap it so we never dump a huge blob into an input.
-        t = action.get("text")
-        if action.get("action") in ("type", "select") and isinstance(t, str) and len(t) > 100:
-            action["text"] = t[:100]
-        return action
 
-    @staticmethod
-    def _parse(text):
-        if not text:
+class ClaudeCliPlanner(BasePlanner):
+    """Claude Code in non-interactive mode: `claude -p ... --output-format json`.
+
+    The screenshot is passed as a FILE PATH and Claude reads it with its Read tool (the only
+    tool allowed). No other tools, no session persistence — one isolated call per step.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.binary = os.getenv("CLAUDE_BIN", "claude")
+        self.model = os.getenv("PLANNER_MODEL", "sonnet")
+        self.timeout = int(os.getenv("PLANNER_TIMEOUT_S", "120"))
+
+    def _complete(self, system, user, screenshot_png, screenshot_path):
+        if screenshot_path:
+            user = f"First, Read the screenshot file at: {screenshot_path}\n\n{user}"
+        cmd = [
+            self.binary,
+            "-p",
+            user,
+            "--output-format",
+            "json",
+            "--model",
+            self.model,
+            "--system-prompt",
+            system,
+            "--allowed-tools",
+            "Read",
+            "--no-session-persistence",
+        ]
+        last_err = None
+        for attempt in range(3):
+            try:
+                proc = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout,
+                    cwd=os.path.dirname(screenshot_path) if screenshot_path else None,
+                )
+                if proc.returncode != 0:
+                    raise RuntimeError(proc.stderr.strip()[-400:] or f"exit {proc.returncode}")
+                envelope = json.loads(proc.stdout)
+                usage = envelope.get("usage") or {}
+                self.tokens["in"] += int(usage.get("input_tokens") or 0)
+                self.tokens["out"] += int(usage.get("output_tokens") or 0)
+                self.tokens["total"] = self.tokens["in"] + self.tokens["out"]
+                return _parse(envelope.get("result") or "")
+            except Exception as e:
+                last_err = e
+                time.sleep(1.5 * (attempt + 1))
+        raise last_err
+
+
+class ManualPlanner(BasePlanner):
+    """A human is the planner: the page render goes to stdout, the action comes from stdin.
+
+    Used to RECORD a trajectory for a supplier (replayed later with no model at all) and to
+    write its playbook while watching how the site behaves.
+    """
+
+    def _complete(self, system, user, screenshot_png, screenshot_path):
+        print("\n" + "=" * 78, file=sys.stderr)
+        if screenshot_path:
+            print(f"SCREENSHOT: {screenshot_path}", file=sys.stderr)
+        print(user, file=sys.stderr)
+        print("-" * 78, file=sys.stderr)
+        print("action JSON> ", end="", file=sys.stderr, flush=True)
+        line = sys.stdin.readline()
+        if not line:
+            return {"action": "handoff", "reason": "stdin closed"}
+        return _parse(line.strip())
+
+
+def _sanitize(action):
+    # Guard against a model degenerating into a runaway repeated string in a type/select
+    # field — cap it so we never dump a huge blob into an input.
+    t = action.get("text")
+    if action.get("action") in ("type", "select") and isinstance(t, str) and len(t) > 100:
+        action["text"] = t[:100]
+    return action
+
+
+def _parse(text):
+    if not text:
+        return {"action": "wait"}
+    try:
+        return json.loads(text)
+    except Exception:
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if not m:
             return {"action": "wait"}
         try:
-            return json.loads(text)
+            return json.loads(m.group(0))
         except Exception:
-            m = re.search(r"\{.*\}", text, re.DOTALL)
-            if not m:
-                return {"action": "wait"}
-            try:
-                return json.loads(m.group(0))
-            except Exception:
-                return {"action": "wait"}
+            return {"action": "wait"}
