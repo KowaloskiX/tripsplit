@@ -47,3 +47,22 @@ async def test_an_unknown_train_is_a_404_page(client: AsyncClient) -> None:
     response = await client.get(f"{BASE}/summary", params={**TRIP, "train": "nope"})
     assert response.status_code == 404
     assert "Search again" in response.text
+
+
+async def test_more_than_five_passengers_is_refused_like_pkp(client: AsyncClient) -> None:
+    six = {**TRIP, "passengers": "6", "train": TRAINS[0].code}
+    people = {f"p{n}_{part}": f"X{n}" for n in range(1, 7) for part in ("first", "last")}
+    for page in ("results", "passengers", "summary", "confirmation"):
+        response = await client.get(f"{BASE}/{page}", params={**six, **people, "email": "a@b.c"})
+        assert "Too many passengers: 6" in response.text
+        assert "at most 5 passengers" in response.text
+        assert "Pay now" not in response.text
+        assert "Booking number" not in response.text
+
+
+async def test_three_passengers_one_part_of_a_split_train_go_through(client: AsyncClient) -> None:
+    three = {**TRIP, "passengers": "3", "train": TRAINS[0].code, "email": "a@b.c"}
+    people = {f"p{n}_{part}": f"X{n}" for n in range(1, 4) for part in ("first", "last")}
+    confirmation = await client.get(f"{BASE}/confirmation", params={**three, **people})
+    assert "Booking number: DR-" in confirmation.text
+    assert "for 3 passenger(s)" in confirmation.text

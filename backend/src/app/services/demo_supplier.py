@@ -3,6 +3,10 @@ end-to-end tests. It never blocks, never changes and never takes money.
 
 search -> results (3 trains) -> passenger details -> summary with "Pay now" -> confirmation
 
+Like PKP Intercity, one purchase carries at most 5 passengers: a bigger party gets a clear
+error on every page past the search and can never reach "Pay now" — the backend buys a train
+for six as two purchases of three.
+
 Plain HTML forms with GET only: state travels in the query string, so there is no session, no
 JavaScript and no CSRF token to fight (the API's CSRF guard covers mutating methods only).
 Every echoed value goes through `html.escape`.
@@ -13,8 +17,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from html import escape
 
+from app.core.domain.bookings import PKP_INTERCITY_PURCHASE_CAP
+
 BASE_PATH = "/api/demo-supplier/rail"
+# What the search form offers; a purchase itself is capped at MAX_PASSENGERS_PER_PURCHASE.
 MAX_PASSENGERS = 9
+MAX_PASSENGERS_PER_PURCHASE = PKP_INTERCITY_PURCHASE_CAP
 _FIELD_MAX = 100
 CURRENCY = "PLN"
 
@@ -109,7 +117,7 @@ button{margin-top:20px;font-size:16px;padding:10px 24px;background:#0b3d91;color
 border:0;border-radius:6px;cursor:pointer}
 table{width:100%;border-collapse:collapse}td,th{padding:8px;border-bottom:1px solid #ddd;
 text-align:left}.steps{color:#5b6570;font-size:14px}.total{font-size:22px;font-weight:700}
-.pay{background:#c62828}
+.pay{background:#c62828}.error{color:#c62828;font-weight:700}
 """
 
 _STEPS = ("Search", "Results", "Passengers", "Summary", "Confirmation")
@@ -147,7 +155,23 @@ def render_search(order: Order) -> str:
     )
 
 
+def _too_many(order: Order) -> str | None:
+    """The error page for a party one purchase cannot carry; None when it fits."""
+    if order.passengers <= MAX_PASSENGERS_PER_PURCHASE:
+        return None
+    return _page(
+        "No offers fulfil the criteria",
+        1,
+        f'<p class="error" role="alert">Too many passengers: {order.passengers}. One purchase '
+        f"can carry at most {MAX_PASSENGERS_PER_PURCHASE} passengers — split the group into "
+        "several purchases.</p>"
+        f'<p><a href="{BASE_PATH}">Search again</a></p>',
+    )
+
+
 def render_results(order: Order) -> str:
+    if (error := _too_many(order)) is not None:
+        return error
     rows = "".join(
         f"<tr><td>{escape(train.name)}</td><td>{train.departs}</td><td>{train.arrives}</td>"
         f"<td>2nd class</td><td>{_money(train.price_per_person_minor)} / person</td>"
@@ -170,6 +194,8 @@ def render_results(order: Order) -> str:
 def render_passengers(order: Order) -> str | None:
     if order.train is None:
         return None
+    if (error := _too_many(order)) is not None:
+        return error
     people = "".join(
         f"<fieldset><legend>Passenger {index}</legend>"
         f'<label for="p{index}_first">Passenger {index} first name</label>'
@@ -195,6 +221,8 @@ def render_passengers(order: Order) -> str | None:
 def render_summary(order: Order) -> str | None:
     if order.train is None:
         return None
+    if (error := _too_many(order)) is not None:
+        return error
     people = "".join(f"<li>{escape(first)} {escape(last)}</li>" for first, last in order.names)
     return _page(
         "Review your booking",
@@ -225,6 +253,8 @@ def confirmation_number(order: Order) -> str:
 def render_confirmation(order: Order) -> str | None:
     if order.train is None:
         return None
+    if (error := _too_many(order)) is not None:
+        return error
     return _page(
         "Thank you — booking confirmed",
         4,
