@@ -72,11 +72,24 @@ The trip flow is supplier-agnostic: rail, flights, buses, stays and activities a
 behind `backend/src/app/suppliers/ports.py` (`SupplierAdapter`), each declaring
 `SupplierCapabilities` (kind/mode, channel `api`/`agent`/`manual`, purchase cap, holds, quote
 TTL, required traveller fields). Services read capabilities, never supplier names. Enable them
-with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`).
+with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`, `duffel`).
+
+**Duffel (real flights, test mode).** `SUPPLIERS=...,duffel` plus `DUFFEL_API_KEY=duffel_test_...`
+in `.env` enables `suppliers/duffel.py`: real offer search, a named HOLD order at Duffel, payment
+of the held order on approval, airline-initiated changes as disruptions. A live key is refused
+unless `DUFFEL_ALLOW_LIVE=true`; without a usable key the supplier is simply not registered.
+EUR prices are converted to PLN at `DUFFEL_FX_EUR_PLN` (default 4.30) — Duffel is always paid
+its own EUR amount. An airline hold names every passenger, so it is placed at voting close only
+when everyone's details (name, birth date, **gender**, passport fields) are in, otherwise when
+the purchase starts (`hold_needs_traveller_details`). Offers expire after ~30 min; the adapter
+re-finds the same flights by number + departure time. City -> airport codes: `suppliers/airports.py`.
 
 ```bash
 cd backend && uv run trip-harness run all            # simulated suppliers, scripted agent
 cd backend && uv run trip-harness run prague_happy_path --live-search   # real PKP (~20 s)
+uv run trip-harness run barcelona_duffel_live --live-flights        # real Duffel test API (~6 s)
+uv run trip-harness run barcelona_duffel_slow_group --live-flights  # expired offer re-found
+DUFFEL_LIVE=1 uv run pytest tests/test_duffel.py                    # + the live search smoke test
 uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
 ```
 
