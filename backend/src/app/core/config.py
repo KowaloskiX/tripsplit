@@ -8,7 +8,7 @@ an open endpoint for any origin.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.domain.environments import AppEnv
@@ -104,11 +104,16 @@ class Settings(BaseSettings):
     demo_supplier_url: str = ""
     # The supplier plugins, comma-separated ids (see app.suppliers.providers): the simulators
     # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`; the
-    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`.
+    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `liteapi`
+    # (real hotels through LiteAPI — needs `liteapi_key`).
     suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
     # How far (in percent of the stored amount) a re-quote may move before the group's shares
     # are re-split. 0 = any change re-splits.
     price_tolerance_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    # The `liteapi` stays supplier (app.suppliers.liteapi). A SANDBOX key (`sand_...`) is
+    # required; any other key is refused unless `liteapi_allow_live` — real rooms, real money.
+    liteapi_key: SecretStr | None = None
+    liteapi_allow_live: bool = False
 
     @field_validator("researcher", mode="before")
     @classmethod
