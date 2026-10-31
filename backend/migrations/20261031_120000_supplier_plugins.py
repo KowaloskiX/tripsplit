@@ -32,7 +32,9 @@ TRANSPORT = "transport"
 RAIL = "rail"
 PKP_SUPPLIER = "PKP Intercity"
 PKP_ADAPTER = "pkp_intercity"
-# The fields this change added, with the defaults the models read for a missing key.
+# The fields this change added, with the defaults the models read for a missing key — plus
+# every Booking field added since (trust: links, images, provenance), for the same reason as
+# `TRIP_DEFAULTS` below.
 BOOKING_DEFAULTS: dict[str, Any] = {
     "mode": None,
     "supplier_id": "",
@@ -42,6 +44,9 @@ BOOKING_DEFAULTS: dict[str, Any] = {
     "hold_ref": None,
     "hold_expires_at": None,
     "quoted_at": None,
+    "links": [],
+    "images": [],
+    "provenance": None,
 }
 # Every Trip field added since, too: the validator in place is always today's (it requires each
 # model field to be PRESENT), so an old trip must gain them all for this update to pass,

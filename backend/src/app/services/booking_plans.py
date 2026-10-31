@@ -17,6 +17,7 @@ from app.core.domain.trips import SupplierChannel, split_evenly
 from app.db.identifiers import identifier_of
 from app.models.bookings import Booking
 from app.models.trips import ProposalItem, TransportSegment, Trip
+from app.models.trust import stored_links, stored_provenance
 
 TITLE_MAX_LENGTH = 200
 GOAL_MAX_LENGTH = 4000
@@ -93,6 +94,9 @@ def bookings_for_item(
                 offer_ref=item.offer_ref,
                 channel=channel,
                 supplier_data=dict(item.supplier_data),
+                links=stored_links(item.links),
+                images=list(item.images),
+                provenance=stored_provenance(item.provenance),
             )
         )
         start = end

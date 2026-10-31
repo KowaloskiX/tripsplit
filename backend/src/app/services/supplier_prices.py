@@ -29,7 +29,12 @@ from app.core.domain.bookings import (
     format_money,
 )
 from app.core.domain.errors import BookingError
-from app.core.domain.suppliers import SupplierCapabilities, hold_is_live, quote_is_fresh
+from app.core.domain.suppliers import (
+    SupplierCapabilities,
+    hold_is_live,
+    mode_noun,
+    quote_is_fresh,
+)
 from app.core.domain.trips import BookingStatus, EventActor, EventKind, TripStatus
 from app.db.client import Database
 from app.db.documents import utc_now
@@ -55,6 +60,9 @@ class _Unheld(Enum):
 _UNHELD = _Unheld.UNHELD
 
 type Clock = Callable[[], datetime]
+
+# An item bought as at least this many purchases is checked all-or-nothing.
+MIN_SPLIT_PARTS = 2
 
 
 def offer_of(booking: Booking) -> OfferRef:
@@ -169,6 +177,79 @@ class SupplierPrices:
         if quote_is_fresh(booking.quoted_at, adapter.capabilities.quote_ttl, self.clock()):
             return None  # quoted moments ago (e.g. a rebooking): still binding
         return await self._requote(trip, booking, adapter, members)
+
+    async def refresh_split(self, trip: Trip, parts: list[Booking]) -> BookingError | None:
+        """All or nothing for an item bought as several purchases (a train for 6 at a cap of
+        5 is 3 + 3): every startable part is re-quoted BEFORE any of them starts. One part
+        gone -> none starts, every part fails and the item is SOLD_OUT, so half the group is
+        never ticketed. Otherwise each new price is applied (the parts' quotes are then fresh,
+        so their own starts do not ask again). None = go ahead.
+
+        Parts holding a live hold, or whose price is still fresh, are not asked again; with
+        holds on, the availability check does not apply the quote (the hold placed at the
+        start binds the price instead)."""
+        startable = [part for part in parts if part.status in BOOKING_STATUSES_THAT_START]
+        if len(startable) < MIN_SPLIT_PARTS:
+            return None
+        members = await self.members.for_trip(identifier_of(trip))
+        quoted: list[tuple[Booking, int]] = []
+        for part in startable:
+            adapter = self.adapter_of(part)
+            if adapter is None or not self._needs_quote(part, adapter):
+                continue
+            party = len(passengers_of(part, members)) or len(members)
+            try:
+                quote = await adapter.quote(offer_of(part), party)
+            except SupplierUnavailableError:
+                logger.warning("supplier %s unavailable for a re-quote", part.supplier_id)
+                continue
+            if quote is None:
+                return await self._split_sold_out(trip, startable)
+            if not (adapter.capabilities.supports_hold and self.holds):
+                quoted.append((part, quote.price_minor))
+        # Every part takes its new price before answering, so a rise is topped up once.
+        outcomes = [
+            await self._apply(
+                trip,
+                await self.bookings.get(identifier_of(part)) or part,
+                price,
+                {"quoted_at": self.clock()},
+            )
+            for part, price in quoted
+        ]
+        return next((outcome for outcome in outcomes if outcome is not None), None)
+
+    def _needs_quote(self, booking: Booking, adapter: SupplierAdapter) -> bool:
+        capabilities = adapter.capabilities
+        now = self.clock()
+        if capabilities.supports_hold and hold_is_live(booking.hold_expires_at, now):
+            return False
+        return not quote_is_fresh(booking.quoted_at, capabilities.quote_ttl, now)
+
+    async def _split_sold_out(self, trip: Trip, parts: list[Booking]) -> BookingError:
+        failed = [
+            part
+            for part in parts
+            if await self.bookings.update_if_status(
+                part, BOOKING_STATUSES_THAT_START, {"status": BookingStatus.FAILED}
+            )
+        ]
+        if failed:
+            first = failed[0]
+            await self.events.add(
+                identifier_of(trip),
+                EventKind.BOOKING_FAILED,
+                EventActor.AGENT,
+                f"{first.supplier} no longer has seats for the whole group on this "
+                f"{mode_noun(first.mode)} — I bought none of its {len(parts)} purchases, so "
+                "nobody is left without a ticket. Pick another option or book it by hand.",
+                payload={
+                    "booking_id": to_text(identifier_of(first)),
+                    "booking_ids": [to_text(identifier_of(part)) for part in failed],
+                    "sold_out": True,
+                },
+            )
+        return BookingError.SOLD_OUT
 
     async def _requote(
         self, trip: Trip, booking: Booking, adapter: SupplierAdapter, members: list[TripMember]

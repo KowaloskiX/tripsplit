@@ -373,6 +373,64 @@ async def test_a_change_within_the_tolerance_is_ignored(
     assert not await _events(trip, EventKind.PRICE_CHANGED)
 
 
+async def _split_quoted_train(organizer: Person, friend: Person) -> tuple[Trip, Booking, Booking]:
+    """The seeded train as TWO purchases of the same package item (one passenger each)."""
+    trip, train, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKING)
+    half = TRAIN_MINOR // 2
+    first_passenger, second_passenger = train.passenger_user_ids
+    await train.set(
+        {
+            "proposal_item_index": 0,
+            "amount_minor": half,
+            "passenger_user_ids": [first_passenger],
+            "supplier_data": {"listed_minor": half},
+        }
+    )
+    second = await Booking(
+        **{
+            **train.model_dump(exclude={"id", "revision_id"}),
+            "offer_ref": "offer:EC 131 part 2",
+            "passenger_user_ids": [second_passenger],
+        }
+    ).insert()
+    return trip, train, second
+
+
+async def test_a_split_train_with_one_part_gone_starts_none_of_its_parts(
+    people: list[Person], quotes: ScriptedQuotes, launcher: RecordingLauncher
+) -> None:
+    organizer, friend = people
+    trip, first, second = await _split_quoted_train(organizer, friend)
+    quotes.prices[second.offer_ref] = None  # the second half's seats are gone
+
+    response = await organizer.post(f"/api/trips/{trip.id}/bookings/{first.id}/start")
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == BookingError.SOLD_OUT
+    assert launcher.started == []
+    for part in (first, second):
+        stored = await Booking.get(identifier_of(part))
+        assert stored is not None and stored.status is BookingStatus.FAILED
+    (event,) = await _events(trip, EventKind.BOOKING_FAILED)
+    assert event.payload["sold_out"] is True
+    assert len(event.payload["booking_ids"]) == 2  # both purchases
+    assert "bought none" in event.message
+
+
+async def test_a_split_train_requotes_every_part_before_the_first_starts(
+    people: list[Person], quotes: ScriptedQuotes, launcher: RecordingLauncher
+) -> None:
+    organizer, friend = people
+    trip, first, second = await _split_quoted_train(organizer, friend)
+
+    response = await organizer.post(f"/api/trips/{trip.id}/bookings/{first.id}/start")
+    assert response.status_code == 202, response.text
+    assert len(launcher.started) == 1
+    waiting = await Booking.get(identifier_of(second))
+    assert waiting is not None
+    assert waiting.status is BookingStatus.PENDING
+    assert waiting.quoted_at is not None  # checked with the first, not started
+
+
 # ---- purchases capped per supplier ---------------------------------------------------------
 
 

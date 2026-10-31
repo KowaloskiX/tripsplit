@@ -30,6 +30,7 @@ from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import NO_PREFERENCES, BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trust import LinkKind, OfferLink, Provenance, ProvenanceSource
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -105,7 +106,32 @@ def offer_json(offer: Offer) -> Json:
         "starts_at": _moment(offer.starts_at),
         # Adapter data is JSON already (it is stored in Mongo as is).
         "supplier_data": json.loads(json.dumps(dict(offer.supplier_data), default=str)),
+        "links": [
+            {"label": link.label, "url": link.url, "kind": link.kind.value} for link in offer.links
+        ],
+        "images": list(offer.images),
+        "provenance": _provenance_json(offer.provenance),
     }
+
+
+def _provenance_json(provenance: Provenance | None) -> Json | None:
+    if provenance is None:
+        return None
+    return {
+        "source": provenance.source.value,
+        "supplier": provenance.supplier,
+        "checked_at": provenance.checked_at.isoformat(),
+    }
+
+
+def _provenance_of(raw: Mapping[str, Any] | None) -> Provenance | None:
+    if not raw:
+        return None
+    return Provenance(
+        source=ProvenanceSource(str(raw["source"])),
+        supplier=str(raw["supplier"]),
+        checked_at=datetime.fromisoformat(str(raw["checked_at"])),
+    )
 
 
 def offer_of(raw: Mapping[str, Any]) -> Offer:
@@ -123,6 +149,12 @@ def offer_of(raw: Mapping[str, Any]) -> Offer:
         details=str(raw.get("details", "")),
         starts_at=_parse_moment(raw.get("starts_at")),
         supplier_data=dict(raw.get("supplier_data") or {}),
+        links=tuple(
+            OfferLink(label=str(link["label"]), url=str(link["url"]), kind=LinkKind(link["kind"]))
+            for link in raw.get("links") or []
+        ),
+        images=tuple(str(image) for image in raw.get("images") or []),
+        provenance=_provenance_of(raw.get("provenance")),
     )
 
 

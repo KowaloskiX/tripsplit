@@ -20,6 +20,7 @@ accident.
 
 import asyncio
 import logging
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -28,7 +29,11 @@ import httpx
 from pydantic import SecretStr
 
 from app.core.domain.result import Err, Ok, Result
+from app.suppliers.call_log import CALL_LOG
 from app.suppliers.ports import SupplierUnavailableError
+
+# The supplier id its calls are logged under (`app.suppliers.call_log`).
+SUPPLIER = "duffel"
 
 logger = logging.getLogger(__name__)
 
@@ -168,9 +173,11 @@ class DuffelClient:
         ) as client:
             while True:
                 attempt += 1
+                started = time.monotonic()
                 try:
                     response = await client.request(method, path, json=body, params=params)
                 except httpx.HTTPError as error:
+                    CALL_LOG.record(SUPPLIER, method, path, None, time.monotonic() - started)
                     if idempotent and attempt <= self._max_retries:
                         await self._pause(attempt)
                         continue
@@ -179,6 +186,7 @@ class DuffelClient:
                         f"Duffel {method} {path}: {type(error).__name__}"
                     ) from error
                 status = response.status_code
+                CALL_LOG.record(SUPPLIER, method, path, status, time.monotonic() - started)
                 retriable = status == 429 or (idempotent and status in _RETRY_STATUSES)
                 if retriable and attempt <= self._max_retries:
                     await self._pause(attempt, response.headers.get("retry-after"))

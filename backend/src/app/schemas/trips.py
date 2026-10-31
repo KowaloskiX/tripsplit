@@ -5,7 +5,7 @@ read models validated `from_attributes` straight from the services' views.
 """
 
 from datetime import date, datetime
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, JsonValue, model_validator
 
@@ -20,6 +20,7 @@ from app.core.domain.trips import (
     TransportMode,
     TripStatus,
 )
+from app.core.domain.trust import LinkKind, ProvenanceSource
 from app.schemas.common import StrictRequest, normalize_text
 
 TITLE_MAX_LENGTH = 120
@@ -67,6 +68,29 @@ class CreateTripRequest(StrictRequest):
         if self.date_to < self.date_from:
             raise ValueError("The trip cannot end before it starts.")
         return self
+
+
+QUICK_TEXT_MAX_LENGTH = 1000
+QUICK_ANSWER_MAX_LENGTH = 60
+
+type QuickFieldName = Literal["destination", "dates", "group_size"]
+
+
+class QuickTripRequest(StrictRequest):
+    """A one-line brief ("weekend w Pradze dla 6, 20-22.11, do 700 zł/os, pociągiem"). The
+    optional fields answer earlier `questions` (send the chip's `value` in the field named by
+    the question) and win over what the text says."""
+
+    text: VisibleText = Field(min_length=1, max_length=QUICK_TEXT_MAX_LENGTH)
+    # How the organizer appears to the group; default: read from the e-mail address.
+    display_name: VisibleText | None = Field(default=None, max_length=NAME_MAX_LENGTH)
+    destination: str | None = Field(default=None, max_length=TITLE_MAX_LENGTH)
+    origin: str | None = Field(default=None, max_length=TITLE_MAX_LENGTH)
+    # "2026-11-20/2026-11-22" (a chip value) or any phrase the brief parser reads.
+    dates: str | None = Field(default=None, max_length=QUICK_ANSWER_MAX_LENGTH)
+    group_size: int | None = Field(default=None, ge=1, le=MAX_GROUP_SIZE)
+    budget_per_person_minor: int | None = Field(default=None, ge=0)
+    transport_mode: TransportMode | None = None
 
 
 class JoinTripRequest(StrictRequest):
@@ -139,6 +163,24 @@ class SegmentResponse(_ReadModel):
     arrives_at: datetime
 
 
+class LinkResponse(_ReadModel):
+    """One click to check an offer: `book` at the supplier, `verify` on an independent site,
+    `map`, or live `status` by flight / train number."""
+
+    label: str
+    url: str
+    kind: LinkKind
+
+
+class ProvenanceResponse(_ReadModel):
+    """Where the data came from: `live` (the supplier's real data), `test` / `sandbox` (a
+    supplier's test API) or `example` (a simulator — illustrative, not bookable for real)."""
+
+    source: ProvenanceSource
+    supplier: str
+    checked_at: datetime
+
+
 class ProposalItemResponse(_ReadModel):
     kind: BookingKind
     mode: TransportMode | None
@@ -149,6 +191,10 @@ class ProposalItemResponse(_ReadModel):
     details: str
     starts_at: datetime | None
     segments: list[SegmentResponse]
+    # Always sent; optional in the schema so clients built before them keep compiling.
+    links: list[LinkResponse] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
+    provenance: ProvenanceResponse | None = None
 
 
 class ProposalResponse(_ReadModel):
@@ -214,6 +260,41 @@ class EventResponse(_ReadModel):
 class TripStatusResponse(_ReadModel):
     trip_id: str
     status: TripStatus
+
+
+class QuickOptionResponse(_ReadModel):
+    label: str  # the chip: "Next weekend (13-15 Nov)"
+    value: str  # sent back in the request field named by the question
+
+
+class QuickQuestionResponse(_ReadModel):
+    field: QuickFieldName
+    question: str
+    options: list[QuickOptionResponse]
+
+
+class QuickDraftResponse(_ReadModel):
+    """What the brief says so far; null = not understood (yet)."""
+
+    title: str
+    origin: str
+    destination: str | None
+    date_from: date | None
+    date_to: date | None
+    group_size: int | None
+    budget_per_person_minor: int | None
+    # A total budget ("3000 zł łącznie") still waiting for the party size.
+    budget_total_minor: int | None
+    transport_mode: TransportMode | None
+    missing: list[QuickFieldName]
+
+
+class QuickTripResponse(_ReadModel):
+    # Set when the brief was complete: the trip exists (caller = organizer) and the package
+    # research runs (status `proposing`). Null = answer `questions` and send the brief again.
+    trip: TripStatusResponse | None
+    draft: QuickDraftResponse
+    questions: list[QuickQuestionResponse]
 
 
 class PaymentResponse(_ReadModel):
