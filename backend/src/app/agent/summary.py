@@ -2,7 +2,8 @@
 
 Before the agent says `done` (or before a human is asked to approve), we read what the
 supplier will actually sell into a `SummaryRecord` — total, currency, passenger names and
-count, travel date, service (train number) — and compare THAT with the goal. Rules first:
+count, travel date (and a return journey's return date), service (train number) — and compare
+THAT with the goal. Rules first:
 labelled rows (`<th>/<td>`, `<dt>/<dd>`) collected by `observe`, then regexes over the page
 text. A record that cannot be filled in is treated as a mismatch (handoff), never guessed.
 
@@ -20,6 +21,8 @@ _ISO = re.compile(r"\b(20\d\d)-([01]\d)-([0-3]\d)\b")
 _DMY = re.compile(r"\b([0-3]\d)[./]([01]\d)[./](20\d\d)\b")
 _SERVICE = re.compile(r"\b((?:EC|EN|EIC|EIP|IC|TLK|RJ|ICE|RE|R)\s?\d{2,5})\b")
 _ROW = {
+    # Before "date": a "Return date" row is the return leg, not the outbound date.
+    "return": re.compile(r"\breturn\b|powr[óo]t", re.I),
     "total": re.compile(r"total|razem|suma|do zapłaty|amount", re.I),
     "date": re.compile(r"\bdate\b|\bdata\b|departure|wyjazd|odjazd", re.I),
     "service": re.compile(r"train|pociąg|service|flight|connection|połączenie", re.I),
@@ -52,6 +55,7 @@ class SummaryRecord:
     date: str | None = None
     service: str | None = None
     source: str = "rules"
+    return_date: str | None = None
 
     def masked(self) -> dict[str, Any]:
         out = asdict(self)
@@ -94,4 +98,7 @@ def extract_summary(state: dict[str, Any], profile: SiteProfile) -> SummaryRecor
             count = int(m.group(1))
         elif passengers:
             count = len(passengers)
-    return SummaryRecord(total_minor, currency, count, passengers, date, service)
+    return_date = _date(str(found["return"]["value"])) if "return" in found else None
+    return SummaryRecord(
+        total_minor, currency, count, passengers, date, service, return_date=return_date
+    )

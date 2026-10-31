@@ -3,6 +3,11 @@ end-to-end tests. It never blocks, never changes and never takes money.
 
 search -> results (3 trains) -> passenger details -> summary with "Pay now" -> confirmation
 
+A return journey is ONE order: with a return date, the outbound and the return leg (same train
+both ways) are on one summary and the total covers both. A `fare` parameter (per person, whole
+journey, minor units) prices every train at that fare instead of the list price — how a PKP
+offer is bought here at PKP's real price.
+
 Like PKP Intercity, one purchase carries at most 5 passengers: a bigger party gets a clear
 error on every page past the search and can never reach "Pay now" — the backend buys a train
 for six as two purchases of three.
@@ -36,21 +41,36 @@ class Order:
     train: Train | None
     names: tuple[tuple[str, str], ...]
     email: str
+    return_date: str = ""
+    fare_minor: int | None = None
+
+    @property
+    def legs(self) -> int:
+        return 2 if self.return_date else 1
+
+    def per_person_minor(self, train: Train) -> int:
+        """What one passenger pays for the whole journey (every leg) on `train`."""
+        return self.fare_minor or train.price_per_person_minor * self.legs
 
     @property
     def total_minor(self) -> int:
-        return self.passengers * self.train.price_per_person_minor if self.train else 0
+        return self.passengers * self.per_person_minor(self.train) if self.train else 0
 
 
 def _clean(value: str | None) -> str:
     return (value or "").strip()[:_FIELD_MAX]
 
 
-def parse_order(params: Mapping[str, str]) -> Order:
+def _positive(raw: str | None) -> int | None:
     try:
-        passengers = int(params.get("passengers") or 1)
+        value = int(raw or 0)
     except ValueError:
-        passengers = 1
+        return None
+    return value if value > 0 else None
+
+
+def parse_order(params: Mapping[str, str]) -> Order:
+    passengers = _positive(params.get("passengers")) or 1
     passengers = min(max(passengers, 1), MAX_PASSENGERS)
     code = params.get("train")
     return Order(
@@ -64,6 +84,8 @@ def parse_order(params: Mapping[str, str]) -> Order:
             for index in range(1, passengers + 1)
         ),
         email=_clean(params.get("email")),
+        return_date=_clean(params.get("return")),
+        fare_minor=_positive(params.get("fare")),
     )
 
 
@@ -79,6 +101,10 @@ def _hidden(order: Order, *, with_people: bool) -> str:
         "date": order.date,
         "passengers": str(order.passengers),
     }
+    if order.return_date:
+        fields["return"] = order.return_date
+    if order.fare_minor is not None:
+        fields["fare"] = str(order.fare_minor)
     if order.train is not None:
         fields["train"] = order.train.code
     if with_people:
@@ -133,9 +159,17 @@ def render_search(order: Order) -> str:
         f'<label for="to">To</label><input id="to" name="to" value="{escape(order.destination)}">'
         f'<label for="date">Date (YYYY-MM-DD)</label>'
         f'<input id="date" name="date" placeholder="YYYY-MM-DD" value="{escape(order.date)}">'
+        '<label for="return">Return date (YYYY-MM-DD, optional)</label>'
+        f'<input id="return" name="return" placeholder="YYYY-MM-DD"'
+        f' value="{escape(order.return_date)}">'
         f'<label for="passengers">Passengers</label>'
         f'<select id="passengers" name="passengers">{options}</select>'
-        "<button type=submit>Search</button></form>",
+        + (
+            f'<input type="hidden" name="fare" value="{order.fare_minor}">'
+            if order.fare_minor is not None
+            else ""
+        )
+        + "<button type=submit>Search</button></form>",
     )
 
 
@@ -153,12 +187,18 @@ def _too_many(order: Order) -> str | None:
     )
 
 
+def _dates(order: Order) -> str:
+    outbound = order.date or "Any date"
+    return f"{outbound}, return {order.return_date}" if order.return_date else outbound
+
+
 def render_results(order: Order) -> str:
     if (error := _too_many(order)) is not None:
         return error
+    per = ", return" if order.return_date else ""
     rows = "".join(
         f"<tr><td>{escape(train.name)}</td><td>{train.departs}</td><td>{train.arrives}</td>"
-        f"<td>2nd class</td><td>{_money(train.price_per_person_minor)} / person</td>"
+        f"<td>2nd class</td><td>{_money(order.per_person_minor(train))} / person{per}</td>"
         f'<td><form method="get" action="{BASE_PATH}/passengers">'
         f"{_hidden(order, with_people=False)}"
         f'<input type="hidden" name="train" value="{train.code}">'
@@ -169,7 +209,7 @@ def render_results(order: Order) -> str:
     return _page(
         f"Trains {order.origin} → {order.destination}",
         1,
-        f"<p>{escape(order.date or 'Any date')} · {order.passengers} passenger(s)</p>"
+        f"<p>{escape(_dates(order))} · {order.passengers} passenger(s)</p>"
         "<table><tr><th>Train</th><th>Departs</th><th>Arrives</th><th>Class</th>"
         f"<th>Price</th><th></th></tr>{rows}</table>",
     )
@@ -208,14 +248,23 @@ def render_summary(order: Order) -> str | None:
     if (error := _too_many(order)) is not None:
         return error
     people = "".join(f"<li>{escape(first)} {escape(last)}</li>" for first, last in order.names)
+    train = f"{escape(order.train.name)}, {order.train.departs} → {order.train.arrives}"
+    back = (
+        f"<tr><th>Return date</th><td>{escape(order.return_date)}</td></tr>"
+        f"<tr><th>Return train</th><td>{train}, {escape(order.destination)} → "
+        f"{escape(order.origin)}, 2nd class</td></tr>"
+        if order.return_date
+        else ""
+    )
     return _page(
         "Review your booking",
         3,
         "<table>"
-        f"<tr><th>Route</th><td>{escape(order.origin)} → {escape(order.destination)}</td></tr>"
+        f"<tr><th>Route</th><td>{escape(order.origin)} → {escape(order.destination)}"
+        f"{' and back' if order.return_date else ''}</td></tr>"
         f"<tr><th>Date</th><td>{escape(order.date)}</td></tr>"
-        f"<tr><th>Train</th><td>{escape(order.train.name)}, {order.train.departs} → "
-        f"{order.train.arrives}, 2nd class</td></tr>"
+        f"<tr><th>Train</th><td>{train}, 2nd class</td></tr>"
+        f"{back}"
         f"<tr><th>Passengers</th><td>{order.passengers}<ul>{people}</ul></td></tr>"
         f"<tr><th>Contact</th><td>{escape(order.email)}</td></tr></table>"
         f'<p class="total">Total: {_money(order.total_minor)}</p>'
@@ -230,6 +279,7 @@ def confirmation_number(order: Order) -> str:
         [order.origin, order.destination, order.date, str(order.passengers), order.email]
         + [order.train.code if order.train else ""]
         + [f"{first} {last}" for first, last in order.names]
+        + ([f"return {order.return_date}"] if order.return_date else [])
     )
     return "DR-" + hashlib.sha256(seed.encode()).hexdigest()[:8].upper()
 
@@ -244,7 +294,7 @@ def render_confirmation(order: Order) -> str | None:
         4,
         f"<p>Payment of {_money(order.total_minor)} received.</p>"
         f'<p class="total">Booking number: {confirmation_number(order)}</p>'
-        f"<p>{escape(order.train.name)} on {escape(order.date)} for {order.passengers} "
+        f"<p>{escape(order.train.name)} on {escape(_dates(order))} for {order.passengers} "
         "passenger(s). Tickets were sent to the contact email.</p>",
     )
 

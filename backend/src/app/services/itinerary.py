@@ -4,7 +4,7 @@
 attractions the group voted for (`select_for_plan`), the transport of the chosen package
 (arrival on day one, departure on the last day) and the hotel's location when the stay
 supplier knows it, and schedules everything with the deterministic rules of
-`app.core.domain.itinerary`. No LLM.
+`app.core.domain.day_plan`. No LLM.
 
 A planned visit to a BOOKABLE attraction becomes a ticket purchase: a PENDING `Booking` for the
 planned day and entry slot, bought by its supplier's channel (the agent on the demo ticket shop)
@@ -34,8 +34,7 @@ from app.core.domain.attractions import (
     ticket_goal,
 )
 from app.core.domain.bookings import format_money
-from app.core.domain.errors import TripError
-from app.core.domain.itinerary import (
+from app.core.domain.day_plan import (
     ItemKind,
     PlanDay,
     PlannedAttraction,
@@ -45,6 +44,7 @@ from app.core.domain.itinerary import (
     build_plan,
     capacity,
 )
+from app.core.domain.errors import TripError
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import SupplierCapabilities, as_utc, purchase_sizes
 from app.core.domain.trips import (

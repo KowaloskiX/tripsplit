@@ -34,6 +34,7 @@ from app.core.domain.bookings import (
     run_id_for,
 )
 from app.core.domain.errors import BookingError
+from app.core.domain.packages import expected_total_clause
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import mode_noun, price_is_guaranteed, purchase_noun
 from app.core.domain.travellers import describe_missing, split_name
@@ -55,6 +56,7 @@ from app.db.documents import utc_now
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.bookings import AgentRun, Booking
 from app.models.trips import Trip, TripMember
+from app.models.trust import stored_images, stored_links, stored_provenance
 from app.payments.fake import FakePayments
 from app.payments.ports import PaymentProvider
 from app.repositories.auth import UserRepository
@@ -68,6 +70,7 @@ from app.repositories.trips import (
 from app.services.resplit import MemberShare, resplit_shares
 from app.services.supplier_prices import Clock, SupplierPrices, offer_of, passengers_of
 from app.services.travellers import TravellerService
+from app.suppliers.call_log import CALL_LOG, CallLog, SupplierCall, recorded_for_trip
 from app.suppliers.ports import BookingRef, DisruptionKind, DisruptionNotice, Offer, OfferRef
 from app.suppliers.registry import SupplierRegistry
 
@@ -190,6 +193,15 @@ class RunView:
 class Frame:
     content: bytes
     media_type: str
+
+
+@dataclass(frozen=True, slots=True)
+class SupplierActivity:
+    call: SupplierCall
+    supplier: str  # display name
+
+
+DEFAULT_ACTIVITY_LIMIT = 50
 
 
 @dataclass(frozen=True, slots=True)
@@ -364,8 +376,11 @@ class BookingService:
         payments: PaymentProvider | None = None,
         clock: Clock = utc_now,
         holds: bool = False,
+        call_log: CallLog = CALL_LOG,
     ) -> None:
         self.db = db
+        # The supplier API calls, for the trip's live terminal (`activity`).
+        self.call_log = call_log
         # Refunds overpayments once the trip is booked (see `_settle_refunds`).
         self.payments: PaymentProvider = payments if payments is not None else FakePayments()
         self.launcher = launcher
@@ -466,6 +481,24 @@ class BookingService:
             )
         )
 
+    async def activity(
+        self, trip_id: str, user_id: str, limit: int = DEFAULT_ACTIVITY_LIMIT
+    ) -> Result[list[SupplierActivity], BookingError]:
+        """The trip's recent supplier API calls (members only): no ids, no bodies, no PII."""
+        access = await self._membership(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        return Ok(
+            [
+                SupplierActivity(call=call, supplier=self._supplier_name(call.supplier_id))
+                for call in self.call_log.for_trip(trip_id, limit)
+            ]
+        )
+
+    def _supplier_name(self, supplier_id: str) -> str:
+        adapter = self.suppliers.get(supplier_id)
+        return adapter.display_name if adapter is not None else supplier_id
+
     async def run_status(self, run_id: str, user_id: str) -> Result[RunView, BookingError]:
         found = await self._run_for_member(run_id, user_id)
         if not isinstance(found, Ok):
@@ -492,6 +525,7 @@ class BookingService:
 
     # ---- start ----------------------------------------------------------------------------
 
+    @recorded_for_trip
     async def start(
         self, trip_id: str, booking_id: str, user_id: str
     ) -> Result[BookingWithRun, BookingError]:
@@ -518,6 +552,10 @@ class BookingService:
         members = await self.members.for_trip(identifier_of(trip))
         if await self._details_missing(trip, booking, members):
             return Err(BookingError.TRAVELLER_DETAILS_MISSING)
+        refused = await self.prices.refresh_split(trip, await self._parts_of(booking))
+        if refused is not None:
+            return Err(refused)
+        booking = await self.bookings.get(identifier_of(booking)) or booking
         refused = await self.prices.refresh(trip, booking)
         if refused is not None:
             return Err(refused)
@@ -530,6 +568,7 @@ class BookingService:
             case SupplierChannel.AGENT:
                 return await self._launch(trip, booking, members)
 
+    @recorded_for_trip
     async def start_all(self, trip_id: str, user_id: str) -> Result[Batch, BookingError]:
         """ "Book everything": starts every startable booking of the trip, one after another,
         each exactly like `start` (Rule #1, traveller details, a binding price). A refusal
@@ -552,6 +591,18 @@ class BookingService:
             else:
                 items.append(BatchItem(fresh, None, started.error))
         return Ok(Batch(trip=await self.trips.get(identifier_of(trip)) or trip, items=items))
+
+    async def _parts_of(self, booking: Booking) -> list[Booking]:
+        """Every purchase of the same package item (several when the supplier caps the party),
+        this one included; just this one for a booking without an item index."""
+        if booking.proposal_item_index is None:
+            return [booking]
+        return [
+            part
+            for part in await self.bookings.for_trip(booking.trip_id)
+            if part.proposal_item_index == booking.proposal_item_index
+            and part.status is not BookingStatus.CANCELLED
+        ]
 
     async def _details_missing(
         self, trip: Trip, booking: Booking, members: list[TripMember]
@@ -659,7 +710,7 @@ class BookingService:
         spec = LaunchSpec(
             run_id=run_id,
             url=booking.supplier_url,
-            goal=self._goal_for(booking, party),
+            goal=self._goal_for(booking, party, trip.currency),
             vault=await self._vault_for(trip, booking, members),
             max_steps=self.max_steps,
             headful=self.headful,
@@ -681,10 +732,14 @@ class BookingService:
         task.add_done_callback(_MONITORS.discard)
         task.add_done_callback(lambda _: _WATCHED.discard(run_id))
 
-    def _goal_for(self, booking: Booking, travellers: int) -> str:
+    def _goal_for(self, booking: Booking, travellers: int, currency: str) -> str:
+        expected = expected_total_clause(
+            booking.amount_minor, currency, self.prices.price_tolerance_percent
+        )
         return (
-            f"{booking.goal} Passengers on this purchase: {travellers}. Fill traveller names "
-            "and the contact email from the vault. Stop at the final summary, before paying."
+            f"{booking.goal} Passengers on this purchase: {travellers}. {expected} Fill "
+            "traveller names and the contact email from the vault. Stop at the final summary, "
+            "before paying."
         )
 
     async def _vault_for(
@@ -967,6 +1022,7 @@ class BookingService:
 
     # ---- approval -------------------------------------------------------------------------
 
+    @recorded_for_trip
     async def approve(
         self, trip_id: str, booking_id: str, user_id: str, approved: bool
     ) -> Result[BookingWithRun, BookingError]:
@@ -1010,6 +1066,7 @@ class BookingService:
         )
         return Ok(BookingWithRun(booking=booking, run=run))
 
+    @recorded_for_trip
     async def approve_all(self, trip_id: str, user_id: str) -> Result[Batch, BookingError]:
         """ "Approve the basket": approves every summary awaiting approval in one click —
         each exactly like `approve`, so refused as a whole (`trip_not_ready`) unless the trip
@@ -1166,6 +1223,7 @@ class BookingService:
 
     # ---- disruption -----------------------------------------------------------------------
 
+    @recorded_for_trip
     async def simulate_disruption(
         self,
         trip_id: str,
@@ -1201,6 +1259,7 @@ class BookingService:
         headline = f"{lead.supplier} reports a {delay_minutes} min delay on {lead.title}"
         return Ok(await self._rebook(trip, targets, replacements, headline, f"a later {noun}"))
 
+    @recorded_for_trip
     async def check_disruptions(
         self, trip_id: str, user_id: str
     ) -> Result[list[Disruption], BookingError]:
@@ -1346,7 +1405,8 @@ class BookingService:
             trip_id=target.trip_id,
             kind=target.kind,
             mode=target.mode,
-            title=f"{title} (rebooked)"[:200],
+            # "Rebooked" is shown from `replaces_booking_id` (a badge), not baked into the title.
+            title=title[:200],
             supplier=offer.seller if offer is not None else target.supplier,
             supplier_url=(offer.purchase_url if offer is not None else "") or target.supplier_url,
             goal=f"{target.goal} {note}"[:4000],
@@ -1361,6 +1421,11 @@ class BookingService:
             # The replacement's price was just given (by the supplier's notice and quote, or
             # by the disruption itself) — binding for the supplier's quote TTL.
             quoted_at=self.clock(),
+            links=stored_links(offer.links) if offer is not None else target.links,
+            images=stored_images(offer.images) if offer is not None else target.images,
+            provenance=stored_provenance(offer.provenance or target.provenance)
+            if offer is not None
+            else target.provenance,
         )
 
     @staticmethod

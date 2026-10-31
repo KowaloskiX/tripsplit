@@ -15,7 +15,7 @@ from app.core.domain.attractions import (
     select_for_plan,
     visit_minutes,
 )
-from app.core.domain.itinerary import (
+from app.core.domain.day_plan import (
     ItemKind,
     PlanDay,
     PlannedAttraction,

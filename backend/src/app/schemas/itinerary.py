@@ -9,7 +9,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict
 
 from app.core.domain.attractions import AttractionKind, TicketStatus
-from app.core.domain.itinerary import ItemKind
+from app.core.domain.day_plan import ItemKind
 
 
 class _ReadModel(BaseModel):

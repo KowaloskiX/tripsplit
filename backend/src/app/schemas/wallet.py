@@ -75,6 +75,18 @@ class CheckoutResponse(_ReadModel):
     top_up: WalletTransactionResponse | None
 
 
+class PayAllResponse(_ReadModel):
+    """The organizer pays for everyone. `payments` lists the shares paid now (the organizer's wallet
+    covered the total); otherwise `top_up` (the whole shortfall) is pending and every share is
+    paid as soon as the bank confirms it. `all_paid` = the trip moved on to booking."""
+
+    total_minor: int
+    shares: int
+    payments: list[PaymentResponse]
+    top_up: WalletTransactionResponse | None
+    all_paid: bool
+
+
 class InsufficientFundsResponse(ErrorResponse):
     # Present with code `insufficient_funds`: how much the wallet is short.
     shortfall_minor: int | None = None

@@ -3,9 +3,8 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { CountUp } from "@/components/ui/number-roll";
 import type { ShareChangeResponse } from "@/lib/api";
+import { formatDelta, formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
-
-import { formatDelta, formatMoney } from "./money";
 
 type DisruptionAlertProps = {
   replacements: number;

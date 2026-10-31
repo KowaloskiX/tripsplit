@@ -110,6 +110,14 @@ class TopUpAndPay:
 
 
 @dataclass(frozen=True, slots=True)
+class PayAllShares:
+    """The organizer pays every outstanding share ("I'll pay for everyone"): the wallet is
+    topped up by the total shortfall (dummy BLIK) and each share is paid from it."""
+
+    blik_code: str = "123456"
+
+
+@dataclass(frozen=True, slots=True)
 class StartBookings:
     """Starts every PENDING / FAILED booking of the target and waits for the agents to settle.
     `top_up_on_price_change`: a `price_changed` answer (a live supplier re-priced) is met the
@@ -325,6 +333,7 @@ type Action = (
     | Pay
     | TopUp
     | TopUpAndPay
+    | PayAllShares
     | StartBookings
     | AgentOutcome
     | Approve
@@ -402,6 +411,11 @@ class Scenario:
     # HOLDS for the scenario's trip flow: off by default like the app; scenarios about holds
     # turn them on explicitly.
     holds: bool = False
+    # AUTO_BOOK: the last payment starts every purchase (the organizer still approves).
+    auto_book: bool = False
+    # The organizer creates the trip from this one sentence (`POST /trips/quick`) instead of
+    # the form; `brief` then only anchors "today" (20 days before its first day).
+    quick_text: str | None = None
 
     @property
     def members(self) -> tuple[str, ...]:

@@ -6,7 +6,8 @@ only then does the runner ask the planner. Confidence is structural, never a gue
 
   - consent wall           -> click the single accept control
   - "sold out"/"too many"  -> handoff with the supplier's reason
-  - search form            -> type the goal date, select the party size, click the one CTA
+  - search form            -> type the goal date (and return date), select the party size,
+                              click the one CTA
   - offer list             -> click the offer the goal names (or the earliest, per profile)
   - passenger form         -> fill every field whose label maps to a vault key, click the CTA
   - review/summary         -> verify names, count, date and total against the goal; `done`
@@ -42,6 +43,7 @@ class FieldKind(StrEnum):
     DOCUMENT_NUMBER = "document_number"
     DOCUMENT_EXPIRY = "document_expiry"
     TRAVEL_DATE = "travel_date"
+    RETURN_DATE = "return_date"
     PARTY_SIZE = "party_size"
     OPTIONAL_EXTRA = "optional_extra"
 
@@ -57,6 +59,7 @@ _FIELD_PATTERNS: tuple[tuple[FieldKind, str], ...] = (
     (FieldKind.NATIONALITY, r"nationality|obywatel"),
     (FieldKind.FIRST_NAME, r"first\s*name|given\s*name|forename|imi[eę]|_first\b|\bfirst\b|fname"),
     (FieldKind.LAST_NAME, r"last\s*name|family\s*name|surname|nazwisk|_last\b|\blast\b|lname"),
+    (FieldKind.RETURN_DATE, r"\breturn\b|powr[óo]t"),
     (FieldKind.PARTY_SIZE, r"passengers|pasażer|pasazer|travell?ers|persons|osób|osoby|liczba"),
     (FieldKind.TRAVEL_DATE, r"\bdate\b|\bdata\b|yyyy|rrrr|departure day|dzień"),
 )
@@ -85,6 +88,13 @@ class FieldRole:
     index: int | None = None
 
 
+def _money(amount_minor: int) -> str:
+    """`113400` -> `"1 134.00"` — the app's money style (`core.domain.bookings.format_money`)."""
+    whole, grosze = divmod(abs(amount_minor), 100)
+    sign = "-" if amount_minor < 0 else ""
+    return f"{sign}{whole:,}".replace(",", " ") + f".{grosze:02d}"
+
+
 @dataclass(frozen=True, slots=True)
 class SummaryCheck:
     ok: bool
@@ -99,9 +109,10 @@ class SummaryCheck:
         return minor / 100 if minor is not None else None
 
     def reason(self, goal: GoalSpec) -> str:
+        minor = self.record.total_minor
         total = (
-            f"{self.total:.2f} {self.record.currency or ''}".strip()
-            if self.total is not None
+            f"{_money(minor)} {self.record.currency or ''}".strip()
+            if minor is not None
             else "unknown"
         )
         if self.ok:
@@ -139,7 +150,8 @@ def classify_field(el: Element) -> FieldRole | None:
         return None
     hay = _haystack(el)
     if el.get("type") == "date" and "birth" not in hay and "urodz" not in hay:
-        return FieldRole(FieldKind.TRAVEL_DATE)
+        is_return = re.search(r"\breturn\b|powr[óo]t", hay, re.I)
+        return FieldRole(FieldKind.RETURN_DATE if is_return else FieldKind.TRAVEL_DATE)
     for kind, pattern in _FIELD_PATTERNS:
         if re.search(pattern, hay, re.I):
             if role == "checkbox" and kind is not FieldKind.OPTIONAL_EXTRA:
@@ -320,6 +332,13 @@ def verify_summary(
         problems.append(f"passenger count {record.passenger_count} != {goal.passengers}")
     if goal.date and record.date != goal.date:
         problems.append(f"date {record.date or 'missing'} != {goal.date}")
+    if goal.return_date and record.return_date != goal.return_date:
+        problems.append(
+            f"return leg missing: return date {record.return_date or 'missing'} "
+            f"!= {goal.return_date}"
+        )
+    elif not goal.return_date and record.return_date:
+        problems.append(f"unexpected return leg on {record.return_date}")
     if goal.train:
         code = _compact(" ".join(goal.train.split()[:2]))
         shown_service = _compact(record.service or "") if record.service else _compact(page)
@@ -337,7 +356,8 @@ def verify_summary(
             price_mismatch = True
             delta = (total - goal.budget) / goal.budget * 100 if goal.budget else 0.0
             problems.append(
-                f"price changed: supplier total {total:.2f} vs budget {goal.budget:.2f} "
+                f"price changed: supplier total {_money(round(total * 100))} vs expected "
+                f"{_money(round(goal.budget * 100))} "
                 f"({delta:+.1f}%, tolerance {goal.tolerance_percent:g}%)"
             )
     return SummaryCheck(not problems, tuple(problems), record, price_mismatch, tuple(notes))
@@ -482,6 +502,9 @@ class RuleEngine:
             return ""
         if kind is FieldKind.TRAVEL_DATE:
             return self.goal.date if self.goal.date else ("" if el.get("value") else None)
+        if kind is FieldKind.RETURN_DATE:
+            # A one-way goal leaves it empty; a prefilled return on a one-way goal needs judgement.
+            return self.goal.return_date or (None if el.get("value") else "")
         if kind is FieldKind.PARTY_SIZE:
             return str(self.goal.passengers)
         if kind in (FieldKind.EMAIL, FieldKind.PHONE):

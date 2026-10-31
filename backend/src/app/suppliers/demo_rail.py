@@ -2,18 +2,22 @@
 
 The live agent drives it in demos and in `trip-harness --live-agent`, so a real carrier is never
 touched. It sells the three trains its pages list, one purchase carries at most five passengers
-(like PKP Intercity), the price is the listed fare per person and nothing can be held.
+(like PKP Intercity), the price is the listed fare per person and leg and nothing can be held.
+A return journey is one order on the site (both legs on one summary), so an offer's
+`purchase_url` opens the search with the dates already filled in.
 """
 
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trust import Provenance, ProvenanceSource
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -63,6 +67,25 @@ def _at(day: date, clock: str, *, overnight_from: str | None = None) -> datetime
     return moment
 
 
+def purchase_url(
+    site_url: str,
+    *,
+    origin: str,
+    destination: str,
+    depart: date,
+    back: date | None,
+    fare_minor: int | None = None,
+) -> str:
+    """The site's search page for this journey: a return is bought as ONE order. `fare_minor`
+    (per person, whole journey) makes the site charge that instead of its list price."""
+    params = {"from": origin, "to": destination, "date": depart.isoformat()}
+    if back is not None:
+        params["return"] = back.isoformat()
+    if fare_minor is not None:
+        params["fare"] = str(fare_minor)
+    return f"{site_url}?{urlencode(params)}"
+
+
 class DemoRailSupplier:
     id = SUPPLIER_ID
     display_name = "Demo rail (local fake site)"
@@ -96,15 +119,24 @@ class DemoRailSupplier:
                 Offer(
                     supplier_id=self.id,
                     offer_ref=f"{self.id}:{train.code}:{len(days)}",
-                    title=f"{train.name} {request.origin} -> {request.destination} ({trip})",
+                    title=f"{train.name} · {request.origin} → {request.destination} · {trip}",
                     price_minor=per_person * request.party_size,
                     currency="PLN",
                     seller="Demo rail",
                     segments=segments,
-                    purchase_url=self.site_url,
+                    purchase_url=purchase_url(
+                        self.site_url,
+                        origin=request.origin,
+                        destination=request.destination,
+                        depart=request.depart_date,
+                        back=request.return_date,
+                    ),
                     details=" ".join(segment.describe() + "." for segment in segments),
                     starts_at=segments[0].departs_at,
                     supplier_data={"price_per_person_minor": per_person, "train": train.code},
+                    provenance=Provenance(
+                        ProvenanceSource.EXAMPLE, "Demo rail", datetime.now(LOCAL)
+                    ),
                 )
             )
         return offers

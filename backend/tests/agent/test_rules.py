@@ -1,6 +1,7 @@
 """The rule layer on canned observations: confident where the page is unambiguous, silent
 (None -> planner) where it is not, and never pressing pay."""
 
+import re
 from typing import Any
 
 import pytest
@@ -10,6 +11,7 @@ from app.agent.rules import FieldKind, RuleEngine, classify_field, detect_stage
 from app.agent.site_profiles import DEMORAIL, GENERIC, Stage, profile_for
 from app.agent.summary import extract_summary
 from app.agent.vault import Vault
+from app.services.demo_supplier import parse_order, render_summary
 from tests.agent.pages import (
     button,
     el,
@@ -208,3 +210,103 @@ def test_summary_extraction_reads_a_typed_record_and_masks_names() -> None:
     assert (record.total_minor, record.currency, record.passenger_count) == (65700, "PLN", 3)
     assert (record.date, record.service) == ("2026-12-04", "EC 113")
     assert record.masked()["passengers"] == ["A*** N***", "B*** W***", "C*** L***"]
+
+
+# ---- a return journey bought one way (QA finding 1) ---------------------------------------
+
+_ROW_HTML = re.compile(r"<tr><th>(.*?)</th><td>(.*?)</td></tr>", re.S)
+
+
+def _site_summary(order: dict[str, str]) -> dict[str, Any]:
+    """The REAL demo-site summary page as `observe` would read it (rows + text)."""
+    html = render_summary(parse_order(order))
+    assert html is not None
+
+    def plain(fragment: str) -> str:
+        return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", fragment)).strip()
+
+    rows = [
+        {
+            "label": plain(label),
+            "value": plain(value),
+            "items": [plain(li) for li in re.findall(r"<li>(.*?)</li>", value)],
+        }
+        for label, value in _ROW_HTML.findall(html)
+    ]
+    body = html.split("<main>")[1]
+    return state([button(1, "Pay now")], plain(body), rows=rows, headings=["Review your booking"])
+
+
+_ORDER = {
+    "from": "Warszawa",
+    "to": "Praha",
+    "date": "2026-11-30",
+    "passengers": "3",
+    "train": "EC-111",
+    "email": "org@example.test",
+    **{f"p{i}_first": first for i, (first, _) in enumerate(NAMES, start=1)},
+    **{f"p{i}_last": last for i, (_, last) in enumerate(NAMES, start=1)},
+}
+_RETURN_GOAL = (
+    "Find and book EC 111 Praha · Warszawa → Praha · return for 3 passengers: outbound EC 111 "
+    "Praha Warszawa → Praha 2026-11-30 06:20-14:05; return EC 111 Praha Praha → Warszawa "
+    "2026-12-03 06:20-14:05. Return date: 2026-12-03 — buy the outbound and the return leg "
+    "together in one order. Stop at the summary before paying. Passengers on this purchase: 3. "
+    "Expected total: 1 134.00 PLN for this purchase (tolerance 1%); a different supplier total "
+    "is a handoff, not a purchase."
+)
+
+
+def test_the_goal_states_the_expected_total_and_the_return_date() -> None:
+    goal = parse_goal(_RETURN_GOAL, _vault())
+    assert (goal.date, goal.return_date, goal.budget, goal.currency) == (
+        "2026-11-30",
+        "2026-12-03",
+        1134.0,
+        "PLN",
+    )
+    assert goal.tolerance_percent == 1.0
+    assert goal.variables()["return_date"] == "2026-12-03"
+
+
+def test_a_one_way_summary_for_a_return_goal_is_a_handoff_never_done() -> None:
+    """Regression: 567.00 PLN one way passed as "summary verified" for a 1 134.00 PLN return."""
+    decision = _engine(parse_goal(_RETURN_GOAL, _vault())).decide(_site_summary(_ORDER))
+    assert decision is not None
+    (action,) = decision.actions
+    assert action["action"] == "handoff"
+    assert "return leg missing" in action["reason"]
+    assert "supplier total 567.00 vs expected 1 134.00" in action["reason"]
+
+
+def test_the_return_order_on_the_demo_site_is_verified() -> None:
+    page = _site_summary({**_ORDER, "return": "2026-12-03"})
+    decision = _engine(parse_goal(_RETURN_GOAL, _vault())).decide(page)
+    assert decision is not None
+    (action,) = decision.actions
+    assert action["action"] == "done", action["reason"]
+    assert "total 1 134.00 PLN" in action["reason"]
+
+
+def test_a_return_order_for_a_one_way_goal_is_a_handoff() -> None:
+    goal = GoalSpec(passengers=3, date="2026-11-30", train="EC 111 Praha")
+    decision = _engine(goal).decide(_site_summary({**_ORDER, "return": "2026-12-03"}))
+    assert decision is not None
+    assert decision.actions[0]["action"] == "handoff"
+    assert "unexpected return leg" in decision.actions[0]["reason"]
+
+
+def test_the_search_form_fills_the_return_date_of_a_return_goal() -> None:
+    page = search_page()
+    page["elements"].insert(
+        3, textbox(9, "return", "Return date (YYYY-MM-DD, optional)", placeholder="YYYY-MM-DD")
+    )
+    decision = _engine(parse_goal(_RETURN_GOAL, _vault())).decide(page)
+    assert decision is not None
+    assert decision.actions[0]["fields"] == [
+        {"ref": 3, "text": "2026-11-30"},
+        {"ref": 9, "text": "2026-12-03"},
+    ]
+    one_way = _engine().decide(page)
+    assert one_way is not None
+    assert one_way.actions[0]["fields"] == [{"ref": 3, "text": "2026-12-04"}]

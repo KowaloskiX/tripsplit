@@ -421,8 +421,22 @@
             "title": "Id",
             "type": "string"
           },
+          "images": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Images",
+            "type": "array"
+          },
           "kind": {
             "$ref": "#/components/schemas/BookingKind"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkResponse"
+            },
+            "title": "Links",
+            "type": "array"
           },
           "mode": {
             "anyOf": [
@@ -440,6 +454,16 @@
             },
             "title": "Passenger User Ids",
             "type": "array"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProvenanceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "replaces_booking_id": {
             "anyOf": [
@@ -1602,6 +1626,39 @@
         "type": "object"
       },
       "JsonValue": {},
+      "LinkKind": {
+        "enum": [
+          "book",
+          "verify",
+          "map",
+          "status"
+        ],
+        "title": "LinkKind",
+        "type": "string"
+      },
+      "LinkResponse": {
+        "description": "One click to check an offer: `book` at the supplier, `verify` on an independent site,\n`map`, or live `status` by flight / train number.",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/LinkKind"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "url",
+          "kind"
+        ],
+        "title": "LinkResponse",
+        "type": "object"
+      },
       "LiveStatusResponse": {
         "description": "What the runner reports in `status.json` right now.",
         "properties": {
@@ -1790,6 +1847,49 @@
           "role"
         ],
         "title": "OrganizationSummary",
+        "type": "object"
+      },
+      "PayAllResponse": {
+        "description": "The organizer pays for everyone. `payments` lists the shares paid now (the organizer's wallet\ncovered the total); otherwise `top_up` (the whole shortfall) is pending and every share is\npaid as soon as the bank confirms it. `all_paid` = the trip moved on to booking.",
+        "properties": {
+          "all_paid": {
+            "title": "All Paid",
+            "type": "boolean"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            },
+            "title": "Payments",
+            "type": "array"
+          },
+          "shares": {
+            "title": "Shares",
+            "type": "integer"
+          },
+          "top_up": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WalletTransactionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_minor",
+          "shares",
+          "payments",
+          "top_up",
+          "all_paid"
+        ],
+        "title": "PayAllResponse",
         "type": "object"
       },
       "PaymentMethod": {
@@ -2000,8 +2100,22 @@
             "title": "Details",
             "type": "string"
           },
+          "images": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Images",
+            "type": "array"
+          },
           "kind": {
             "$ref": "#/components/schemas/BookingKind"
+          },
+          "links": {
+            "items": {
+              "$ref": "#/components/schemas/LinkResponse"
+            },
+            "title": "Links",
+            "type": "array"
           },
           "mode": {
             "anyOf": [
@@ -2016,6 +2130,16 @@
           "price_minor": {
             "title": "Price Minor",
             "type": "integer"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProvenanceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "segments": {
             "items": {
@@ -2122,6 +2246,334 @@
           "chosen"
         ],
         "title": "ProposalResponse",
+        "type": "object"
+      },
+      "ProvenanceResponse": {
+        "description": "Where the data came from: `live` (the supplier's real data), `test` / `sandbox` (a\nsupplier's test API) or `example` (a simulator — illustrative, not bookable for real).",
+        "properties": {
+          "checked_at": {
+            "format": "date-time",
+            "title": "Checked At",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ProvenanceSource"
+          },
+          "supplier": {
+            "title": "Supplier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "supplier",
+          "checked_at"
+        ],
+        "title": "ProvenanceResponse",
+        "type": "object"
+      },
+      "ProvenanceSource": {
+        "enum": [
+          "live",
+          "test",
+          "sandbox",
+          "example"
+        ],
+        "title": "ProvenanceSource",
+        "type": "string"
+      },
+      "QuickDraftResponse": {
+        "description": "What the brief says so far; null = not understood (yet).",
+        "properties": {
+          "budget_per_person_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Per Person Minor"
+          },
+          "budget_total_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Total Minor"
+          },
+          "date_from": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date From"
+          },
+          "date_to": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date To"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination"
+          },
+          "group_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Size"
+          },
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/QuickFieldName"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "transport_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "title",
+          "origin",
+          "destination",
+          "date_from",
+          "date_to",
+          "group_size",
+          "budget_per_person_minor",
+          "budget_total_minor",
+          "transport_mode",
+          "missing"
+        ],
+        "title": "QuickDraftResponse",
+        "type": "object"
+      },
+      "QuickFieldName": {
+        "enum": [
+          "destination",
+          "dates",
+          "group_size"
+        ],
+        "type": "string"
+      },
+      "QuickOptionResponse": {
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "value"
+        ],
+        "title": "QuickOptionResponse",
+        "type": "object"
+      },
+      "QuickQuestionResponse": {
+        "properties": {
+          "field": {
+            "$ref": "#/components/schemas/QuickFieldName"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/QuickOptionResponse"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "question",
+          "options"
+        ],
+        "title": "QuickQuestionResponse",
+        "type": "object"
+      },
+      "QuickTripRequest": {
+        "additionalProperties": false,
+        "description": "A one-line brief (\"weekend w Pradze dla 6, 20-22.11, do 700 zł/os, pociągiem\"). The\noptional fields answer earlier `questions` (send the chip's `value` in the field named by\nthe question) and win over what the text says.",
+        "properties": {
+          "budget_per_person_minor": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Per Person Minor"
+          },
+          "dates": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dates"
+          },
+          "destination": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Destination"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "maxLength": 60,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name"
+          },
+          "group_size": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Size"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Origin"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "transport_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "QuickTripRequest",
+        "type": "object"
+      },
+      "QuickTripResponse": {
+        "properties": {
+          "draft": {
+            "$ref": "#/components/schemas/QuickDraftResponse"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuickQuestionResponse"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "trip": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TripStatusResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "trip",
+          "draft",
+          "questions"
+        ],
+        "title": "QuickTripResponse",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -2487,6 +2939,58 @@
           "status"
         ],
         "title": "ShareChangeResponse",
+        "type": "object"
+      },
+      "SupplierCallResponse": {
+        "description": "One API call a supplier adapter made for this trip — for the live terminal. The path\nhas every identifier replaced by `{id}` and no query string; nothing else is kept.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "ms": {
+            "title": "Ms",
+            "type": "integer"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Status"
+          },
+          "supplier": {
+            "title": "Supplier",
+            "type": "string"
+          },
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "supplier_id",
+          "supplier",
+          "method",
+          "path",
+          "status",
+          "ms",
+          "at"
+        ],
+        "title": "SupplierCallResponse",
         "type": "object"
       },
       "SupplierChannel": {
@@ -3813,6 +4317,48 @@
         ]
       }
     },
+    "/api/trips/quick": {
+      "post": {
+        "description": "A trip from one sentence. Complete -> the trip is created (caller = organizer) and the\npackage research starts (`trip` set, `questions` empty). Otherwise `trip` is null and\n`questions` say what to ask; send the text again with the answers.",
+        "operationId": "trips-quick-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuickTripRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuickTripResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Quick Create Trip",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
     "/api/trips/{trip_id}": {
       "get": {
         "description": "The whole room in one response — the UI polls this one endpoint.",
@@ -4069,6 +4615,75 @@
           }
         },
         "summary": "List Bookings",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/bookings/activity": {
+      "get": {
+        "description": "The trip's recent supplier API calls (Duffel, LiteAPI), oldest first: method, path\nwithout ids, status, duration. Members only; poll it for the mission-control terminal.",
+        "operationId": "bookings-activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SupplierCallResponse"
+                  },
+                  "title": "Response Bookings-Activity",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Bookings Activity",
         "tags": [
           "bookings"
         ]
@@ -4619,6 +5234,89 @@
           }
         },
         "summary": "Pay My Share",
+        "tags": [
+          "contributions"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/contributions/pay-all-shares": {
+      "post": {
+        "description": "The organizer pays for everyone (organizer only): tops the organizer's wallet up by the total\nshortfall (BLIK / card) and pays every outstanding share from it; each is recorded as paid\nby the organizer. Pays right away when the wallet already covers the total.",
+        "operationId": "contributions-pay-all-shares",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopUpAndPayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayAllResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientFundsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Pay All Shares",
         "tags": [
           "contributions"
         ]

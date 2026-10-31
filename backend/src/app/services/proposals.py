@@ -7,6 +7,7 @@ started it returns immediately while the agent works.
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
+from typing import Protocol
 
 from beanie import PydanticObjectId
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -34,6 +35,7 @@ from app.core.domain.trips import (
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.trips import Contribution, Proposal, ProposalItem, TransportSegment, Trip
+from app.models.trust import stored_images, stored_links, stored_provenance
 from app.repositories.bookings import BookingRepository
 from app.repositories.trips import (
     ContributionRepository,
@@ -47,6 +49,7 @@ from app.services.booking_plans import bookings_for_item
 from app.services.supplier_prices import SupplierPrices
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
 from app.services.trip_views import TripStatusView
+from app.suppliers.call_log import current_trip, recorded_for_trip
 from app.suppliers.registry import SupplierRegistry
 
 logger = logging.getLogger(__name__)
@@ -59,6 +62,12 @@ class _StatusChanged(Exception):
     """Raised inside a transaction to abort it when another request moved the trip first."""
 
 
+class PlanVerifier(Protocol):
+    """Checks the packages' links before they are stored (drops gone ones, adds photos)."""
+
+    async def verify(self, plans: list[PackagePlan]) -> list[PackagePlan]: ...
+
+
 class ProposalService:
     def __init__(
         self,
@@ -69,8 +78,11 @@ class ProposalService:
         suppliers: SupplierRegistry | None = None,
         prices: SupplierPrices | None = None,
         progress_events: bool = False,
+        verifier: PlanVerifier | None = None,
     ) -> None:
         self.db = db
+        # Link liveness + og:image photos at research time (None = links stored as found).
+        self.verifier = verifier
         # A feed message per finished supplier search while researching.
         self.progress_events = progress_events
         # The supplier plugins: their capabilities split each item into purchases.
@@ -139,6 +151,7 @@ class ProposalService:
         and the trip returns to the status it had before."""
         if self.progress_events:
             research_progress.set(self._progress_sink(trip_id))
+        current_trip.set(to_text(trip_id))  # this background task researches one trip
         try:
             plans = await self.researcher.research(brief)
             if not plans:
@@ -157,7 +170,17 @@ class ProposalService:
                 "I could not put packages together this time. Try again in a moment.",
             )
             return
-        await self._store(trip_id, brief, plans)
+        await self._store(trip_id, brief, await self._verified(plans))
+
+    async def _verified(self, plans: list[PackagePlan]) -> list[PackagePlan]:
+        if self.verifier is None:
+            return plans
+        try:
+            return await self.verifier.verify(plans)
+        except Exception:
+            # A nicety: unverified links are still better than no packages.
+            logger.warning("link check failed; storing the links as found", exc_info=True)
+            return plans
 
     def _progress_sink(
         self, trip_id: PydanticObjectId
@@ -244,6 +267,7 @@ class ProposalService:
         )
         return Ok(TripStatusView(trip_id=trip_id, status=trip.status))
 
+    @recorded_for_trip
     async def close_voting(self, trip_id: str, user_id: str) -> Result[TripStatusView, TripError]:
         """Picks the winner, splits it into one share per CURRENT member and queues the bookings
         of every package item (several where the supplier caps one purchase — see
@@ -389,6 +413,9 @@ def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, brief: TripBrief) ->
                 ],
                 refundable=item.refundable,
                 supplier_data=dict(item.supplier_data),
+                links=stored_links(item.links),
+                images=stored_images(item.images),
+                provenance=stored_provenance(item.provenance),
             )
             for item in plan.items
         ],

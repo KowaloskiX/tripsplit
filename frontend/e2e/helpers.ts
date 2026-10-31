@@ -101,7 +101,8 @@ export async function payMyShare(page: Page): Promise<void> {
 export async function fillMyTravellerDetails(page: Page, fullName: string): Promise<void> {
   const form = page.getByRole("form", { name: "Your traveller details" });
   if (!(await form.isVisible())) {
-    await page.getByText("your details").click();
+    // Collapsed before paying: "Add your travel details" (or "your travel details" once saved).
+    await page.getByText(/your travel details$/i).click();
   }
   await form.getByLabel("Name on the document").fill(fullName);
   await form.getByLabel("Date of birth").fill("1994-05-17");

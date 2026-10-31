@@ -2,7 +2,7 @@
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Path, Response
+from fastapi import APIRouter, Path, Query, Response
 from starlette import status
 
 from app.core.domain.bookings import RUN_ID_PATTERN
@@ -26,8 +26,10 @@ from app.schemas.bookings import (
     RunStatusResponse,
     RunStepResponse,
     ShareChangeResponse,
+    SupplierCallResponse,
     TripBookingsResponse,
 )
+from app.schemas.trips import LinkResponse, ProvenanceResponse
 from app.services.bookings import AgentRunRecord, Batch, BookingWithRun, Disruption
 
 router = APIRouter(tags=["bookings"])
@@ -77,6 +79,11 @@ def booking_response(item: BookingWithRun) -> BookingResponse:
         else None,
         passenger_user_ids=[to_text(user_id) for user_id in booking.passenger_user_ids],
         run=run_response(item.run) if item.run is not None else None,
+        links=[LinkResponse.model_validate(link, from_attributes=True) for link in booking.links],
+        images=list(booking.images),
+        provenance=ProvenanceResponse.model_validate(booking.provenance, from_attributes=True)
+        if booking.provenance is not None
+        else None,
     )
 
 
@@ -122,6 +129,36 @@ async def list_bookings(
         is_organizer=result.value.is_organizer,
         bookings=[booking_response(item) for item in result.value.items],
     )
+
+
+@router.get(
+    "/trips/{trip_id}/bookings/activity",
+    operation_id="bookings-activity",
+    responses=_NOT_FOUND,
+)
+async def bookings_activity(
+    trip_id: str,
+    user: CurrentUser,
+    service: BookingServiceDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[SupplierCallResponse]:
+    """The trip's recent supplier API calls (Duffel, LiteAPI), oldest first: method, path
+    without ids, status, duration. Members only; poll it for the mission-control terminal."""
+    result = await service.activity(trip_id, user.id, limit)
+    if not isinstance(result, Ok):
+        raise booking_failure(result.error)
+    return [
+        SupplierCallResponse(
+            supplier_id=item.call.supplier_id,
+            supplier=item.supplier,
+            method=item.call.method,
+            path=item.call.path,
+            status=item.call.status,
+            ms=item.call.ms,
+            at=item.call.at,
+        )
+        for item in result.value
+    ]
 
 
 def batch_response(batch: Batch) -> BatchResponse:

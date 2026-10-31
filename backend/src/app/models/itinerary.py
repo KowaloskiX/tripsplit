@@ -15,7 +15,7 @@ from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, Field
 
 from app.core.domain.attractions import AttractionKind
-from app.core.domain.itinerary import ItemKind
+from app.core.domain.day_plan import ItemKind
 from app.db.documents import TimestampMixin
 
 TITLE_MAX_LENGTH = 200

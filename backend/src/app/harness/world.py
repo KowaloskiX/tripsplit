@@ -21,6 +21,7 @@ from pydantic import SecretStr
 
 from app.agent.launcher import AgentLauncher, SubprocessLauncher
 from app.ai.catalog_research import CatalogResearcher
+from app.ai.quick_brief import QuickAnswers
 from app.core.background import BackgroundRunner
 from app.core.config import Settings
 from app.core.domain.result import Ok
@@ -28,19 +29,21 @@ from app.core.domain.travellers import Gender
 from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.harness.adapters import HarnessClock, RoutingLauncher, ScriptablePrices, ScriptedLauncher
-from app.harness.scenario import Scenario, SupplierSpec
+from app.harness.scenario import Brief, Scenario, SupplierSpec
 from app.payments.wallet import WalletPayments
 from app.services.attractions import AttractionService
 from app.services.auth import AuthService
+from app.services.auto_book import AutoBooker
 from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
 from app.services.itinerary import ItineraryService
 from app.services.proposals import ProposalService
+from app.services.quick_trips import QuickTripService
 from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerDetailsUpdate, TravellerService
 from app.services.trips import NewTrip, TripService
 from app.services.wallet import WalletService
-from app.services.wallet_checkout import WalletCheckoutService
+from app.services.wallet_checkout import PayAllService, WalletCheckoutService
 from app.suppliers.demo_rail import DemoRailSupplier
 from app.suppliers.duffel import SUPPLIER_ID as DUFFEL
 from app.suppliers.duffel import DuffelConfig, DuffelLog, DuffelSupplier
@@ -121,6 +124,7 @@ class World:
     checkout: WalletCheckoutService
     attractions: AttractionService
     itinerary: ItineraryService
+    pay_all: PayAllService
     live_search_log: LiveSearchLog | None = None
     liteapi_log: LiteApiLog | None = None
     duffel_log: DuffelLog | None = None
@@ -203,7 +207,22 @@ class World:
         runner = BackgroundRunner()
         wallet = WalletService(db, None, confirm_delay_s=0)
         payments = WalletPayments(wallet)
-        contributions = ContributionService(payments)
+        bookings = BookingService(
+            db,
+            launcher,
+            runs_dir,
+            max_steps=options.max_steps,
+            poll_s=options.poll_s,
+            payments=payments,
+            suppliers=suppliers,
+            clock=clock.now,
+            price_tolerance_percent=scenario.price_tolerance_percent,
+            holds=scenario.holds,
+        )
+        contributions = ContributionService(
+            payments,
+            on_fully_paid=AutoBooker(bookings, runner) if scenario.auto_book else None,
+        )
         researcher = CatalogResearcher(suppliers)
         return cls(
             db=db,
@@ -229,18 +248,7 @@ class World:
                 ),
             ),
             contributions=contributions,
-            bookings=BookingService(
-                db,
-                launcher,
-                runs_dir,
-                max_steps=options.max_steps,
-                poll_s=options.poll_s,
-                payments=payments,
-                suppliers=suppliers,
-                clock=clock.now,
-                price_tolerance_percent=scenario.price_tolerance_percent,
-                holds=scenario.holds,
-            ),
+            bookings=bookings,
             travellers=TravellerService(),
             scripted=scripted,
             researcher=researcher,
@@ -249,6 +257,7 @@ class World:
             checkout=WalletCheckoutService(contributions, wallet),
             attractions=AttractionService(db, suppliers=suppliers),
             itinerary=ItineraryService(db, suppliers=suppliers),
+            pay_all=PayAllService(contributions, wallet),
             live_search_log=pkp.log if pkp is not None else None,
             liteapi_log=liteapi_log,
             duffel_log=duffel_log,
@@ -290,6 +299,38 @@ class World:
                 raise RuntimeError(f"could not register {name}: {issued.error}")
             self.users[name] = issued.value.user.id
         brief = self.scenario.brief
+        if self.scenario.quick_text is not None:
+            await self._create_quick(self.scenario.quick_text)
+        else:
+            await self._create(brief)
+        trip = await self.trips.trips.get(self.trip_oid)
+        if trip is None:
+            raise LookupError("the trip vanished right after creation")
+        for name in self.scenario.friends:
+            joined = await self.trips.join(trip.invite_code, self.users[name], name)
+            if not isinstance(joined, Ok):
+                raise RuntimeError(f"{name} could not join: {joined.error}")
+        await self.enter_details(
+            [n for n in self.scenario.members if n not in self.scenario.without_traveller_details]
+        )
+
+    async def _create_quick(self, text: str) -> None:
+        """The organizer types one sentence: the trip is created and researched at once (the
+        research is drained here, so the scenario starts in VOTING)."""
+        brief = self.scenario.brief
+        quick = QuickTripService(
+            self.trips, self.proposals, today=lambda: brief.date_from - timedelta(days=20)
+        )
+        created = await quick.create(
+            self.organizer_id, text, QuickAnswers(), display_name=self.scenario.organizer
+        )
+        if not isinstance(created, Ok) or created.value.trip is None:
+            missing = created.value.draft.missing if isinstance(created, Ok) else created.error
+            raise RuntimeError(f"the quick brief did not create a trip: {missing}")
+        self.trip_id = created.value.trip.trip_id
+        await self.runner.drain()
+
+    async def _create(self, brief: Brief) -> None:
         created = await self.trips.create(
             self.organizer_id,
             NewTrip(
@@ -308,16 +349,6 @@ class World:
         if not isinstance(created, Ok):
             raise RuntimeError(f"could not create the trip: {created.error}")
         self.trip_id = created.value.trip_id
-        trip = await self.trips.trips.get(self.trip_oid)
-        if trip is None:
-            raise LookupError("the trip vanished right after creation")
-        for name in self.scenario.friends:
-            joined = await self.trips.join(trip.invite_code, self.users[name], name)
-            if not isinstance(joined, Ok):
-                raise RuntimeError(f"{name} could not join: {joined.error}")
-        await self.enter_details(
-            [n for n in self.scenario.members if n not in self.scenario.without_traveller_details]
-        )
 
     async def enter_details(self, names: list[str]) -> None:
         for name in names:

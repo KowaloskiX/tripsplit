@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { DEMO_RAIL_TOTAL_MS } from "@/features/agent-graph";
 import { usePrefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { VoiceScene } from "./scene-voice";
 import { LandingScene, PackagesScene, SharesScene, VotingScene } from "./scenes-early";
 import {
   GroupPhonesScene,
@@ -52,6 +53,15 @@ export const SCENES: readonly Scene[] = [
     durationMs: 6000,
     wide: true,
     render: () => <QuickPlanScene />,
+  },
+  {
+    key: "voice",
+    title: "Voice",
+    caption:
+      "Say it instead: the mic pulses, words stream into the box, silence submits, the agent answers aloud.",
+    durationMs: 8000,
+    wide: true,
+    render: () => <VoiceScene />,
   },
   {
     key: "trust",
