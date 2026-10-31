@@ -5,15 +5,24 @@ import {
   bookingsListQueryKey,
   bookingsStartMutation,
   demoDisruptionMutation,
+  tripsFeedQueryKey,
+  tripsRoomQueryKey,
 } from "@/lib/api";
 
-/** Every booking write changes the list — refetch it instead of guessing the new state. */
+/**
+ * Every booking write changes the list, and usually the trip status, shares and feed too —
+ * refetch them instead of guessing the new state.
+ */
 function useInvalidateBookings(tripId: string): () => Promise<void> {
   const queryClient = useQueryClient();
-  return () =>
-    queryClient.invalidateQueries({
-      queryKey: bookingsListQueryKey({ path: { trip_id: tripId } }),
-    });
+  const path = { trip_id: tripId };
+  return async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: bookingsListQueryKey({ path }) }),
+      queryClient.invalidateQueries({ queryKey: tripsRoomQueryKey({ path }) }),
+      queryClient.invalidateQueries({ queryKey: tripsFeedQueryKey({ path }) }),
+    ]);
+  };
 }
 
 export function useStartBooking(tripId: string) {
