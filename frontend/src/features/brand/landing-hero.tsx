@@ -38,27 +38,29 @@ export function HeroHeadline({ id, className }: { id?: string; className?: strin
 
 export function LandingHero(): ReactNode {
   return (
-    <section aria-labelledby="hero-heading" className="relative overflow-hidden bg-bg text-ink">
+    <section
+      aria-labelledby="hero-heading"
+      className="relative flex min-h-[100svh] items-center overflow-hidden bg-[#1C1A18] pt-20 text-ink"
+    >
       <BackgroundVideo src="/media/hero-forest.mp4" poster="/media/hero-forest.jpg" />
-      {/* Keeps the headline readable over the footage: solid page colour on the text side. */}
+      {/* A light shade under the text only, so the footage keeps its own colours. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/90 via-bg/75 to-bg lg:bg-gradient-to-r lg:from-bg lg:via-bg/85 lg:to-bg/30"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/55 via-black/30 to-black/10 lg:bg-gradient-to-r lg:from-black/60 lg:via-black/25 lg:to-transparent"
       />
-      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:pt-28 lg:pb-32">
+      <div className="relative mx-auto grid w-full max-w-6xl items-center gap-14 px-4 py-20 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:py-28">
         <div className="max-w-xl">
-          <p
-            className="rise-in inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface-sunken px-3 py-1.5 text-[13px] text-muted"
-            style={at(0)}
-          >
-            <span aria-hidden className="size-1.5 rounded-full bg-sand-600" />
-            Group trips, without the spreadsheet
-          </p>
-          <HeroHeadline id="hero-heading" className="mt-6" />
-          <p className="rise-in mt-6 max-w-md text-lg leading-relaxed text-muted" style={at(120)}>
-            Say where and when. Everyone pays their own share, then the agent books the train and
-            the stay.
-          </p>
+          {/* The night palette makes the text light over the footage. */}
+          <div className="dark text-ink [text-shadow:0_1px_24px_rgb(0_0_0/0.45)]">
+            <HeroHeadline id="hero-heading" />
+            <p
+              className="rise-in mt-6 max-w-md text-lg leading-relaxed text-ink/90"
+              style={at(120)}
+            >
+              Say where and when. Everyone pays their own share, then the agent books the train and
+              the stay.
+            </p>
+          </div>
           <div
             className="rise-in mt-10 flex flex-wrap items-center gap-x-6 gap-y-3"
             style={at(220)}
@@ -66,7 +68,7 @@ export function LandingHero(): ReactNode {
             <StartTripButton />
             <Link
               to="/login"
-              className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-ink underline-offset-4 hover:underline"
+              className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-[#F5F3EC] underline-offset-4 hover:underline"
             >
               I have an account
               <ArrowRight
