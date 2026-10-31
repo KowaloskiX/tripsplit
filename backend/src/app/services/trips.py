@@ -11,12 +11,14 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from app.core.domain.bookings import format_money
 from app.core.domain.errors import TripError
 from app.core.domain.result import Err, Ok, Result
+from app.core.domain.suppliers import TravellerField
 from app.core.domain.trips import (
     BookingStatus,
     ContributionStatus,
     EventActor,
     EventKind,
     MemberRole,
+    TransportMode,
     TripStatus,
     is_fully_paid,
 )
@@ -35,6 +37,7 @@ from app.repositories.trips import (
 )
 from app.services.booking_plans import bookings_for_item
 from app.services.resplit import resplit_shares, status_once_paid
+from app.services.travellers import TravellerService
 from app.services.trip_access import load_access
 from app.services.trip_views import (
     EventView,
@@ -47,6 +50,7 @@ from app.services.trip_views import (
     proposal_view,
     trip_view,
 )
+from app.suppliers.registry import SupplierRegistry
 
 # Joining after a package won would leave the newcomer without a share in the split.
 JOINABLE_STATUSES = frozenset({TripStatus.COLLECTING, TripStatus.PROPOSING, TripStatus.VOTING})
@@ -78,6 +82,8 @@ class NewTrip:
     group_size: int
     budget_per_person_minor: int | None
     display_name: str
+    destination: str = ""
+    transport_mode: TransportMode | None = None
 
 
 def new_invite_code() -> str:
@@ -85,10 +91,12 @@ def new_invite_code() -> str:
 
 
 class TripService:
-    def __init__(self, db: Database, *, train_supplier_url: str | None = None) -> None:
+    def __init__(self, db: Database, *, suppliers: SupplierRegistry | None = None) -> None:
         self.db = db
-        # Demo seam, as in `ProposalService`: rebuilt train bookings keep pointing at it.
-        self.train_supplier_url = train_supplier_url
+        # The supplier plugins: rebuilt bookings are split by their capabilities, and the room
+        # shows who still lacks the traveller details they require.
+        self.suppliers = suppliers if suppliers is not None else SupplierRegistry()
+        self.travellers = TravellerService()
         self.trips = TripRepository()
         self.members = MemberRepository()
         self.proposals = ProposalRepository()
@@ -113,6 +121,8 @@ class TripService:
                     date_to=data.date_to,
                     group_size=data.group_size,
                     budget_per_person_minor=data.budget_per_person_minor,
+                    destination=data.destination,
+                    transport_mode=data.transport_mode,
                     organizer_id=organizer_id,
                     invite_code=invite_code,
                 ),
@@ -165,6 +175,9 @@ class TripService:
         contributions = await self.contributions.for_trip(trip_oid)
 
         names = {member.user_id: member.display_name for member in members}
+        missing = await self.travellers.missing(
+            members, await self._required_traveller_fields(trip_oid, proposals)
+        )
         tally = Counter(vote.proposal_id for vote in votes)
         my_vote = next((vote.proposal_id for vote in votes if vote.user_id == me.user_id), None)
         contribution_views = tuple(
@@ -181,7 +194,10 @@ class TripService:
                 invite_code=trip.invite_code,
                 my_user_id=to_text(me.user_id),
                 my_role=me.role,
-                members=tuple(member_view(member) for member in members),
+                members=tuple(
+                    member_view(member, missing.get(member.user_id, frozenset()))
+                    for member in members
+                ),
                 proposals=tuple(
                     proposal_view(
                         proposal,
@@ -202,6 +218,28 @@ class TripService:
                 ),
             )
         )
+
+    async def _required_traveller_fields(
+        self, trip_id: PydanticObjectId, proposals: list[Proposal]
+    ) -> frozenset[TravellerField]:
+        """What the trip's suppliers need per traveller: those of its live bookings once the
+        vote closed, before that those of every package on the table."""
+        bookings = [
+            booking
+            for booking in await self.bookings.for_trip(trip_id)
+            if booking.status is not BookingStatus.CANCELLED
+        ]
+        supplier_ids = (
+            {booking.supplier_id for booking in bookings}
+            if bookings
+            else {item.supplier_id for proposal in proposals for item in proposal.items}
+        )
+        required: set[TravellerField] = set()
+        for supplier_id in supplier_ids:
+            adapter = self.suppliers.get(supplier_id) if supplier_id else None
+            if adapter is not None:
+                required |= adapter.capabilities.required_traveller_fields
+        return frozenset(required)
 
     async def join(
         self, invite_code: str, user_id: str, display_name: str
@@ -380,15 +418,20 @@ class TripService:
             return
         for index, parts in parts_by_item.items():
             await self.bookings.delete_many(parts, session)
+            item = chosen.items[index]
+            adapter = self.suppliers.get(item.supplier_id) if item.supplier_id else None
             for booking in bookings_for_item(
                 trip,
-                chosen.items[index],
+                item,
                 index,
                 remaining,
+                adapter.capabilities if adapter is not None else None,
                 amount_minor=sum(part.amount_minor for part in parts),
-                train_supplier_url=self.train_supplier_url,
             ):
-                booking.train_query = parts[0].train_query
+                # The parts may carry a re-quoted offer; a hold was for the old party and is
+                # placed again before the purchase.
+                booking.offer_ref = parts[0].offer_ref
+                booking.supplier_data = dict(parts[0].supplier_data)
                 await self.bookings.add(booking, session)
 
     async def feed(

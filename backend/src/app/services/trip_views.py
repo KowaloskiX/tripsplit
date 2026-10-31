@@ -12,12 +12,14 @@ from typing import Any
 from beanie import PydanticObjectId
 
 from app.core.domain.bookings import refund_minor
+from app.core.domain.suppliers import TravellerField
 from app.core.domain.trips import (
     BookingKind,
     ContributionStatus,
     EventActor,
     EventKind,
     MemberRole,
+    TransportMode,
     TripStatus,
 )
 from app.db.identifiers import identifier_of, to_text
@@ -35,6 +37,8 @@ class TripView:
     group_size: int
     budget_per_person_minor: int | None
     currency: str
+    destination: str
+    transport_mode: TransportMode | None
     status: TripStatus
     organizer_id: str
     chosen_proposal_id: str | None
@@ -52,17 +56,36 @@ class MemberView:
     user_id: str
     display_name: str
     role: MemberRole
+    # Traveller details the trip's suppliers need that this member has not entered — field
+    # names only, never values. Empty = complete.
+    traveller_details_missing: tuple[TravellerField, ...] = ()
+
+    @property
+    def traveller_details_complete(self) -> bool:
+        return not self.traveller_details_missing
+
+
+@dataclass(frozen=True, slots=True)
+class SegmentView:
+    carrier: str
+    number: str
+    origin: str
+    destination: str
+    departs_at: datetime
+    arrives_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
 class ProposalItemView:
     kind: BookingKind
+    mode: TransportMode | None
     title: str
     supplier: str
     supplier_url: str
     price_minor: int
     details: str
     starts_at: datetime | None
+    segments: tuple[SegmentView, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -140,6 +163,8 @@ def trip_view(trip: Trip) -> TripView:
         group_size=trip.group_size,
         budget_per_person_minor=trip.budget_per_person_minor,
         currency=trip.currency,
+        destination=trip.destination,
+        transport_mode=trip.transport_mode,
         status=trip.status,
         organizer_id=to_text(trip.organizer_id),
         chosen_proposal_id=_optional_text(trip.chosen_proposal_id),
@@ -147,9 +172,12 @@ def trip_view(trip: Trip) -> TripView:
     )
 
 
-def member_view(member: TripMember) -> MemberView:
+def member_view(member: TripMember, missing: frozenset[TravellerField] = frozenset()) -> MemberView:
     return MemberView(
-        user_id=to_text(member.user_id), display_name=member.display_name, role=member.role
+        user_id=to_text(member.user_id),
+        display_name=member.display_name,
+        role=member.role,
+        traveller_details_missing=tuple(sorted(missing)),
     )
 
 
@@ -163,12 +191,24 @@ def proposal_view(
         items=tuple(
             ProposalItemView(
                 kind=item.kind,
+                mode=item.mode,
                 title=item.title,
                 supplier=item.supplier,
                 supplier_url=item.supplier_url,
                 price_minor=item.price_minor,
                 details=item.details,
                 starts_at=item.starts_at,
+                segments=tuple(
+                    SegmentView(
+                        carrier=segment.carrier,
+                        number=segment.number,
+                        origin=segment.origin,
+                        destination=segment.destination,
+                        departs_at=segment.departs_at,
+                        arrives_at=segment.arrives_at,
+                    )
+                    for segment in item.segments
+                ),
             )
             for item in proposal.items
         ),

@@ -6,8 +6,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { agentRunsFrame, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsCompleteManually, bookingsList, bookingsStart, contributionsPay, demoDisruption, demoLeave, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
-import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
+import { agentRunsFrame, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, contributionsPay, demoDisruption, demoLeave, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
+import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -199,6 +199,44 @@ export const healthReadyOptions = (options?: Options<HealthReadyData>) => queryO
     queryKey: healthReadyQueryKey(options)
 });
 
+export const travellerDetailsReadQueryKey = (options?: Options<TravellerDetailsReadData>) => createQueryKey('travellerDetailsRead', options);
+
+/**
+ * Read My Details
+ */
+export const travellerDetailsReadOptions = (options?: Options<TravellerDetailsReadData>) => queryOptions<TravellerDetailsReadResponse, DefaultError, TravellerDetailsReadResponse, ReturnType<typeof travellerDetailsReadQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await travellerDetailsRead({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: travellerDetailsReadQueryKey(options)
+});
+
+/**
+ * Update My Details
+ *
+ * Sets the caller's own details; fields left out stay as they are. The document number
+ * is write-only: the response carries it masked.
+ */
+export const travellerDetailsUpdateMutation = (options?: Partial<Options<TravellerDetailsUpdateData>>): UseMutationOptions<TravellerDetailsUpdateResponse, TravellerDetailsUpdateError, Options<TravellerDetailsUpdateData>> => {
+    const mutationOptions: UseMutationOptions<TravellerDetailsUpdateResponse, TravellerDetailsUpdateError, Options<TravellerDetailsUpdateData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await travellerDetailsUpdate({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const tripsListQueryKey = (options?: Options<TripsListData>) => createQueryKey('tripsList', options);
 
 /**
@@ -292,6 +330,26 @@ export const bookingsListOptions = (options: Options<BookingsListData>) => query
 });
 
 /**
+ * Check Disruptions
+ *
+ * Asks the suppliers that report disruptions about the trip's bought bookings; every
+ * notice with a replacement is rebooked and re-split. Empty = nothing happened.
+ */
+export const bookingsCheckDisruptionsMutation = (options?: Partial<Options<BookingsCheckDisruptionsData>>): UseMutationOptions<BookingsCheckDisruptionsResponse, BookingsCheckDisruptionsError, Options<BookingsCheckDisruptionsData>> => {
+    const mutationOptions: UseMutationOptions<BookingsCheckDisruptionsResponse, BookingsCheckDisruptionsError, Options<BookingsCheckDisruptionsData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await bookingsCheckDisruptions({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Approve Booking
  */
 export const bookingsApproveMutation = (options?: Partial<Options<BookingsApproveData>>): UseMutationOptions<BookingsApproveResponse, BookingsApproveError, Options<BookingsApproveData>> => {
@@ -366,7 +424,7 @@ export const contributionsPayMutation = (options?: Partial<Options<Contributions
 /**
  * Simulate Disruption
  *
- * The demo's last scene: the train is delayed, the agent rebooks and re-splits.
+ * The demo's last scene: the transport is delayed, the agent rebooks and re-splits.
  */
 export const demoDisruptionMutation = (options?: Partial<Options<DemoDisruptionData>>): UseMutationOptions<DemoDisruptionResponse, DemoDisruptionError, Options<DemoDisruptionData>> => {
     const mutationOptions: UseMutationOptions<DemoDisruptionResponse, DemoDisruptionError, Options<DemoDisruptionData>> = {

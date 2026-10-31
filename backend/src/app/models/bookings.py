@@ -3,38 +3,35 @@
 `AGENT_VAR_DIR/runs/<run_id>/`; the document is the durable record."""
 
 from datetime import datetime
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import pymongo
 from beanie import Document, PydanticObjectId
-from pydantic import BaseModel, Field
+from pydantic import Field, model_validator
 
-from app.core.domain.trips import AgentOutcome, AgentRunStatus, BookingKind, BookingStatus
+from app.core.domain.trips import (
+    AgentOutcome,
+    AgentRunStatus,
+    BookingKind,
+    BookingStatus,
+    SupplierChannel,
+    TransportMode,
+    upgrade_legacy_kind,
+)
 from app.db.documents import TimestampMixin
 
 TEXT_MAX_LENGTH = 4000
 
 
-class TrainQuery(BaseModel):
-    """What it takes to re-quote a PKP Intercity booking (see `app.suppliers.quotes`).
-
-    Optional: set only when the booking was built from a real PKP quote. Without it the
-    booking's stored amount is taken as current.
-    """
-
-    from_code: int  # PKP station codes (`Station.code`)
-    to_code: int
-    departs_at: datetime  # departure of the first leg, local time as PKP reports it
-    train_number: int  # number of the first leg, e.g. 131 for "EC 131"
-    travel_class: int = 2
-    refundable: bool = False
-
-
 class Booking(TimestampMixin, Document):
     trip_id: PydanticObjectId
     kind: BookingKind
+    # Set for kind=transport only: how it moves (rail / flight / bus / ferry).
+    mode: TransportMode | None = None
     title: str = Field(max_length=200)
+    # Who the group buys from, for people ("Ryanair", "PKP Intercity", "Booking.com").
     supplier: str = Field(max_length=200)
+    # Where the agent starts (channel=agent) or a human books (channel=manual).
     supplier_url: str = Field(max_length=2000)
     # Natural-language goal handed to the agent ("2nd class, 6 passengers, Fri 14:00-18:00").
     goal: str = Field(max_length=TEXT_MAX_LENGTH)
@@ -45,12 +42,29 @@ class Booking(TimestampMixin, Document):
     # Set when this booking replaces another one after a disruption.
     replaces_booking_id: PydanticObjectId | None = None
     # Who travels on THIS purchase, in vault order (passenger_1..N). A supplier that caps the
-    # party per purchase (see `purchase_cap`) splits one package item into several bookings.
-    # Empty on documents created before the split existed: then the whole trip travels.
+    # party per purchase (`SupplierCapabilities.max_party_per_purchase`) splits one package item
+    # into several bookings. Empty on documents created before the split: the whole trip travels.
     passenger_user_ids: list[PydanticObjectId] = Field(default_factory=list)
     # Index of the chosen proposal's item this booking buys (shared by the parts of a split).
     proposal_item_index: int | None = None
-    train_query: TrainQuery | None = None
+    # The supplier plugin (`app.suppliers.registry`) and its identifier of the offer. Empty on
+    # documents written before suppliers were plugins: such a booking is bought as before (by
+    # the agent at `supplier_url`) and its stored amount is taken as the price.
+    supplier_id: str = ""
+    offer_ref: str = Field(default="", max_length=TEXT_MAX_LENGTH)
+    channel: SupplierChannel = SupplierChannel.AGENT
+    # Adapter-owned data handed back on quote/hold/purchase/status. Written by the backend from
+    # a supplier answer only — never accepted from a client.
+    supplier_data: dict[str, Any] = Field(default_factory=dict)
+    hold_ref: str | None = None
+    hold_expires_at: datetime | None = None
+    # When `amount_minor` was last confirmed by the supplier (a quote or a hold).
+    quoted_at: datetime | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _read_legacy_kind(cls, data: Any) -> Any:
+        return upgrade_legacy_kind(data) if isinstance(data, dict) else data
 
     class Settings:
         name: ClassVar[str] = "bookings"

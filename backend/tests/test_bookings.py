@@ -27,6 +27,7 @@ from app.core.domain.trips import (
     ContributionStatus,
     EventKind,
     MemberRole,
+    TransportMode,
     TripStatus,
 )
 from app.core.http_security import CSRF_HEADER_NAME
@@ -186,7 +187,8 @@ async def _seed_trip(
         ).insert()
     train = await Booking(
         trip_id=identifier_of(trip),
-        kind=BookingKind.TRAIN,
+        kind=BookingKind.TRANSPORT,
+        mode=TransportMode.RAIL,
         title="EC 113 Warszawa -> Praha",
         supplier="PKP Intercity",
         supplier_url="http://localhost:8200/api/demo-supplier/rail",

@@ -128,8 +128,9 @@
         "type": "object"
       },
       "BookingKind": {
+        "description": "What a purchase is, independent of who sells it. How a transport moves is its\n`TransportMode`; the supplier behind it is a plugin (see `app.suppliers.ports`).",
         "enum": [
-          "train",
+          "transport",
           "stay",
           "activity"
         ],
@@ -142,6 +143,9 @@
             "title": "Amount Minor",
             "type": "integer"
           },
+          "channel": {
+            "$ref": "#/components/schemas/SupplierChannel"
+          },
           "confirmation_ref": {
             "anyOf": [
               {
@@ -153,12 +157,34 @@
             ],
             "title": "Confirmation Ref"
           },
+          "hold_expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hold Expires At"
+          },
           "id": {
             "title": "Id",
             "type": "string"
           },
           "kind": {
             "$ref": "#/components/schemas/BookingKind"
+          },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "passenger_user_ids": {
             "items": {
@@ -195,6 +221,10 @@
             "title": "Supplier",
             "type": "string"
           },
+          "supplier_id": {
+            "title": "Supplier Id",
+            "type": "string"
+          },
           "supplier_url": {
             "title": "Supplier Url",
             "type": "string"
@@ -212,9 +242,13 @@
           "id",
           "trip_id",
           "kind",
+          "mode",
           "title",
           "supplier",
           "supplier_url",
+          "supplier_id",
+          "channel",
+          "hold_expires_at",
           "amount_minor",
           "status",
           "confirmation_ref",
@@ -353,6 +387,12 @@
             "title": "Date To",
             "type": "string"
           },
+          "destination": {
+            "default": "",
+            "maxLength": 120,
+            "title": "Destination",
+            "type": "string"
+          },
           "display_name": {
             "maxLength": 60,
             "minLength": 1,
@@ -376,6 +416,16 @@
             "minLength": 1,
             "title": "Title",
             "type": "string"
+          },
+          "transport_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -607,7 +657,10 @@
           "disruption",
           "resplit",
           "price_changed",
-          "refund_issued"
+          "refund_issued",
+          "hold_placed",
+          "hold_expired",
+          "traveller_details_missing"
         ],
         "title": "EventKind",
         "type": "string"
@@ -819,6 +872,17 @@
           "role": {
             "$ref": "#/components/schemas/MemberRole"
           },
+          "traveller_details_complete": {
+            "title": "Traveller Details Complete",
+            "type": "boolean"
+          },
+          "traveller_details_missing": {
+            "items": {
+              "$ref": "#/components/schemas/TravellerField"
+            },
+            "title": "Traveller Details Missing",
+            "type": "array"
+          },
           "user_id": {
             "title": "User Id",
             "type": "string"
@@ -827,7 +891,9 @@
         "required": [
           "user_id",
           "display_name",
-          "role"
+          "role",
+          "traveller_details_missing",
+          "traveller_details_complete"
         ],
         "title": "MemberResponse",
         "type": "object"
@@ -932,9 +998,26 @@
           "kind": {
             "$ref": "#/components/schemas/BookingKind"
           },
+          "mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "price_minor": {
             "title": "Price Minor",
             "type": "integer"
+          },
+          "segments": {
+            "items": {
+              "$ref": "#/components/schemas/SegmentResponse"
+            },
+            "title": "Segments",
+            "type": "array"
           },
           "starts_at": {
             "anyOf": [
@@ -963,12 +1046,14 @@
         },
         "required": [
           "kind",
+          "mode",
           "title",
           "supplier",
           "supplier_url",
           "price_minor",
           "details",
-          "starts_at"
+          "starts_at",
+          "segments"
         ],
         "title": "ProposalItemResponse",
         "type": "object"
@@ -1208,6 +1293,46 @@
         "title": "SeedMembersRequest",
         "type": "object"
       },
+      "SegmentResponse": {
+        "properties": {
+          "arrives_at": {
+            "format": "date-time",
+            "title": "Arrives At",
+            "type": "string"
+          },
+          "carrier": {
+            "title": "Carrier",
+            "type": "string"
+          },
+          "departs_at": {
+            "format": "date-time",
+            "title": "Departs At",
+            "type": "string"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          }
+        },
+        "required": [
+          "carrier",
+          "number",
+          "origin",
+          "destination",
+          "departs_at",
+          "arrives_at"
+        ],
+        "title": "SegmentResponse",
+        "type": "object"
+      },
       "SessionResponse": {
         "description": "Response of `GET /api/auth/session` — `user: null` means \"not signed in\".",
         "properties": {
@@ -1269,6 +1394,177 @@
         ],
         "title": "ShareChangeResponse",
         "type": "object"
+      },
+      "SupplierChannel": {
+        "description": "How a purchase at a supplier is made.",
+        "enum": [
+          "api",
+          "agent",
+          "manual"
+        ],
+        "title": "SupplierChannel",
+        "type": "string"
+      },
+      "TransportMode": {
+        "enum": [
+          "rail",
+          "flight",
+          "bus",
+          "ferry"
+        ],
+        "title": "TransportMode",
+        "type": "string"
+      },
+      "TravellerDetailsRequest": {
+        "additionalProperties": false,
+        "description": "Only the fields sent are changed; null or absent leaves a field as it is.",
+        "properties": {
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "document_expiry": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Expiry"
+          },
+          "document_number": {
+            "anyOf": [
+              {
+                "maxLength": 20,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Number"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "nationality": {
+            "anyOf": [
+              {
+                "maxLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nationality"
+          }
+        },
+        "title": "TravellerDetailsRequest",
+        "type": "object"
+      },
+      "TravellerDetailsResponse": {
+        "properties": {
+          "date_of_birth": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Date Of Birth"
+          },
+          "document_expiry": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Expiry"
+          },
+          "document_number_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Number Masked"
+          },
+          "full_name": {
+            "title": "Full Name",
+            "type": "string"
+          },
+          "nationality": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nationality"
+          },
+          "provided": {
+            "items": {
+              "$ref": "#/components/schemas/TravellerField"
+            },
+            "title": "Provided",
+            "type": "array"
+          }
+        },
+        "required": [
+          "full_name",
+          "date_of_birth",
+          "nationality",
+          "document_number_masked",
+          "document_expiry",
+          "provided"
+        ],
+        "title": "TravellerDetailsResponse",
+        "type": "object"
+      },
+      "TravellerField": {
+        "description": "A piece of traveller data a supplier may require per passenger.",
+        "enum": [
+          "full_name",
+          "date_of_birth",
+          "nationality",
+          "document_number",
+          "document_expiry"
+        ],
+        "title": "TravellerField",
+        "type": "string"
       },
       "TripBookingsResponse": {
         "properties": {
@@ -1357,6 +1653,10 @@
             "title": "Date To",
             "type": "string"
           },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
           "group_size": {
             "title": "Group Size",
             "type": "integer"
@@ -1383,6 +1683,16 @@
           "total_minor": {
             "title": "Total Minor",
             "type": "integer"
+          },
+          "transport_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TransportMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -1395,6 +1705,8 @@
           "group_size",
           "budget_per_person_minor",
           "currency",
+          "destination",
+          "transport_mode",
           "status",
           "organizer_id",
           "chosen_proposal_id",
@@ -1854,6 +2166,67 @@
         ]
       }
     },
+    "/api/me/traveller-details": {
+      "get": {
+        "operationId": "traveller-details-read",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TravellerDetailsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read My Details",
+        "tags": [
+          "travellers"
+        ]
+      },
+      "put": {
+        "description": "Sets the caller's own details; fields left out stay as they are. The document number\nis write-only: the response carries it masked.",
+        "operationId": "traveller-details-update",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TravellerDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TravellerDetailsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update My Details",
+        "tags": [
+          "travellers"
+        ]
+      }
+    },
     "/api/trips": {
       "get": {
         "operationId": "trips-list",
@@ -2080,6 +2453,83 @@
           }
         },
         "summary": "List Bookings",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/bookings/disruptions/check": {
+      "post": {
+        "description": "Asks the suppliers that report disruptions about the trip's bought bookings; every\nnotice with a replacement is rebooked and re-split. Empty = nothing happened.",
+        "operationId": "bookings-check-disruptions",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DisruptionResponse"
+                  },
+                  "title": "Response Bookings-Check-Disruptions",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Disruptions",
         "tags": [
           "bookings"
         ]
@@ -2414,7 +2864,7 @@
     },
     "/api/trips/{trip_id}/demo/disruption": {
       "post": {
-        "description": "The demo's last scene: the train is delayed, the agent rebooks and re-splits.",
+        "description": "The demo's last scene: the transport is delayed, the agent rebooks and re-splits.",
         "operationId": "demo-disruption",
         "parameters": [
           {

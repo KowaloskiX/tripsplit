@@ -1,5 +1,6 @@
 """HTTP dependencies: services, the current user and the demo-route gate."""
 
+from functools import lru_cache
 from pathlib import Path
 from typing import Annotated
 
@@ -21,8 +22,11 @@ from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
 from app.services.demo import DemoService
 from app.services.proposals import ProposalService
+from app.services.supplier_prices import SupplierPrices
+from app.services.travellers import TravellerService
 from app.services.trips import TripService
-from app.suppliers.quotes import build_quote_provider
+from app.suppliers.providers import build_registry
+from app.suppliers.registry import SupplierRegistry
 
 # routes/ -> app/ -> src/ -> backend/: the agent subprocess runs from the backend directory.
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -74,28 +78,54 @@ CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
 OptionalUser = Annotated[AuthenticatedUser | None, Depends(get_optional_user)]
 
 
-def get_trip_service(database: DbDep, settings: SettingsDep) -> TripService:
-    return TripService(database, train_supplier_url=settings.demo_train_supplier_url)
+@lru_cache
+def _registry(supplier_ids: tuple[str, ...], demo_rail_url: str | None) -> SupplierRegistry:
+    """One registry per configuration and process: a simulated supplier remembers its holds
+    between requests, like the real one would."""
+    return build_registry(supplier_ids, demo_rail_url)
+
+
+def get_supplier_registry(settings: SettingsDep) -> SupplierRegistry:
+    return _registry(tuple(settings.supplier_ids), settings.demo_rail_url)
+
+
+SupplierRegistryDep = Annotated[SupplierRegistry, Depends(get_supplier_registry)]
+
+
+def get_trip_service(database: DbDep, suppliers: SupplierRegistryDep) -> TripService:
+    return TripService(database, suppliers=suppliers)
 
 
 def get_proposal_service(
-    database: DbDep, settings: SettingsDep, runner: BackgroundRunnerDep
+    database: DbDep,
+    settings: SettingsDep,
+    runner: BackgroundRunnerDep,
+    suppliers: SupplierRegistryDep,
 ) -> ProposalService:
     return ProposalService(
         database,
-        build_researcher(settings),
+        build_researcher(settings, suppliers),
         runner,
-        train_supplier_url=settings.demo_train_supplier_url,
+        suppliers=suppliers,
+        prices=SupplierPrices(
+            database, suppliers, price_tolerance_percent=settings.price_tolerance_percent
+        ),
     )
+
+
+def get_traveller_service() -> TravellerService:
+    return TravellerService()
 
 
 def get_contribution_service(settings: SettingsDep) -> ContributionService:
     return ContributionService(build_payment_provider(settings))
 
 
-def get_demo_service(database: DbDep, settings: SettingsDep) -> DemoService:
+def get_demo_service(
+    database: DbDep, settings: SettingsDep, suppliers: SupplierRegistryDep
+) -> DemoService:
     return DemoService(
-        database, get_contribution_service(settings), get_trip_service(database, settings)
+        database, get_contribution_service(settings), get_trip_service(database, suppliers)
     )
 
 
@@ -103,6 +133,7 @@ TripServiceDep = Annotated[TripService, Depends(get_trip_service)]
 ProposalServiceDep = Annotated[ProposalService, Depends(get_proposal_service)]
 ContributionServiceDep = Annotated[ContributionService, Depends(get_contribution_service)]
 DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]
+TravellerServiceDep = Annotated[TravellerService, Depends(get_traveller_service)]
 
 
 def _under_backend(raw: str) -> Path:
@@ -110,7 +141,9 @@ def _under_backend(raw: str) -> Path:
     return (path if path.is_absolute() else _BACKEND_DIR / path).resolve()
 
 
-def get_booking_service(database: DbDep, settings: SettingsDep) -> BookingService:
+def get_booking_service(
+    database: DbDep, settings: SettingsDep, suppliers: SupplierRegistryDep
+) -> BookingService:
     var_dir = _under_backend(settings.agent_var_dir)
     vault_file = _under_backend(settings.agent_vault_file) if settings.agent_vault_file else None
     launcher = SubprocessLauncher(
@@ -122,7 +155,7 @@ def get_booking_service(database: DbDep, settings: SettingsDep) -> BookingServic
         var_dir / "runs",
         max_steps=settings.agent_max_steps,
         headful=settings.agent_headful,
-        quotes=build_quote_provider(settings),
+        suppliers=suppliers,
         price_tolerance_percent=settings.price_tolerance_percent,
         payments=build_payment_provider(settings),
     )

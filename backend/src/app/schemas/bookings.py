@@ -10,6 +10,8 @@ from app.core.domain.trips import (
     BookingKind,
     BookingStatus,
     ContributionStatus,
+    SupplierChannel,
+    TransportMode,
     TripStatus,
 )
 from app.schemas.common import StrictRequest
@@ -30,7 +32,7 @@ class CompleteManuallyRequest(StrictRequest):
 
 
 class DisruptionRequest(StrictRequest):
-    # Which booking is hit; defaults to the trip's confirmed train.
+    # Which booking is hit; defaults to the trip's first confirmed transport.
     booking_id: str | None = Field(
         default=None, min_length=OBJECT_ID_LENGTH, max_length=OBJECT_ID_LENGTH
     )
@@ -55,9 +57,16 @@ class BookingResponse(BaseModel):
     id: str
     trip_id: str
     kind: BookingKind
+    mode: TransportMode | None
     title: str
     supplier: str
     supplier_url: str
+    # The supplier plugin and how it is bought: the agent drives the site, the backend calls
+    # the supplier's API after the approval, or a human books it by hand.
+    supplier_id: str
+    channel: SupplierChannel
+    # Until when the supplier holds this price; null = no hold.
+    hold_expires_at: datetime | None
     amount_minor: int
     status: BookingStatus
     confirmation_ref: str | None
@@ -107,7 +116,7 @@ class ShareChangeResponse(BaseModel):
 
 
 class DisruptionResponse(BaseModel):
-    # A train for a party above the supplier's cap is several purchases: every one of them is
+    # An item for a party above the supplier's cap is several purchases: every one of them is
     # cancelled and replaced (same order in both lists).
     cancelled_booking_ids: list[str]
     replacements: list[BookingResponse]

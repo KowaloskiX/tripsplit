@@ -1,36 +1,33 @@
-import { BedDouble, Ticket, TrainFront } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel } from "@/components/ui/panel";
+import { KIND_FILL, KindIcon } from "@/features/proposals";
 import {
   apiErrorMessage,
-  type BookingKind,
   type BookingResponse,
   type BookingStatus,
+  type SupplierChannel,
   type TripBookingsResponse,
   type TripStatus,
 } from "@/lib/api";
 
 import { BookingStatusBadge } from "./booking-status-badge";
+import { DirectApprovalCard } from "./direct-approval-card";
+import { HoldCountdown } from "./hold-countdown";
 import { LiveAgentPanel } from "./live-agent-panel";
 import { ManualCompletionForm } from "./manual-completion-form";
 import { formatMoney } from "./money";
 import { useStartBooking } from "./mutations";
 
-/** Pastel fill per kind, matching the package cards: transport sky, stay lime, activity blush. */
-const KIND_FILL: Record<BookingKind, string> = {
-  train: "bg-pastel-sky",
-  stay: "bg-pastel-lime",
-  activity: "bg-pastel-blush",
+/** How a purchase is made: the agent drives the site, the supplier's API, or a human. */
+export const CHANNEL_LABEL: Record<SupplierChannel, string> = {
+  agent: "agent",
+  api: "direct",
+  manual: "manual",
 };
-
-const KIND_ICON: Record<BookingKind, typeof TrainFront> = {
-  train: TrainFront,
-  stay: BedDouble,
-  activity: Ticket,
-};
+const LIVE_HOLD: ReadonlySet<BookingStatus> = new Set(["pending", "failed", "awaiting_approval"]);
 
 // Mirrors the backend's rule; the server enforces it regardless of what the UI shows.
 const TRIP_STATUSES_THAT_BUY: ReadonlySet<TripStatus> = new Set(["booking", "rebooking"]);
@@ -73,24 +70,30 @@ export function BookingsList({
     <div className="space-y-4">
       {start.error && <ErrorCallout>{apiErrorMessage(start.error)}</ErrorCallout>}
       {trip.bookings.map((booking) => {
-        const Icon = KIND_ICON[booking.kind];
         const showRun = booking.run !== null && booking.status !== "cancelled";
+        const directApproval =
+          trip.is_organizer && booking.channel === "api" && booking.status === "awaiting_approval";
         return (
           <Panel key={booking.id} className={booking.status === "cancelled" ? "opacity-60" : ""}>
             <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
               <span
                 className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-pastel-ink ${KIND_FILL[booking.kind]}`}
               >
-                <Icon aria-label={booking.kind} className="size-5" />
+                <KindIcon kind={booking.kind} mode={booking.mode} className="size-5" />
               </span>
               <div className="min-w-[12rem] flex-1">
                 <p className="text-base font-medium leading-snug tracking-[-0.01em] text-ink">
                   {booking.title}
                 </p>
                 <p className="ticket-mono mt-0.5 text-xs text-muted">
-                  {booking.supplier} · {formatMoney(booking.amount_minor, trip.currency)}
+                  {booking.supplier} ·{" "}
+                  <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}
+                  {formatMoney(booking.amount_minor, trip.currency)}
                   {passengersLabel(booking)}
                 </p>
+                {booking.hold_expires_at && LIVE_HOLD.has(booking.status) && (
+                  <HoldCountdown expiresAt={booking.hold_expires_at} />
+                )}
               </div>
               <BookingStatusBadge status={booking.status} />
               {canStart(trip, booking) && (
@@ -106,6 +109,15 @@ export function BookingsList({
             {canCompleteManually(trip, booking) && (
               <div className="border-t border-line px-4 pt-3">
                 <ManualCompletionForm tripId={trip.trip_id} bookingId={booking.id} />
+              </div>
+            )}
+            {directApproval && (
+              <div className="border-t border-line p-3">
+                <DirectApprovalCard
+                  tripId={trip.trip_id}
+                  booking={booking}
+                  currency={trip.currency}
+                />
               </div>
             )}
             {showRun && (

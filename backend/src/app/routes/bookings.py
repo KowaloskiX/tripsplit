@@ -16,11 +16,13 @@ from app.schemas.bookings import (
     ApproveRequest,
     BookingResponse,
     CompleteManuallyRequest,
+    DisruptionResponse,
     LiveStatusResponse,
     RunStatusResponse,
+    ShareChangeResponse,
     TripBookingsResponse,
 )
-from app.services.bookings import AgentRunRecord, BookingWithRun
+from app.services.bookings import AgentRunRecord, BookingWithRun, Disruption
 
 router = APIRouter(tags=["bookings"])
 
@@ -54,9 +56,13 @@ def booking_response(item: BookingWithRun) -> BookingResponse:
         id=to_text(identifier_of(booking)),
         trip_id=to_text(booking.trip_id),
         kind=booking.kind,
+        mode=booking.mode,
         title=booking.title,
         supplier=booking.supplier,
         supplier_url=booking.supplier_url,
+        supplier_id=booking.supplier_id,
+        channel=booking.channel,
+        hold_expires_at=booking.hold_expires_at,
         amount_minor=booking.amount_minor,
         status=booking.status,
         confirmation_ref=booking.confirmation_ref,
@@ -65,6 +71,31 @@ def booking_response(item: BookingWithRun) -> BookingResponse:
         else None,
         passenger_user_ids=[to_text(user_id) for user_id in booking.passenger_user_ids],
         run=run_response(item.run) if item.run is not None else None,
+    )
+
+
+def disruption_response(outcome: Disruption) -> DisruptionResponse:
+    return DisruptionResponse(
+        cancelled_booking_ids=[to_text(identifier_of(booking)) for booking in outcome.cancelled],
+        replacements=[
+            booking_response(BookingWithRun(booking=booking, run=None))
+            for booking in outcome.replacements
+        ],
+        trip_status=outcome.trip.status,
+        previous_total_minor=outcome.previous_total_minor,
+        total_minor=outcome.trip.total_minor,
+        shares=[
+            ShareChangeResponse(
+                user_id=to_text(share.user_id),
+                display_name=share.display_name,
+                previous_minor=share.change.previous_minor,
+                share_minor=share.change.share_minor,
+                delta_minor=share.change.delta_minor,
+                paid_minor=share.change.paid_minor,
+                status=share.change.status,
+            )
+            for share in outcome.shares
+        ],
     )
 
 
@@ -137,6 +168,22 @@ async def complete_booking_manually(
     if not isinstance(result, Ok):
         raise booking_failure(result.error)
     return booking_response(result.value)
+
+
+@router.post(
+    "/trips/{trip_id}/bookings/disruptions/check",
+    operation_id="bookings-check-disruptions",
+    responses=_ORGANIZER_ACTION,
+)
+async def check_disruptions(
+    trip_id: str, user: CurrentUser, service: BookingServiceDep
+) -> list[DisruptionResponse]:
+    """Asks the suppliers that report disruptions about the trip's bought bookings; every
+    notice with a replacement is rebooked and re-split. Empty = nothing happened."""
+    result = await service.check_disruptions(trip_id, user.id)
+    if not isinstance(result, Ok):
+        raise booking_failure(result.error)
+    return [disruption_response(outcome) for outcome in result.value]
 
 
 @router.get("/agent-runs/{run_id}/status", operation_id="agent-runs-status", responses=_NOT_FOUND)

@@ -1,8 +1,9 @@
-"""The people and the brief most scenarios share: six friends, a Prague weekend from Warsaw."""
+"""The people and the briefs scenarios share: six friends, a Prague weekend from Warsaw by
+rail, a Barcelona long weekend by plane, and eight friends from Kraków to Budapest."""
 
 from datetime import date
 
-from app.core.domain.trips import BookingStatus, TripStatus
+from app.core.domain.trips import BookingStatus, TransportMode, TripStatus
 from app.harness.scenario import (
     Approve,
     Brief,
@@ -28,6 +29,33 @@ PRAGUE = Brief(
     group_size=6,
 )
 
+BARCELONA = Brief(
+    title="Barcelona long weekend",
+    origin="Warszawa",
+    brief="Long weekend in Barcelona for 6 — beach, tapas, one big night out.",
+    date_from=date(2026, 11, 20),
+    date_to=date(2026, 11, 23),
+    group_size=6,
+    destination="Barcelona",
+    transport_mode=TransportMode.FLIGHT,
+)
+
+EIGHT_FRIENDS = (*FRIENDS, "Ola Sikora", "Bartek Pawlak")
+
+
+def budapest(mode: TransportMode) -> Brief:
+    return Brief(
+        title="Budapest weekend",
+        origin="Kraków",
+        brief="Weekend in Budapest for 8 — thermal baths and ruin bars.",
+        date_from=date(2026, 11, 20),
+        date_to=date(2026, 11, 22),
+        group_size=8,
+        destination="Budapest",
+        transport_mode=mode,
+    )
+
+
 # Packages -> everyone votes the budget package -> close -> everyone pays.
 UNTIL_PAID: tuple[Step, ...] = (
     GeneratePackages(),
@@ -44,6 +72,6 @@ UNTIL_BOOKED: tuple[Step, ...] = (
     *UNTIL_PAID,
     StartBookings("all"),
     Approve("all"),
-    ExpectBookingStatus("train", BookingStatus.CONFIRMED),
+    ExpectBookingStatus("transport", BookingStatus.CONFIRMED),
     ExpectStatus(TripStatus.BOOKED),
 )

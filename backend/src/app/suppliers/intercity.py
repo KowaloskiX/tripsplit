@@ -22,7 +22,7 @@ from datetime import date, datetime
 from typing import Any, Protocol
 from urllib.parse import quote
 
-from app.core.domain.bookings import PKP_INTERCITY_PURCHASE_CAP, split_party
+from app.core.domain.bookings import split_party
 
 GATEWAY = "https://api-gateway.intercity.pl/server/public/endpoint"
 STATIONS_ORIGIN = "https://www.intercity.pl"
@@ -33,8 +33,9 @@ _CLIENT_VERSION = f"{APP_VERSION}_desktop"
 _DEVICE_NO = 956
 
 # An online international purchase accepts at most this many passengers; a 6-person request
-# answers "No offers fulfil the criteria" (error 254).
-MAX_PASSENGERS_PER_PURCHASE = PKP_INTERCITY_PURCHASE_CAP
+# answers "No offers fulfil the criteria" (error 254, verified live on intercity.pl). The PKP
+# supplier adapter declares it as its `max_party_per_purchase`.
+MAX_PASSENGERS_PER_PURCHASE = 5
 NO_OFFERS_ERROR = 254
 
 _TIME_FORMAT = "%Y-%m-%d %H:%M:%S"

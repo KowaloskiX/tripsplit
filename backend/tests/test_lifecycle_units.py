@@ -1,5 +1,5 @@
-"""Lifecycle building blocks: purchase caps, the per-purchase split of a package item, the
-re-quote tolerance, the shared re-split and the PKP re-quote adapter."""
+"""Lifecycle building blocks: the per-purchase split of a package item from the supplier's
+capabilities, the re-quote tolerance, the shared re-split and the PKP adapter's re-quote."""
 
 import secrets
 from datetime import date, datetime
@@ -9,9 +9,7 @@ import pytest
 from beanie import PydanticObjectId
 
 from app.core.domain.bookings import (
-    PKP_INTERCITY,
     exceeds_tolerance,
-    purchase_cap,
     refund_minor,
     resume_status,
     split_party,
@@ -22,30 +20,27 @@ from app.core.domain.trips import (
     ContributionStatus,
     EventKind,
     MemberRole,
+    SupplierChannel,
+    TransportMode,
     TripStatus,
 )
 from app.db.client import Database
 from app.db.identifiers import identifier_of
-from app.models.bookings import Booking, TrainQuery
 from app.models.trips import Contribution, ProposalItem, Trip, TripEvent, TripMember
 from app.payments.fake import FakePayments
 from app.services.booking_plans import bookings_for_item
 from app.services.resplit import resplit_shares
 from app.suppliers.intercity import MAX_PASSENGERS_PER_PURCHASE
-from app.suppliers.quotes import IntercityQuotes, StaticQuotes
+from app.suppliers.pkp import CAPABILITIES as PKP_CAPABILITIES
+from app.suppliers.pkp import PkpIntercitySupplier
+from app.suppliers.ports import OfferRef, SupplierUnavailableError
+from app.suppliers.sim import SIM_CAPABILITIES
 from tests.test_intercity_client import RecordedTransport
 
 
-@pytest.mark.parametrize(
-    ("supplier", "cap"),
-    [("PKP Intercity", 5), ("pkp intercity ", 5), ("Booking.com", None), ("GetYourGuide", None)],
-)
-def test_purchase_cap_per_supplier(supplier: str, cap: int | None) -> None:
-    assert purchase_cap(supplier) == cap
-
-
-def test_the_pkp_client_reads_the_same_cap() -> None:
-    assert purchase_cap(PKP_INTERCITY) == MAX_PASSENGERS_PER_PURCHASE
+def test_the_pkp_adapter_declares_the_carriers_cap() -> None:
+    assert PKP_CAPABILITIES.max_party_per_purchase == MAX_PASSENGERS_PER_PURCHASE == 5
+    assert PKP_CAPABILITIES.channel is SupplierChannel.AGENT
 
 
 @pytest.mark.parametrize(
@@ -177,11 +172,15 @@ async def test_resplit_shares_ignores_former_members_and_can_stay_silent(
 
 def _train(price_minor: int = 100_001) -> ProposalItem:
     return ProposalItem(
-        kind=BookingKind.TRAIN,
+        kind=BookingKind.TRANSPORT,
+        mode=TransportMode.RAIL,
         title="EC 131 Warszawa -> Praha",
-        supplier=PKP_INTERCITY,
-        supplier_url="https://www.intercity.pl/pl/",
+        supplier="PKP Intercity",
+        supplier_url="http://demo/rail",
         price_minor=price_minor,
+        supplier_id="pkp_intercity",
+        offer_ref="pkp_intercity:131",
+        supplier_data={"legs": [], "travel_class": 2},
     )
 
 
@@ -190,7 +189,7 @@ async def test_a_capped_train_becomes_even_purchases_that_sum_exactly(
 ) -> None:
     trip = await _trip(1, paid=[0], shares=[0])
     party = [PydanticObjectId() for _ in range(6)]
-    parts = bookings_for_item(trip, _train(), 0, party, train_supplier_url="http://demo/rail")
+    parts = bookings_for_item(trip, _train(), 0, party, PKP_CAPABILITIES)
     assert [len(part.passenger_user_ids) for part in parts] == [3, 3]
     assert parts[0].passenger_user_ids + parts[1].passenger_user_ids == party
     assert sum(part.amount_minor for part in parts) == 100_001
@@ -202,12 +201,29 @@ async def test_a_capped_train_becomes_even_purchases_that_sum_exactly(
     assert all("passenger_1..passenger_3" in part.goal for part in parts)
     assert all(part.supplier_url == "http://demo/rail" for part in parts)
     assert all(part.proposal_item_index == 0 for part in parts)
+    assert all(part.supplier_id == "pkp_intercity" for part in parts)
+    assert all(part.mode is TransportMode.RAIL for part in parts)
+
+
+async def test_the_split_follows_capabilities_not_the_supplier_name(database: Database) -> None:
+    """The same item at a cap of 9 (a coach site) is one purchase for eight."""
+    trip = await _trip(1, paid=[0], shares=[0])
+    eight = [PydanticObjectId() for _ in range(8)]
+    _, bus = SIM_CAPABILITIES["sim_bus"]
+    assert len(bookings_for_item(trip, _train(), 0, eight, bus)) == 1
+    assert [
+        len(p.passenger_user_ids)
+        for p in bookings_for_item(trip, _train(), 0, eight, PKP_CAPABILITIES)
+    ] == [4, 4]
+    _, flight = SIM_CAPABILITIES["sim_flight"]
+    (direct,) = bookings_for_item(trip, _train(), 0, eight, flight)
+    assert direct.channel is SupplierChannel.API
 
 
 async def test_uncapped_items_and_small_parties_stay_one_booking(database: Database) -> None:
     trip = await _trip(1, paid=[0], shares=[0])
     five = [PydanticObjectId() for _ in range(5)]
-    (train,) = bookings_for_item(trip, _train(), 0, five)
+    (train,) = bookings_for_item(trip, _train(), 0, five, PKP_CAPABILITIES)
     assert train.passenger_user_ids == five
     assert train.title == "EC 131 Warszawa -> Praha"
     stay = ProposalItem(
@@ -218,49 +234,46 @@ async def test_uncapped_items_and_small_parties_stay_one_booking(database: Datab
         price_minor=60_000,
     )
     seven = [PydanticObjectId() for _ in range(7)]
-    (booking,) = bookings_for_item(trip, stay, 1, seven, train_supplier_url="http://demo/rail")
+    (booking,) = bookings_for_item(trip, stay, 1, seven, None)
     assert booking.passenger_user_ids == seven
     assert booking.supplier_url == "https://www.booking.com/"
+    assert booking.channel is SupplierChannel.AGENT  # outside the registry: bought as before
 
 
-def _pkp_booking(passengers: int, query: TrainQuery | None) -> Booking:
-    return Booking(
-        trip_id=PydanticObjectId(),
-        kind=BookingKind.TRAIN,
-        title="EC 131",
-        supplier=PKP_INTERCITY,
-        supplier_url="https://www.intercity.pl/pl/",
-        goal="Book it.",
-        amount_minor=90_000,
-        passenger_user_ids=[PydanticObjectId() for _ in range(passengers)],
-        train_query=query,
+def _pkp_offer(train_number: int = 131) -> OfferRef:
+    return OfferRef(
+        supplier_id="pkp_intercity",
+        offer_ref="pkp_intercity:131",
+        supplier_data={
+            "travel_class": 2,
+            "refundable": False,
+            "legs": [
+                {
+                    "from_code": 5100065,
+                    "to_code": 5400014,
+                    "departs_at": datetime(2026, 11, 20, 7, 52).isoformat(),
+                    "train_number": train_number,
+                }
+            ],
+        },
     )
 
 
-QUERY = TrainQuery(
-    from_code=5100065, to_code=5400014, departs_at=datetime(2026, 11, 20, 7, 52), train_number=131
-)
-
-
-async def test_static_quotes_trust_the_stored_amount(database: Database) -> None:
-    assert await StaticQuotes().quote(_pkp_booking(3, QUERY)) == 90_000
-
-
-async def test_intercity_quotes_ask_pkp_for_the_party(database: Database) -> None:
+async def test_the_pkp_adapter_requotes_the_party(database: Database) -> None:
     transport = RecordedTransport()
-    quote = await IntercityQuotes(transport).quote(_pkp_booking(3, QUERY))
-    assert quote == 15_565 * 3
+    quote = await PkpIntercitySupplier(transport).quote(_pkp_offer(), 3)
+    assert quote is not None and quote.price_minor == 15_565 * 3
     assert transport.fare_requests == [3]
 
 
-async def test_intercity_quotes_report_a_vanished_train(database: Database) -> None:
-    gone = QUERY.model_copy(update={"train_number": 999})
-    assert await IntercityQuotes(RecordedTransport()).quote(_pkp_booking(3, gone)) is None
+async def test_the_pkp_adapter_reports_a_vanished_train(database: Database) -> None:
+    assert await PkpIntercitySupplier(RecordedTransport()).quote(_pkp_offer(999), 3) is None
 
 
-async def test_intercity_quotes_fall_back_without_a_query(database: Database) -> None:
+async def test_the_pkp_adapter_cannot_quote_without_legs(database: Database) -> None:
     transport = RecordedTransport()
-    assert await IntercityQuotes(transport).quote(_pkp_booking(3, None)) == 90_000
+    empty = OfferRef(supplier_id="pkp_intercity", offer_ref="x", supplier_data={})
+    assert await PkpIntercitySupplier(transport).quote(empty, 3) is None
     assert transport.fare_requests == []
 
 
@@ -269,7 +282,6 @@ class BrokenTransport(RecordedTransport):
         raise ConnectionResetError("Akamai said no")
 
 
-async def test_intercity_quotes_keep_the_stored_amount_when_pkp_is_unreachable(
-    database: Database,
-) -> None:
-    assert await IntercityQuotes(BrokenTransport()).quote(_pkp_booking(3, QUERY)) == 90_000
+async def test_an_unreachable_pkp_is_unavailable_not_sold_out(database: Database) -> None:
+    with pytest.raises(SupplierUnavailableError):
+        await PkpIntercitySupplier(BrokenTransport()).quote(_pkp_offer(), 3)

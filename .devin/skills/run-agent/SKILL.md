@@ -146,6 +146,49 @@ Never put in a playbook:
 Do reconnaissance with `browser-harness` (CDP in your own Chrome) and distil what you learned
 into a few bullet points. Keep it under ~4000 characters; the loader truncates beyond that.
 
+## 6. The engine: flows, rules, LLM — and the eval suite
+
+DECIDE is a cascade, cheapest and most certain first: a pending macro plan -> the compiled
+**flow** (`agent/flows.py`) -> the **rule layer** (`agent/rules.py`, driven by the typed site
+profile in `agent/site_profiles.py`) -> the **LLM planner**, which then returns a short plan
+(up to `PLANNER_MAX_PLAN`, default 4 actions) instead of one action. A `done` at a summary is
+always re-checked by the deterministic summary verifier, and the pay button is never pressed
+while `stop_before_pay` is on.
+
+| `--mode` | layers | LLM |
+|---|---|---|
+| `auto` (default, `AGENT_MODE`) | flow + rules + planner | yes |
+| `replay` | flow + rules | no |
+| `rules` | rules only | no |
+| `llm` | rules + planner | yes |
+| `planner` | planner only (the pre-engine behaviour) | yes |
+
+`--max-llm-calls N` caps model calls for a run. Screenshots go to the planner only when the
+text is thin (`PLANNER_SCREENSHOT=auto|always|never`); otherwise it gets the accessibility tree.
+
+Flows are stored in `var/agent/trajectories/<host>.flow.json` (version 2): stable descriptors,
+values bound to `{{vault.*}}` / `{{goal.*}}`, passenger blocks as a loop, offer clicks as a
+choice resolved from the goal. A legacy `<host>.json` trajectory is compiled on load. A run
+that healed a flow miss saves the re-compiled flow.
+
+New artifacts and fields (additive): `runs/<id>/flow_graph.json` (nodes/edges, variable names
+only); `status.json.steps[]` (`index, node_id, kind, status, duration_ms, source`);
+`result.json` adds `mode, llm_calls, flow_steps, rule_steps, plan_steps, heal_steps,
+flow_misses, wall_s, final_stage, summary` (the supplier summary as read, names masked).
+
+Evals — perturbed demo sites under `/api/demo-supplier/rail-variants/<variant>` (dev/test) and
+a self-contained local server for the CLI:
+
+```bash
+uv run agent-eval list
+uv run agent-eval run --mode replay                 # 10 variants x party 1/3/5, 0 LLM calls
+uv run agent-eval run --mode rules_only --variants baseline,slow --party 3
+uv run agent-eval run --mode live_llm --variants baseline,split_pages --party 3 --max-llm-calls 20
+```
+
+Reports: `backend/var/agent-evals/<ts>/report.{md,json}`. `replay`/`rules_only` exit 2 if a
+model was ever called; `live_llm` stops at the call budget or the first rate limit.
+
 ## Traps
 
 - With `PLANNER=openai`, `OPENAI_API_KEY` must be set in `.env` at the repo root (the CLI

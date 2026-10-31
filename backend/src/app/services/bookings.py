@@ -26,7 +26,6 @@ from app.core.domain.bookings import (
     all_confirmed,
     booking_status_after,
     contribution_status,
-    exceeds_tolerance,
     format_delta,
     format_money,
     is_valid_run_id,
@@ -36,6 +35,8 @@ from app.core.domain.bookings import (
 )
 from app.core.domain.errors import BookingError
 from app.core.domain.result import Err, Ok, Result
+from app.core.domain.suppliers import mode_noun, price_is_guaranteed, purchase_noun
+from app.core.domain.travellers import describe_missing, split_name
 from app.core.domain.trips import (
     AgentOutcome,
     AgentRunStatus,
@@ -44,6 +45,7 @@ from app.core.domain.trips import (
     EventActor,
     EventKind,
     MemberRole,
+    SupplierChannel,
     TripStatus,
 )
 from app.db.client import Database
@@ -61,8 +63,11 @@ from app.repositories.trips import (
     MemberRepository,
     TripRepository,
 )
-from app.services.resplit import MemberShare, Resplit, resplit_payload, resplit_shares
-from app.suppliers.quotes import QuoteProvider, StaticQuotes
+from app.services.resplit import MemberShare, resplit_shares
+from app.services.supplier_prices import Clock, SupplierPrices, offer_of, passengers_of
+from app.services.travellers import TravellerService
+from app.suppliers.ports import BookingRef, DisruptionKind, DisruptionNotice, Offer, OfferRef
+from app.suppliers.registry import SupplierRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -202,30 +207,21 @@ def _write_approval(run_dir: Path, approved: bool) -> None:
     os.replace(temporary, run_dir / APPROVAL_FILE)
 
 
-def _split_name(display_name: str) -> tuple[str, str]:
-    first, _, last = display_name.strip().partition(" ")
-    return first, last.strip()
-
-
-def _passengers_of(booking: Booking, members: list[TripMember]) -> list[TripMember]:
-    """The members travelling on THIS purchase, in vault order. A booking created before
-    passengers were recorded per purchase covers the whole trip."""
-    if not booking.passenger_user_ids:
-        return members
-    by_user = {member.user_id: member for member in members}
-    return [by_user[user_id] for user_id in booking.passenger_user_ids if user_id in by_user]
-
-
 def _party_size(booking: Booking, members: list[TripMember]) -> int:
-    return len(_passengers_of(booking, members)) or len(members)
+    return len(passengers_of(booking, members)) or len(members)
 
 
 def _what_is_bought(booking: Booking, travellers: int) -> str:
-    if booking.kind is BookingKind.TRAIN:
-        return f"{travellers} tickets"
-    if booking.kind is BookingKind.STAY:
-        return f"the stay for {travellers}"
-    return booking.title
+    if booking.kind is BookingKind.ACTIVITY:
+        return booking.title
+    return purchase_noun(booking.kind, booking.mode, travellers)
+
+
+_CHANNEL_WORDS = {
+    SupplierChannel.AGENT: "the agent drives the site",
+    SupplierChannel.API: "booked directly",
+    SupplierChannel.MANUAL: "booked by hand",
+}
 
 
 class BookingService:
@@ -238,17 +234,23 @@ class BookingService:
         max_steps: int = 40,
         headful: bool = False,
         poll_s: float = 1.0,
-        quotes: QuoteProvider | None = None,
+        suppliers: SupplierRegistry | None = None,
         price_tolerance_percent: float = 0.0,
         payments: PaymentProvider | None = None,
+        clock: Clock = utc_now,
     ) -> None:
         self.db = db
         # Refunds overpayments once the trip is booked (see `_settle_refunds`).
         self.payments: PaymentProvider = payments if payments is not None else FakePayments()
         self.launcher = launcher
-        # Asked for the current price right before every launch (see `_requote`).
-        self.quotes: QuoteProvider = quotes if quotes is not None else StaticQuotes()
-        self.price_tolerance_percent = price_tolerance_percent
+        # The supplier plugins: capabilities decide how each booking is bought.
+        self.suppliers = suppliers if suppliers is not None else SupplierRegistry()
+        self.clock = clock
+        # Holds and re-quotes right before every purchase (see `start`).
+        self.prices = SupplierPrices(
+            db, self.suppliers, clock=clock, price_tolerance_percent=price_tolerance_percent
+        )
+        self.travellers = TravellerService()
         self.runs_dir = runs_dir.resolve()
         self.max_steps = max_steps
         self.headful = headful
@@ -354,6 +356,13 @@ class BookingService:
     async def start(
         self, trip_id: str, booking_id: str, user_id: str
     ) -> Result[BookingWithRun, BookingError]:
+        """Starts the purchase of one booking, the way its supplier's channel buys it.
+
+        Rule #1 first (everyone paid), then the supplier's required traveller details, then a
+        binding price (a live hold or a fresh re-quote). After that: `agent` launches the
+        browser agent, `api` goes straight to the human approval (the purchase API is called
+        when it is approved), `manual` hands it to a human with instructions.
+        """
         access = await self._organizer(trip_id, user_id)
         if not isinstance(access, Ok):
             return access
@@ -367,11 +376,96 @@ class BookingService:
             return Err(BookingError.TRIP_NOT_READY)
         if booking.status not in BOOKING_STATUSES_THAT_START:
             return Err(BookingError.BOOKING_NOT_STARTABLE)
-        requoted = await self._requote(trip, booking)
-        if requoted is not None:
-            return Err(requoted)
-
         members = await self.members.for_trip(identifier_of(trip))
+        if await self._details_missing(trip, booking, members):
+            return Err(BookingError.TRAVELLER_DETAILS_MISSING)
+        refused = await self.prices.refresh(trip, booking)
+        if refused is not None:
+            return Err(refused)
+        booking = await self.bookings.get(identifier_of(booking)) or booking
+        match booking.channel:
+            case SupplierChannel.API:
+                return await self._await_direct_approval(trip, booking, members)
+            case SupplierChannel.MANUAL:
+                return await self._hand_over(trip, booking)
+            case SupplierChannel.AGENT:
+                return await self._launch(trip, booking, members)
+
+    async def _details_missing(
+        self, trip: Trip, booking: Booking, members: list[TripMember]
+    ) -> bool:
+        """The supplier needs traveller details somebody on THIS purchase has not entered. The
+        feed names who and which fields — never a value."""
+        capabilities = self.prices.capabilities_of(booking)
+        if capabilities is None:
+            return False
+        passengers = passengers_of(booking, members)
+        missing = await self.travellers.missing(passengers, capabilities.required_traveller_fields)
+        if not missing:
+            return False
+        names = {member.user_id: member.display_name for member in passengers}
+        described = describe_missing({names[user]: fields for user, fields in missing.items()})
+        await self._say(
+            trip,
+            EventKind.TRAVELLER_DETAILS_MISSING,
+            f"Before I can buy {booking.title} on {booking.supplier}, these travellers need to "
+            f"add their details: {described}.",
+            booking,
+            user_ids=[to_text(user) for user in missing],
+            fields=sorted({field.value for fields in missing.values() for field in fields}),
+        )
+        return True
+
+    async def _await_direct_approval(
+        self, trip: Trip, booking: Booking, members: list[TripMember]
+    ) -> Result[BookingWithRun, BookingError]:
+        """channel=api: no agent run — the summary is the supplier's own price, and the human
+        approval triggers the purchase API (see `approve`)."""
+        moved = await self.bookings.update_if_status(
+            booking, BOOKING_STATUSES_THAT_START, {"status": BookingStatus.AWAITING_APPROVAL}
+        )
+        if not moved:
+            return Err(BookingError.BOOKING_NOT_STARTABLE)
+        party = _party_size(booking, members)
+        money = format_money(booking.amount_minor, trip.currency)
+        await self._say(
+            trip,
+            EventKind.BOOKING_STARTED,
+            f"On it — buying {_what_is_bought(booking, party)} on {booking.supplier} directly.",
+            booking,
+        )
+        await self._say(
+            trip,
+            EventKind.BOOKING_AWAITING_APPROVAL,
+            f"Summary ready: {money} for {party} people on {booking.supplier}. Approve to pay.",
+            booking,
+        )
+        return Ok(BookingWithRun(booking=booking, run=None))
+
+    async def _hand_over(
+        self, trip: Trip, booking: Booking
+    ) -> Result[BookingWithRun, BookingError]:
+        """channel=manual: nothing can be bought for the group — a human does it and enters
+        the reference (`complete_manually`)."""
+        moved = await self.bookings.update_if_status(
+            booking, BOOKING_STATUSES_THAT_START, {"status": BookingStatus.HANDOFF}
+        )
+        if not moved:
+            return Err(BookingError.BOOKING_NOT_STARTABLE)
+        await self._say(
+            trip,
+            EventKind.MESSAGE,
+            f"{booking.supplier} is booked by hand: open {booking.supplier_url}, buy "
+            f"{booking.title} for {format_money(booking.amount_minor, trip.currency)} and enter "
+            "the booking reference here.",
+            booking,
+            outcome=AgentOutcome.HANDOFF.value,
+        )
+        return Ok(BookingWithRun(booking=booking, run=None))
+
+    async def _launch(
+        self, trip: Trip, booking: Booking, members: list[TripMember]
+    ) -> Result[BookingWithRun, BookingError]:
         party = _party_size(booking, members)
         attempt = len(await self.runs.for_booking(identifier_of(booking))) + 1
         run_id = run_id_for(to_text(identifier_of(booking)), attempt)
@@ -434,118 +528,34 @@ class BookingService:
     async def _vault_for(
         self, trip: Trip, booking: Booking, members: list[TripMember]
     ) -> dict[str, str]:
-        """Values the agent may TYPE — names and contact, never shown to the planner.
+        """Values the agent may TYPE — names, contact and the traveller details the supplier
+        asks for — never shown to the planner (it sees key placeholders only).
 
         Passengers are THIS booking's only, numbered from 1: the second purchase of a split
         train starts again at `passenger_1`. The contact is always the organizer.
         """
         organizer = await self.users.get_by_id(trip.organizer_id)
-        passengers = _passengers_of(booking, members)
+        passengers = passengers_of(booking, members)
+        details = await self.travellers.details_for(passengers)
         vault: dict[str, str] = {"passengers": str(len(passengers))}
         if organizer is not None:
             vault["email"] = organizer.email
         lead = next((member for member in members if member.role is MemberRole.ORGANIZER), None)
         if lead is not None:
-            vault["first_name"], vault["last_name"] = _split_name(lead.display_name)
+            vault["first_name"], vault["last_name"] = split_name(lead.display_name)
         for index, member in enumerate(passengers, start=1):
-            first, last = _split_name(member.display_name)
-            vault[f"passenger_{index}_first_name"] = first
-            vault[f"passenger_{index}_last_name"] = last
+            traveller = details[member.user_id]
+            key = f"passenger_{index}"
+            vault[f"{key}_first_name"], vault[f"{key}_last_name"] = split_name(traveller.full_name)
+            if traveller.date_of_birth is not None:
+                vault[f"{key}_date_of_birth"] = traveller.date_of_birth.isoformat()
+            if traveller.nationality:
+                vault[f"{key}_nationality"] = traveller.nationality
+            if traveller.document_number:
+                vault[f"{key}_document_number"] = traveller.document_number
+            if traveller.document_expiry is not None:
+                vault[f"{key}_document_expiry"] = traveller.document_expiry.isoformat()
         return {key: value for key, value in vault.items() if value}
-
-    # ---- re-quote -------------------------------------------------------------------------
-
-    async def _requote(self, trip: Trip, booking: Booking) -> BookingError | None:
-        """Asks the supplier for the current price before buying. None = go ahead.
-
-        Sold out -> the booking FAILS (a human may still finish it by hand). A price beyond
-        the tolerance -> the booking takes the new amount and the shares are re-split; a rise
-        that leaves somebody owing sends the trip back to PAYING (Rule #1) and stops here, a
-        drop only marks refunds and the purchase proceeds.
-        """
-        quoted = await self.quotes.quote(booking)
-        if quoted is None:
-            if await self.bookings.update_if_status(
-                booking, BOOKING_STATUSES_THAT_START, {"status": BookingStatus.FAILED}
-            ):
-                await self._say(
-                    trip,
-                    EventKind.BOOKING_FAILED,
-                    f"{booking.supplier} no longer offers {booking.title}. Pick another option "
-                    "or book it by hand.",
-                    booking,
-                )
-            return BookingError.SOLD_OUT
-        previous = booking.amount_minor
-        if not exceeds_tolerance(previous, quoted, self.price_tolerance_percent):
-            return None
-
-        async def write(session: AsyncClientSession) -> Resplit | None:
-            # Conditioned on the amount and status read before the quote: of two concurrent
-            # starts only one applies the new price.
-            moved = await self.bookings.update_if(
-                booking,
-                {"amount_minor": previous, "status": {"$in": list(BOOKING_STATUSES_THAT_START)}},
-                {"amount_minor": quoted},
-                session,
-            )
-            if not moved:
-                return None
-            bookings = await self.bookings.for_trip(identifier_of(trip), session)
-            total = sum(b.amount_minor for b in bookings if b.status is not BookingStatus.CANCELLED)
-            plan = await resplit_shares(trip, total, session, announce=False)
-            if plan.owes:
-                await self.trips.set_status(trip, TripStatus.PAYING, session)
-            await self._say_price_changed(trip, booking, previous, plan, session)
-            return plan
-
-        plan = await self.db.in_transaction(write)
-        if plan is None:
-            return BookingError.BOOKING_NOT_STARTABLE
-        return BookingError.PRICE_CHANGED if plan.owes else None
-
-    async def _say_price_changed(
-        self,
-        trip: Trip,
-        booking: Booking,
-        previous_minor: int,
-        plan: Resplit,
-        session: AsyncClientSession,
-    ) -> None:
-        current = booking.amount_minor
-        money = trip.currency
-        rose = current > previous_minor
-        verb = "raised" if rose else "lowered"
-        message = (
-            f"{booking.supplier} {verb} the price of {booking.title} from "
-            f"{format_money(previous_minor, money).removesuffix(' ' + money)} to "
-            f"{format_money(current, money)}"
-        )
-        if plan.shares:
-            each = max(abs(share.change.delta_minor) for share in plan.shares)
-            message += f" — {format_money(each, money)} {'more' if rose else 'less'} each."
-        else:
-            message += "."
-        if plan.owes:
-            message += " Top up and I will buy it."
-        elif plan.refunds:
-            message += " The difference will be refunded — buying it now."
-        else:
-            message += " Buying it now."
-        payload = {
-            **resplit_payload(plan),
-            "booking_id": to_text(identifier_of(booking)),
-            "previous_amount_minor": previous_minor,
-            "amount_minor": current,
-        }
-        await self.events.add(
-            identifier_of(trip),
-            EventKind.PRICE_CHANGED,
-            EventActor.AGENT,
-            message[:4000],
-            payload=payload,
-            session=session,
-        )
 
     # ---- monitor --------------------------------------------------------------------------
 
@@ -682,6 +692,7 @@ class BookingService:
     async def _announce_finish(
         self, trip: Trip, booking: Booking, status: BookingStatus, reason: str, run_id: str
     ) -> None:
+        """`run_id` is empty for a purchase made without the agent (channel=api)."""
         if status is BookingStatus.CONFIRMED:
             ref = (
                 f" Booking number: {booking.confirmation_ref}." if booking.confirmation_ref else ""
@@ -779,7 +790,8 @@ class BookingService:
         session: AsyncClientSession | None = None,
         **extra: str | list[str],
     ) -> None:
-        payload: dict[str, Any] = dict(extra)
+        # An empty value (e.g. no run id for an API purchase) is left out of the payload.
+        payload: dict[str, Any] = {key: value for key, value in extra.items() if value != ""}
         if booking is not None:
             payload["booking_id"] = to_text(identifier_of(booking))
         await self.events.add(
@@ -807,11 +819,15 @@ class BookingService:
         booking = await self._booking_of(trip, booking_id)
         if booking is None:
             return Err(BookingError.BOOKING_NOT_FOUND)
-        run = await self._current_run(booking)
-        if booking.status is not BookingStatus.AWAITING_APPROVAL or run is None:
+        if booking.status is not BookingStatus.AWAITING_APPROVAL:
             return Err(BookingError.NOT_AWAITING_APPROVAL)
         if approved and not await self._may_buy(trip):
             return Err(BookingError.TRIP_NOT_READY)
+        if booking.channel is SupplierChannel.API:
+            return await self._decide_direct(trip, member, booking, approved)
+        run = await self._current_run(booking)
+        if run is None:
+            return Err(BookingError.NOT_AWAITING_APPROVAL)
         status = BookingStatus.APPROVED if approved else BookingStatus.HANDOFF
         # Status first (compare-and-set), the runner's file second: the monitor never sees a
         # finished purchase on a booking that is not APPROVED yet.
@@ -831,6 +847,78 @@ class BookingService:
             actor_user_id=member.user_id,
         )
         return Ok(BookingWithRun(booking=booking, run=run))
+
+    async def _decide_direct(
+        self, trip: Trip, member: TripMember, booking: Booking, approved: bool
+    ) -> Result[BookingWithRun, BookingError]:
+        """channel=api: approving calls the supplier's purchase API — at the held price, or at
+        a quote still within its TTL. A stale price is never paid: the booking goes back to
+        PENDING and must be started (re-quoted) again."""
+        adapter = self.prices.adapter_of(booking)
+        if adapter is None:
+            return Err(BookingError.SUPPLIER_UNKNOWN)
+        if not approved:
+            moved = await self.bookings.update_if_status(
+                booking,
+                frozenset({BookingStatus.AWAITING_APPROVAL}),
+                {"status": BookingStatus.HANDOFF},
+            )
+            if not moved:
+                return Err(BookingError.NOT_AWAITING_APPROVAL)
+            await self._say_decision(trip, member, booking, approved=False)
+            return Ok(BookingWithRun(booking=booking, run=None))
+        guaranteed = price_is_guaranteed(
+            adapter.capabilities,
+            hold_expires_at=booking.hold_expires_at,
+            quoted_at=booking.quoted_at,
+            now=self.clock(),
+        )
+        if not guaranteed:
+            await self.bookings.update_if_status(
+                booking,
+                frozenset({BookingStatus.AWAITING_APPROVAL}),
+                {"status": BookingStatus.PENDING},
+            )
+            return Err(BookingError.QUOTE_EXPIRED)
+        moved = await self.bookings.update_if_status(
+            booking,
+            frozenset({BookingStatus.AWAITING_APPROVAL}),
+            {"status": BookingStatus.APPROVED},
+        )
+        if not moved:
+            return Err(BookingError.NOT_AWAITING_APPROVAL)
+        await self._say_decision(trip, member, booking, approved=True)
+        members = await self.members.for_trip(identifier_of(trip))
+        passengers = passengers_of(booking, members)
+        details = await self.travellers.details_for(passengers)
+        bought = await adapter.purchase(
+            offer_of(booking),
+            [details[passenger.user_id] for passenger in passengers],
+            price_minor=booking.amount_minor,
+            hold_ref=booking.hold_ref,
+        )
+        if isinstance(bought, Ok):
+            await self.bookings.update(
+                booking, {"status": BookingStatus.CONFIRMED, "confirmation_ref": bought.value}
+            )
+            await self._announce_finish(trip, booking, BookingStatus.CONFIRMED, "", "")
+        else:
+            await self.bookings.update(booking, {"status": BookingStatus.FAILED})
+            await self._announce_finish(trip, booking, BookingStatus.FAILED, bought.error, "")
+        return Ok(BookingWithRun(booking=booking, run=None))
+
+    async def _say_decision(
+        self, trip: Trip, member: TripMember, booking: Booking, *, approved: bool
+    ) -> None:
+        verb = "approved the payment" if approved else "rejected the summary"
+        await self.events.add(
+            identifier_of(trip),
+            EventKind.MESSAGE,
+            EventActor.MEMBER,
+            f"{member.display_name} {verb} for {booking.title}.",
+            payload={"booking_id": to_text(identifier_of(booking)), "approved": approved},
+            actor_user_id=member.user_id,
+        )
 
     async def _may_buy(self, trip: Trip) -> bool:
         """Rule #1 on fresh data: the trip is buying and no current share is unpaid."""
@@ -895,107 +983,205 @@ class BookingService:
         delay_minutes: int,
         price_change_percent: float,
     ) -> Result[Disruption, BookingError]:
-        """A delay hits a bought train: EVERY confirmed purchase of that train (a party above
-        the supplier's cap is several bookings of one package item) is cancelled and replaced
-        by a PENDING booking for the same passengers, each repriced on its own to whole grosze,
-        followed by ONE re-split of the new total."""
+        """The demo trigger: a delay hits a bought transport (or the given booking). EVERY
+        confirmed purchase of that package item (a party above the supplier's cap is several
+        bookings) is cancelled and replaced by a PENDING booking for the same passengers, each
+        repriced on its own to whole grosze, followed by ONE re-split of the new total."""
         access = await self._organizer(trip_id, user_id)
         if not isinstance(access, Ok):
             return access
         trip, _ = access.value
-        # BOOKING too: a demo books the train first, and a delay can hit it before the rest
-        # is bought. Without a CONFIRMED booking there is nothing to disrupt either way.
-        if trip.status not in (TripStatus.BOOKING, TripStatus.BOOKED):
-            return Err(BookingError.NOTHING_TO_DISRUPT)
-        bookings = await self.bookings.for_trip(identifier_of(trip))
-        targets = self._disrupted_bookings(bookings, booking_id)
+        targets = await self._disruptable(trip, booking_id)
         if not targets:
             return Err(BookingError.NOTHING_TO_DISRUPT)
+        lead = targets[0]
+        noun = mode_noun(lead.mode) if lead.kind is BookingKind.TRANSPORT else "option"
+        replacements = [
+            self._replacement_for(
+                target,
+                repriced_minor(target.amount_minor, price_change_percent),
+                note=(
+                    f"REBOOKING: the original {noun} is delayed by {delay_minutes} min — choose "
+                    "the next later departure on the same route and date."
+                ),
+            )
+            for target in targets
+        ]
+        headline = f"{lead.supplier} reports a {delay_minutes} min delay on {lead.title}"
+        return Ok(await self._rebook(trip, targets, replacements, headline, f"a later {noun}"))
 
-        new_amounts = [repriced_minor(t.amount_minor, price_change_percent) for t in targets]
+    async def check_disruptions(
+        self, trip_id: str, user_id: str
+    ) -> Result[list[Disruption], BookingError]:
+        """Asks every supplier that reports disruptions about the trip's bought bookings. A
+        notice with a replacement offer rebooks the whole item onto it: each purchase is
+        re-quoted for its own party, the old ones are cancelled, and ONE re-split follows."""
+        access = await self._organizer(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        trip, _ = access.value
+        done: list[Disruption] = []
+        members = await self.members.for_trip(identifier_of(trip))
+        for booking in await self.bookings.for_trip(identifier_of(trip)):
+            adapter = self.prices.adapter_of(booking)
+            if (
+                adapter is None
+                or not adapter.capabilities.reports_disruptions
+                or booking.status is not BookingStatus.CONFIRMED
+            ):
+                continue
+            notice = await adapter.status(
+                BookingRef(
+                    offer=offer_of(booking),
+                    confirmation_ref=booking.confirmation_ref,
+                    party_size=_party_size(booking, members),
+                )
+            )
+            if notice is None:
+                continue
+            fresh = await self.trips.get(identifier_of(trip)) or trip
+            rebooked = await self._rebook_onto(fresh, booking, notice, members)
+            if rebooked is not None:
+                done.append(rebooked)
+        return Ok(done)
+
+    async def _rebook_onto(
+        self, trip: Trip, booking: Booking, notice: DisruptionNotice, members: list[TripMember]
+    ) -> Disruption | None:
+        targets = await self._disruptable(trip, to_text(identifier_of(booking)))
+        adapter = self.prices.adapter_of(booking)
+        offer = notice.replacement
+        if not targets or adapter is None or offer is None:
+            await self._say(
+                trip,
+                EventKind.DISRUPTION,
+                f"{booking.supplier}: {notice.message} I could not find a replacement — please "
+                "rebook it by hand.",
+                booking,
+            )
+            return None
+        replacements = []
+        for target in targets:
+            quote = await adapter.quote(
+                OfferRef(offer.supplier_id, offer.offer_ref, offer.supplier_data),
+                _party_size(target, members),
+            )
+            if quote is None:
+                return None
+            replacements.append(
+                self._replacement_for(
+                    target,
+                    quote.price_minor,
+                    offer=offer,
+                    note=f"REBOOKING after a {notice.kind.value}: book {offer.title} instead.",
+                )
+            )
+        verb = "cancelled" if notice.kind is DisruptionKind.CANCELLATION else "delayed"
+        headline = f"{booking.supplier} {verb} {booking.title}: {notice.message}"
+        return await self._rebook(trip, targets, replacements, headline, offer.title)
+
+    async def _disruptable(self, trip: Trip, booking_id: str | None) -> list[Booking]:
+        # BOOKING too: a demo books the transport first, and a delay can hit it before the rest
+        # is bought. Without a CONFIRMED booking there is nothing to disrupt either way.
+        if trip.status not in (TripStatus.BOOKING, TripStatus.BOOKED):
+            return []
+        bookings = await self.bookings.for_trip(identifier_of(trip))
+        return self._disrupted_bookings(bookings, booking_id)
+
+    async def _rebook(
+        self,
+        trip: Trip,
+        targets: list[Booking],
+        replacements: list[Booking],
+        headline: str,
+        found: str,
+    ) -> Disruption:
+        """Cancels `targets`, adds `replacements` (same order), re-splits ONCE — one
+        transaction. A dearer replacement sends the trip to PAYING, otherwise REBOOKING."""
+        bookings = await self.bookings.for_trip(identifier_of(trip))
         target_ids = {target.id for target in targets}
-        new_total = sum(new_amounts) + sum(
+        new_amount = sum(replacement.amount_minor for replacement in replacements)
+        new_total = new_amount + sum(
             booking.amount_minor
             for booking in bookings
             if booking.status is not BookingStatus.CANCELLED and booking.id not in target_ids
         )
         previous_total = trip.total_minor
         old_amount = sum(target.amount_minor for target in targets)
-        new_amount = sum(new_amounts)
         lead = targets[0]
 
-        async def write(session: AsyncClientSession) -> tuple[list[Booking], Resplit]:
-            replacements: list[Booking] = []
-            for target, amount in zip(targets, new_amounts, strict=True):
+        async def write(session: AsyncClientSession) -> tuple[list[Booking], list[MemberShare]]:
+            added: list[Booking] = []
+            for target, replacement in zip(targets, replacements, strict=True):
                 await self.bookings.update(target, {"status": BookingStatus.CANCELLED}, session)
-                replacements.append(
-                    await self.bookings.add(
-                        self._replacement_for(target, amount, delay_minutes), session
-                    )
-                )
+                added.append(await self.bookings.add(replacement.model_copy(), session))
             await self.trips.set_status(trip, TripStatus.DISRUPTED, session)
             parts = f" ({len(targets)} purchases)" if len(targets) > 1 else ""
             await self._say(
                 trip,
                 EventKind.DISRUPTION,
-                f"{lead.supplier} reports a {delay_minutes} min delay on {lead.title}{parts}. "
-                f"I found a later train for "
+                f"{headline}{parts}. I found {found} for "
                 f"{format_money(new_amount, trip.currency)} "
                 f"({format_delta(new_amount - old_amount, trip.currency)}) "
                 f"and cancelled the old booking{'s' if len(targets) > 1 else ''}.",
-                replacements[0],
+                added[0],
                 session,
                 replaces_booking_id=to_text(identifier_of(lead)),
-                booking_ids=[to_text(identifier_of(r)) for r in replacements],
+                booking_ids=[to_text(identifier_of(r)) for r in added],
                 replaces_booking_ids=[to_text(identifier_of(t)) for t in targets],
             )
             plan = await resplit_shares(trip, new_total, session)
             final_status = TripStatus.PAYING if plan.owes else TripStatus.REBOOKING
             await self.trips.set_status(trip, final_status, session)
-            return replacements, plan
+            return added, plan.shares
 
-        replacements, plan = await self.db.in_transaction(write)
-        return Ok(
-            Disruption(
-                cancelled=targets,
-                replacements=replacements,
-                trip=trip,
-                previous_total_minor=previous_total,
-                shares=plan.shares,
-            )
+        added, shares = await self.db.in_transaction(write)
+        return Disruption(
+            cancelled=targets,
+            replacements=added,
+            trip=trip,
+            previous_total_minor=previous_total,
+            shares=shares,
         )
 
-    @staticmethod
-    def _replacement_for(target: Booking, amount_minor: int, delay_minutes: int) -> Booking:
+    def _replacement_for(
+        self, target: Booking, amount_minor: int, *, note: str, offer: Offer | None = None
+    ) -> Booking:
+        """A PENDING booking for the same passengers: the same offer (a delay) or the
+        supplier's replacement offer (a cancellation)."""
+        title = offer.title if offer is not None else target.title
         return Booking(
             trip_id=target.trip_id,
             kind=target.kind,
-            title=f"{target.title} (rebooked)"[:200],
-            supplier=target.supplier,
-            supplier_url=target.supplier_url,
-            goal=(
-                f"{target.goal} REBOOKING: the original train is delayed by "
-                f"{delay_minutes} min — choose the next later departure on the same "
-                "route and date."
-            )[:4000],
+            mode=target.mode,
+            title=f"{title} (rebooked)"[:200],
+            supplier=offer.seller if offer is not None else target.supplier,
+            supplier_url=(offer.purchase_url if offer is not None else "") or target.supplier_url,
+            goal=f"{target.goal} {note}"[:4000],
             amount_minor=amount_minor,
             replaces_booking_id=identifier_of(target),
             passenger_user_ids=target.passenger_user_ids,
             proposal_item_index=target.proposal_item_index,
-            train_query=target.train_query,
+            supplier_id=target.supplier_id,
+            offer_ref=offer.offer_ref if offer is not None else target.offer_ref,
+            channel=target.channel,
+            supplier_data=dict(offer.supplier_data) if offer is not None else target.supplier_data,
+            # The replacement's price was just given (by the supplier's notice and quote, or
+            # by the disruption itself) — binding for the supplier's quote TTL.
+            quoted_at=self.clock(),
         )
 
     @staticmethod
     def _disrupted_bookings(bookings: list[Booking], booking_id: str | None) -> list[Booking]:
         """The confirmed purchases of the disrupted item: the given booking's item, or the
-        first confirmed train's. Parts of one item share `proposal_item_index`; a booking
+        first confirmed transport's. Parts of one item share `proposal_item_index`; a booking
         without one (created before items were recorded) stands alone."""
         confirmed = [booking for booking in bookings if booking.status is BookingStatus.CONFIRMED]
         if booking_id is not None:
             wanted = to_object_id(booking_id)
             first = next((booking for booking in confirmed if booking.id == wanted), None)
         else:
-            first = next((b for b in confirmed if b.kind is BookingKind.TRAIN), None)
+            first = next((b for b in confirmed if b.kind is BookingKind.TRANSPORT), None)
         if first is None:
             return []
         if first.proposal_item_index is None:
@@ -1004,5 +1190,6 @@ class BookingService:
             booking
             for booking in confirmed
             if booking.kind is first.kind
+            and booking.mode is first.mode
             and booking.proposal_item_index == first.proposal_item_index
         ]

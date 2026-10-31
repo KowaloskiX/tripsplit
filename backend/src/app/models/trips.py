@@ -9,7 +9,7 @@ from typing import Any, ClassVar
 
 import pymongo
 from beanie import Document, PydanticObjectId
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.core.domain.trips import (
     BookingKind,
@@ -17,7 +17,9 @@ from app.core.domain.trips import (
     EventActor,
     EventKind,
     MemberRole,
+    TransportMode,
     TripStatus,
+    upgrade_legacy_kind,
 )
 from app.db.documents import TimestampMixin
 
@@ -35,6 +37,10 @@ class Trip(TimestampMixin, Document):
     group_size: int = Field(ge=1, le=20)
     budget_per_person_minor: int | None = None
     currency: str = "PLN"
+    # Where to: "Barcelona". Empty = the researcher reads it from the title and brief.
+    destination: str = Field(default="", max_length=TITLE_MAX_LENGTH)
+    # How the group wants to travel; None = any mode the enabled suppliers offer.
+    transport_mode: TransportMode | None = None
     status: TripStatus = TripStatus.COLLECTING
     organizer_id: PydanticObjectId
     invite_code: str
@@ -66,16 +72,40 @@ class TripMember(TimestampMixin, Document):
         ]
 
 
+class TransportSegment(BaseModel):
+    """One leg of a transport item: a flight, a train, a bus ride."""
+
+    carrier: str = Field(max_length=TITLE_MAX_LENGTH)
+    number: str = Field(max_length=TITLE_MAX_LENGTH)
+    origin: str = Field(max_length=TITLE_MAX_LENGTH)
+    destination: str = Field(max_length=TITLE_MAX_LENGTH)
+    departs_at: datetime
+    arrives_at: datetime
+
+
 class ProposalItem(BaseModel):
     """One purchasable part of a package — becomes a `Booking` when the package wins."""
 
     kind: BookingKind
+    mode: TransportMode | None = None  # transport only
     title: str = Field(max_length=TITLE_MAX_LENGTH)
-    supplier: str = Field(max_length=TITLE_MAX_LENGTH)  # "PKP Intercity", "Booking.com"
+    supplier: str = Field(max_length=TITLE_MAX_LENGTH)  # who sells it: "Ryanair", "Booking.com"
     supplier_url: str = Field(max_length=2000)
     price_minor: int = Field(ge=0)  # for the WHOLE group
     details: str = Field(default="", max_length=TEXT_MAX_LENGTH)  # times, room type, ...
     starts_at: datetime | None = None
+    # The supplier plugin and its offer; empty for an item researched outside the registry.
+    supplier_id: str = ""
+    offer_ref: str = Field(default="", max_length=TEXT_MAX_LENGTH)
+    segments: list[TransportSegment] = Field(default_factory=list)
+    refundable: bool = False
+    # Adapter-owned (see `Booking.supplier_data`); never shown to or accepted from a client.
+    supplier_data: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _read_legacy_kind(cls, data: Any) -> Any:
+        return upgrade_legacy_kind(data) if isinstance(data, dict) else data
 
 
 class Proposal(TimestampMixin, Document):

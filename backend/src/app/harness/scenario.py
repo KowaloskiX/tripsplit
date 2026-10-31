@@ -1,8 +1,12 @@
-"""The scenario vocabulary: a trip brief, the people and a list of small, readable steps.
+"""The scenario vocabulary: the suppliers, a trip brief, the people and a list of small,
+readable steps.
 
 Scenarios are plain Python (`app/harness/scenarios/<name>.py`, each exporting `SCENARIO`), so a
 typo is a type error rather than a silently ignored YAML key. Members are referred to by their
-full display name; bookings by kind (`train` / `stay` / `activity`, or `all`).
+full display name. Bookings are addressed generically — by kind (`transport` / `stay` /
+`activity`), by transport mode (`rail` / `flight` / `bus` / `ferry`) or `all` — never by a
+supplier's name. Suppliers are plugin ids (`sim_flight`, `sim_rail`, ...) with an optional
+scripted `SimBehaviour`.
 """
 
 from collections.abc import Mapping, Sequence
@@ -10,13 +14,38 @@ from dataclasses import dataclass, field, fields
 from datetime import date
 from typing import Literal
 
-from app.core.domain.trips import BookingStatus, ContributionStatus, EventKind, TripStatus
+from app.core.domain.trips import (
+    BookingStatus,
+    ContributionStatus,
+    EventKind,
+    TransportMode,
+    TripStatus,
+)
+from app.suppliers.sim import SimBehaviour
 
-type KindName = Literal["train", "stay", "activity"]
-type KindSelector = Literal["train", "stay", "activity", "all"]
-# What the scripted agent does when it is started for a booking of a given kind.
+type Target = Literal["transport", "rail", "flight", "bus", "ferry", "stay", "activity"]
+type TargetSelector = Target | Literal["all"]
+# What the scripted agent does when it is started for a booking of a given target.
 type ScriptedOutcome = Literal["done", "handoff", "stuck", "error"]
 type ShareTrend = Literal["higher", "lower", "equal"]
+
+
+@dataclass(frozen=True, slots=True)
+class SupplierSpec:
+    """A supplier plugin for the scenario: its id and what it does (simulators only). The
+    behaviour is copied for every run, so a one-shot never leaks into the next scenario."""
+
+    id: str
+    behaviour: SimBehaviour | None = None
+
+
+# The rail-flavoured trip most scenarios share: rail + a stay site + activities, all bought
+# by the agent like the original Prague demo.
+RAIL_TRIP: tuple[SupplierSpec, ...] = (
+    SupplierSpec("sim_rail"),
+    SupplierSpec("sim_stay_site"),
+    SupplierSpec("sim_activity"),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,9 +57,8 @@ class Brief:
     date_to: date
     group_size: int
     budget_per_person_minor: int | None = None
-    # Station names for the live PKP Intercity search (`--live-search`) only.
-    origin_station: str = "Warszawa Centralna"
-    destination_station: str = "Praha"
+    destination: str = ""
+    transport_mode: TransportMode | None = None
 
 
 # ---- actions ------------------------------------------------------------------------------
@@ -63,38 +91,69 @@ class Pay:
 
 @dataclass(frozen=True, slots=True)
 class StartBookings:
-    """Starts every PENDING / FAILED booking of the kind and waits for the agents to settle."""
+    """Starts every PENDING / FAILED booking of the target and waits for the agents to settle."""
 
-    kind: KindSelector = "all"
+    target: TargetSelector = "all"
 
 
 @dataclass(frozen=True, slots=True)
 class AgentOutcome:
-    """What the scripted agent does on its NEXT start for each kind (default: `done`)."""
+    """What the scripted agent does on every later start for the target (default: `done`)."""
 
-    train: ScriptedOutcome | None = None
-    stay: ScriptedOutcome | None = None
-    activity: ScriptedOutcome | None = None
+    target: Target
+    outcome: ScriptedOutcome
 
 
 @dataclass(frozen=True, slots=True)
 class Approve:
-    kind: KindSelector = "all"
+    target: TargetSelector = "all"
     approved: bool = True
 
 
 @dataclass(frozen=True, slots=True)
 class Disrupt:
+    """The demo disruption endpoint: a delay on the first bought transport."""
+
     delay_minutes: int
     price_change_percent: float
 
 
 @dataclass(frozen=True, slots=True)
 class SupplierPriceChange:
-    """The supplier's live price moves by `percent` before the next start (one-shot)."""
+    """The target's suppliers ask `percent` more at their next quote or hold (one-shot)."""
 
-    kind: KindName
+    target: Target
     percent: float
+
+
+@dataclass(frozen=True, slots=True)
+class SupplierDisruption:
+    """The target's suppliers report a disruption at the next status check: a cancellation
+    (or a delay) with a replacement on another carrier at `replacement_percent`."""
+
+    target: Target
+    cancelled: bool = True
+    delay_minutes: int = 0
+    replacement_percent: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
+class CheckDisruptions:
+    """The organizer asks the suppliers about the bought bookings (`check_disruptions`)."""
+
+
+@dataclass(frozen=True, slots=True)
+class AdvanceClock:
+    """Time passes for the trip flow and every supplier (holds and quotes can lapse)."""
+
+    hours: float
+
+
+@dataclass(frozen=True, slots=True)
+class EnterTravellerDetails:
+    """These members enter their traveller details (date of birth, nationality, passport)."""
+
+    members: Sequence[str]
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,7 +163,7 @@ class Leave:
 
 @dataclass(frozen=True, slots=True)
 class CompleteManually:
-    kind: KindName
+    target: Target
     ref: str
 
 
@@ -118,12 +177,38 @@ class ExpectStatus:
 
 @dataclass(frozen=True, slots=True)
 class ExpectBookingStatus:
-    """Every live (not cancelled) booking of the kind is in `status`; `count` = how many live
-    bookings of the kind there must be (a train for six is two purchases)."""
+    """Every live (not cancelled) booking of the target is in `status`; `count` = how many live
+    bookings of the target there must be (rail for six at a cap of five is two purchases)."""
 
-    kind: KindName
+    target: Target
     status: BookingStatus
     count: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectPurchases:
+    """The live bookings of the target carry exactly these party sizes, in order (8 at a cap
+    of 9 -> (8,); at a cap of 5 -> (4, 4))."""
+
+    target: Target
+    sizes: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectHold:
+    """Every live booking of the target holds its price right now (`live`), or holds none
+    that is still valid (`live=False`)."""
+
+    target: Target
+    live: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectAgentRuns:
+    """How many agent runs the target's bookings needed (0 for an API purchase)."""
+
+    target: Target
+    count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,12 +268,19 @@ type Action = (
     | Approve
     | Disrupt
     | SupplierPriceChange
+    | SupplierDisruption
+    | CheckDisruptions
+    | AdvanceClock
+    | EnterTravellerDetails
     | Leave
     | CompleteManually
 )
 type Expectation = (
     ExpectStatus
     | ExpectBookingStatus
+    | ExpectPurchases
+    | ExpectHold
+    | ExpectAgentRuns
     | ExpectShares
     | ExpectEvent
     | ExpectWinner
@@ -201,6 +293,9 @@ type Step = Action | Expectation
 EXPECTATIONS = (
     ExpectStatus,
     ExpectBookingStatus,
+    ExpectPurchases,
+    ExpectHold,
+    ExpectAgentRuns,
     ExpectShares,
     ExpectEvent,
     ExpectWinner,
@@ -219,6 +314,9 @@ class Scenario:
     friends: tuple[str, ...]
     steps: tuple[Step, ...]
     description: str = ""
+    suppliers: tuple[SupplierSpec, ...] = RAIL_TRIP
+    # Members who have NOT entered traveller details at the start; everyone else has.
+    without_traveller_details: tuple[str, ...] = ()
     # Invariant name -> why its violation is expected in this scenario (reported, not failed).
     known_violations: Mapping[str, str] = field(default_factory=dict)
     # The scenario documents a product bug: failing is expected (pytest xfail, strict=False).

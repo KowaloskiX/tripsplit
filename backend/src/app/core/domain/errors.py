@@ -47,3 +47,9 @@ class BookingError(StrEnum):
     SOLD_OUT = "sold_out"  # the supplier no longer offers what the booking describes
     PRICE_CHANGED = "price_changed"  # re-quoted dearer: the group tops up before the purchase
     NOT_COMPLETABLE = "booking_not_completable"  # only a handoff / failure is finished by hand
+    # The supplier needs traveller details (date of birth, document, ...) somebody has not
+    # entered yet; the feed names who and which fields — never the values.
+    TRAVELLER_DETAILS_MISSING = "traveller_details_missing"
+    # The quote (or hold) behind a summary went stale before the approval: start again.
+    QUOTE_EXPIRED = "quote_expired"
+    SUPPLIER_UNKNOWN = "supplier_unknown"  # the booking names a supplier that is not enabled

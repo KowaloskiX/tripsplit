@@ -70,6 +70,8 @@ forbidden_modules =
     app.core.config
     app.core.deps
     app.core.errors_http
+    app.suppliers
+    app.ai
     fastapi
     starlette
     beanie
@@ -85,3 +87,20 @@ forbidden_modules =
     openai
     anthropic
     litellm
+
+[importlinter:contract:services_use_the_supplier_port]
+name = The trip flow reaches suppliers through the port, never a concrete adapter
+type = forbidden
+source_modules =
+    app.services
+    app.ai
+forbidden_modules =
+    app.suppliers.sim
+    app.suppliers.sim_catalogue
+    app.suppliers.pkp
+    app.suppliers.intercity
+    app.suppliers.demo_rail
+    app.suppliers.providers
+ignore_imports =
+    # The fake rail SITE renders the trains its own supplier plugin sells.
+    app.services.demo_supplier -> app.suppliers.demo_rail

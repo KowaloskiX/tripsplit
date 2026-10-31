@@ -1,4 +1,5 @@
-"""Test-only adapters behind the product's ports: a scripted agent and a scripted supplier price.
+"""Test-only adapters behind the product's ports: a clock, a scripted agent and scriptable
+prices for a real supplier.
 
 `ScriptedLauncher` speaks the real runner's on-disk protocol (`status.json`, `NN.png`,
 `approval.json`, `result.json` under `runs/<run_id>/`), so `BookingService` monitors it exactly
@@ -8,17 +9,33 @@ as it monitors a live agent — only much faster and with a chosen outcome.
 import asyncio
 import json
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 from app.agent.launcher import AgentLauncher, LaunchSpec, RunHandle
 from app.core.domain.bookings import repriced_minor
-from app.core.domain.trips import BookingKind
+from app.core.domain.result import Result
+from app.core.domain.travellers import TravellerDetails
+from app.db.documents import utc_now
 from app.db.identifiers import to_object_id
-from app.harness.scenario import ScriptedOutcome
+from app.harness.scenario import ScriptedOutcome, Target, TargetSelector
 from app.models.bookings import Booking
 from app.repositories.bookings import BookingRepository
+from app.suppliers.ports import (
+    BookingRef,
+    DisruptionNotice,
+    Hold,
+    Offer,
+    OfferRef,
+    Quote,
+    SearchRequest,
+    SupplierAdapter,
+)
+from app.suppliers.registry import SupplierRegistry
+from app.suppliers.sim import SimBehaviour
 
 STATUS_FILE = "status.json"
 RESULT_FILE = "result.json"
@@ -34,6 +51,12 @@ _REASONS: dict[str, str] = {
     "error": "The browser crashed (scripted).",
 }
 _STEPS = {"done": 7, "handoff": 4, "stuck": 9, "error": 2}
+_SCRIPTED_OUTCOMES: dict[str, ScriptedOutcome] = {
+    "done": "done",
+    "handoff": "handoff",
+    "stuck": "stuck",
+    "error": "error",
+}
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -52,6 +75,28 @@ def _read_approval(run_dir: Path) -> bool | None:
     return approved if isinstance(approved, bool) else None
 
 
+class HarnessClock:
+    """ "Now" for the trip flow and every supplier of a scenario; `AdvanceClock` moves it."""
+
+    def __init__(self, start: datetime | None = None) -> None:
+        self._now = start or utc_now()
+
+    def now(self) -> datetime:
+        return self._now
+
+    def advance(self, by: timedelta) -> None:
+        self._now += by
+
+
+def matches(booking: Booking, target: TargetSelector) -> bool:
+    """`all`, a kind (`transport` / `stay` / `activity`) or a transport mode (`flight`, ...)."""
+    if target == "all":
+        return True
+    return booking.kind.value == target or (
+        booking.mode is not None and booking.mode.value == target
+    )
+
+
 def booking_id_of(run_id: str) -> str:
     """`b<booking_id>-<attempt>` -> `<booking_id>` (see `run_id_for`)."""
     return run_id.removeprefix("b").rsplit("-", 1)[0]
@@ -60,7 +105,7 @@ def booking_id_of(run_id: str) -> str:
 @dataclass(frozen=True, slots=True)
 class Launch:
     run_id: str
-    kind: BookingKind | None
+    target: str
     outcome: str
     url: str
     goal: str
@@ -114,22 +159,41 @@ class ScriptedHandle:
 
 @dataclass
 class ScriptedLauncher:
-    """Plays the agent. The outcome per booking kind is set by the scenario's AgentOutcome step
-    and applies to every later start of that kind (default: `done` = reach the summary, wait for
-    the approval, confirm)."""
+    """Plays the agent. The outcome per booking comes from the scenario's AgentOutcome steps
+    (the most specific target wins: a mode before its kind), else from the booking's simulated
+    supplier (`SimBehaviour.agent_outcome`, e.g. a CAPTCHA), else `done` = reach the summary,
+    wait for the approval, confirm."""
 
     runs_dir: Path
+    suppliers: SupplierRegistry = field(default_factory=SupplierRegistry)
+    behaviours: dict[str, SimBehaviour] = field(default_factory=dict)
     approval_timeout_s: float = 120.0
-    outcomes: dict[BookingKind, ScriptedOutcome] = field(default_factory=dict)
+    # Target (a mode or a kind) -> outcome.
+    outcomes: dict[str, ScriptedOutcome] = field(default_factory=dict)
     launches: list[Launch] = field(default_factory=list)
 
+    def script(self, target: Target, outcome: ScriptedOutcome) -> None:
+        self.outcomes[target] = outcome
+
+    def outcome_for(self, booking: Booking | None) -> ScriptedOutcome:
+        if booking is None:
+            return "done"
+        for target in (booking.mode.value if booking.mode else None, booking.kind.value):
+            if target is not None and target in self.outcomes:
+                return self.outcomes[target]
+        scripted = self.behaviours.get(booking.supplier_id)
+        if scripted is not None and scripted.agent_outcome is not None:
+            return _SCRIPTED_OUTCOMES.get(scripted.agent_outcome, "done")
+        return "done"
+
     async def start(self, spec: LaunchSpec) -> RunHandle:
-        kind = await self._kind_of(spec.run_id)
-        outcome: ScriptedOutcome = self.outcomes.get(kind, "done") if kind else "done"
+        booking = await self._booking_of(spec.run_id)
+        outcome = self.outcome_for(booking)
+        target = (booking.mode or booking.kind).value if booking is not None else "?"
         self.launches.append(
             Launch(
                 run_id=spec.run_id,
-                kind=kind,
+                target=target,
                 outcome=outcome,
                 url=spec.url,
                 goal=spec.goal,
@@ -146,10 +210,9 @@ class ScriptedLauncher:
         return ScriptedHandle(run_dir, outcome, self.approval_timeout_s)
 
     @staticmethod
-    async def _kind_of(run_id: str) -> BookingKind | None:
+    async def _booking_of(run_id: str) -> Booking | None:
         booking_oid = to_object_id(booking_id_of(run_id))
-        booking = await BookingRepository().get(booking_oid) if booking_oid else None
-        return booking.kind if booking is not None else None
+        return await BookingRepository().get(booking_oid) if booking_oid else None
 
 
 @dataclass
@@ -168,25 +231,50 @@ class RoutingLauncher:
         return await self.scripted.start(spec)
 
 
-@dataclass
-class ScriptedQuotes:
-    """The `QuoteProvider` port (`app/suppliers/quotes.py`, feat/domain-lifecycle): the
-    supplier's current price for a booking. A change set by SupplierPriceChange is one-shot — it
-    is consumed by the next quote of that kind, after which the price is stable again."""
+class ScriptablePrices:
+    """Wraps a REAL supplier (PKP Intercity under `--live-search`) so a scenario can still
+    script it: `SupplierPriceChange` moves its next quote, `sold_out` empties it. Everything
+    else goes to the real adapter."""
 
-    percent: dict[BookingKind, float] = field(default_factory=dict)
-    sold_out: set[BookingKind] = field(default_factory=set)
-    asked: list[tuple[str, int, int | None]] = field(default_factory=list)
+    def __init__(self, inner: SupplierAdapter, behaviour: SimBehaviour) -> None:
+        self.inner = inner
+        self.behaviour = behaviour
+        self.id = inner.id
+        self.display_name = inner.display_name
+        self.capabilities = inner.capabilities
 
-    async def quote(self, booking: Booking) -> int | None:
-        if booking.kind in self.sold_out:
-            price: int | None = None
-        else:
-            change = self.percent.pop(booking.kind, None)
-            price = (
-                booking.amount_minor
-                if change is None
-                else repriced_minor(booking.amount_minor, change)
-            )
-        self.asked.append((booking.kind.value, booking.amount_minor, price))
-        return price
+    async def search(self, request: SearchRequest) -> list[Offer]:
+        return await self.inner.search(request)
+
+    async def quote(self, offer: OfferRef, party_size: int) -> Quote | None:
+        if self.behaviour.sold_out:
+            return None
+        quoted = await self.inner.quote(offer, party_size)
+        change = self.behaviour.price_change_percent
+        if quoted is None or change is None:
+            return quoted
+        self.behaviour.price_change_percent = None
+        return Quote(
+            price_minor=repriced_minor(quoted.price_minor, change),
+            currency=quoted.currency,
+            quoted_at=quoted.quoted_at,
+            expires_at=quoted.expires_at,
+        )
+
+    async def hold(self, offer: OfferRef, travellers: Sequence[TravellerDetails]) -> Hold | None:
+        return await self.inner.hold(offer, travellers)
+
+    async def purchase(
+        self,
+        offer: OfferRef,
+        travellers: Sequence[TravellerDetails],
+        *,
+        price_minor: int,
+        hold_ref: str | None,
+    ) -> Result[str, str]:
+        return await self.inner.purchase(
+            offer, travellers, price_minor=price_minor, hold_ref=hold_ref
+        )
+
+    async def status(self, booking: BookingRef) -> DisruptionNotice | None:
+        return await self.inner.status(booking)

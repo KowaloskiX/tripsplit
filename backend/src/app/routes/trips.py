@@ -40,6 +40,8 @@ async def create_trip(
             group_size=payload.group_size,
             budget_per_person_minor=payload.budget_per_person_minor,
             display_name=payload.display_name,
+            destination=payload.destination,
+            transport_mode=payload.transport_mode,
         ),
     )
     return TripStatusResponse.model_validate(trip_value(result))

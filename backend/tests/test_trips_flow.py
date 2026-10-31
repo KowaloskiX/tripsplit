@@ -10,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.background import BackgroundRunner
 from app.core.config import Settings, get_settings
-from app.core.domain.trips import BookingKind, BookingStatus, EventKind, TripStatus
+from app.core.domain.trips import BookingKind, BookingStatus, EventKind, TransportMode, TripStatus
 from app.core.http_security import CSRF_HEADER_NAME
 from app.db.identifiers import to_object_id
 from app.models.trips import Trip
@@ -44,6 +44,9 @@ class Member:
 
     async def post(self, path: str, body: dict[str, Any] | None = None) -> Any:
         return await self.client.post(path, json=body or {}, headers=self._headers())
+
+    async def put(self, path: str, body: dict[str, Any]) -> Any:
+        return await self.client.put(path, json=body, headers=self._headers())
 
     async def get(self, path: str) -> Any:
         return await self.client.get(path)
@@ -148,14 +151,15 @@ async def test_full_flow_from_brief_to_booking(app: FastAPI, member_factory: Mem
     trip_oid = to_object_id(trip_id)
     assert trip_oid is not None
     bookings = await BookingRepository().for_trip(trip_oid)
-    # PKP Intercity sells at most 5 passengers per purchase: the train of six is two bookings.
+    # The rail carrier sells at most 5 passengers per purchase: the train of six is two bookings.
     assert len(bookings) == len(proposals[1]["items"]) + 1
     assert all(b.status is BookingStatus.PENDING for b in bookings)
     assert all("Stop at the summary before paying." in b.goal for b in bookings)
-    trains = [b for b in bookings if b.kind is BookingKind.TRAIN]
+    trains = [b for b in bookings if b.mode is TransportMode.RAIL]
     assert [len(b.passenger_user_ids) for b in trains] == [3, 3]
     assert all("3 passengers" in b.goal for b in trains)
-    assert all("6" in b.goal for b in bookings if b.kind is not BookingKind.TRAIN)
+    assert all(b.supplier_id == "sim_rail" for b in trains)
+    assert all("6" in b.goal for b in bookings if b.kind is not BookingKind.TRANSPORT)
 
     # Everyone but the organizer pays — the trip must NOT move to booking yet (rule #1).
     assert (await friend.post(f"/api/trips/{trip_id}/contributions/pay")).status_code == 200
@@ -266,11 +270,14 @@ async def test_no_budget_means_nothing_is_over_budget(
     assert not any(e["payload"].get("over_budget") for e in feed)
 
 
-async def test_demo_supplier_url_redirects_only_the_train(
+async def test_the_demo_rail_supplier_sends_only_the_train_to_the_fake_site(
     app: FastAPI, settings: Settings, member_factory: MemberFactory
 ) -> None:
     app.dependency_overrides[get_settings] = lambda: settings.model_copy(
-        update={"demo_supplier_url": "http://localhost:8000"}
+        update={
+            "demo_supplier_url": "http://localhost:8000",
+            "suppliers": "demo_rail,sim_stay_site,sim_activity",
+        }
     )
     organizer = await member_factory("organizer@example.com")
     trip_id = await _create_trip(organizer)
@@ -280,10 +287,11 @@ async def test_demo_supplier_url_redirects_only_the_train(
     trip_oid = to_object_id(trip_id)
     assert trip_oid is not None
     by_kind = {b.kind: b for b in await BookingRepository().for_trip(trip_oid)}
-    train = by_kind.pop(BookingKind.TRAIN)
+    train = by_kind.pop(BookingKind.TRANSPORT)
     assert train.supplier_url == "http://localhost:8000/api/demo-supplier/rail"
+    assert train.supplier_id == "demo_rail"
     assert "Stop at the summary before paying." in train.goal
-    assert by_kind, "the fixture package has more than a train"
+    assert by_kind, "the package has more than a train"
     assert all("demo-supplier" not in b.supplier_url for b in by_kind.values())
 
 

@@ -23,9 +23,8 @@ _HOST_COOKIE_PREFIX = "__Host-"
 
 _MIN_AUTH_SECRET_LENGTH = 32
 
-type ResearcherKind = Literal["fixture", "claude-cli"]
+type ResearcherKind = Literal["catalog", "claude-cli"]
 type PaymentsKind = Literal["fake"]
-type QuotesKind = Literal["static", "intercity"]
 
 
 class Settings(BaseSettings):
@@ -84,10 +83,10 @@ class Settings(BaseSettings):
     # and single-node). `redis://…` = one shared counter for every replica.
     rate_limit_storage_url: str = ""
 
-    # Who researches trip packages: `fixture` = deterministic offline packages (tests, offline
-    # demo); `claude-cli` = Claude Code in `-p` mode with web search, falling back to the
-    # fixture on any failure.
-    researcher: ResearcherKind = "fixture"
+    # Who researches trip packages: `catalog` = packages composed deterministically from the
+    # enabled suppliers' offers (see `suppliers`); `claude-cli` = the same packages, described
+    # by Claude Code in `-p` mode (falls back to the catalogue wording on any failure).
+    researcher: ResearcherKind = "catalog"
     research_timeout_s: int = 300
     # Who takes the money. `fake` always succeeds; Stripe plugs in behind the same port later.
     payments: PaymentsKind = "fake"
@@ -99,17 +98,24 @@ class Settings(BaseSettings):
     # Show the agent's browser window (local debugging only).
     agent_headful: bool = False
     agent_max_steps: int = 40
-    # Demo only: the base URL of THIS backend (e.g. http://localhost:8000). When set on dev/test,
-    # train bookings created at voting close point at the fake rail supplier under it instead of
-    # the real carrier, so a live demo never drives the agent at a real supplier. Empty = off.
+    # Demo only: the base URL of THIS backend (e.g. http://localhost:8000). On dev/test it
+    # enables the `demo_rail` supplier — our fake rail site under it — so a live demo never
+    # drives the agent at a real carrier. Empty = off.
     demo_supplier_url: str = ""
-    # Who re-quotes a booking right before the agent buys it: `static` = the stored amount is
-    # the price (offline, tests); `intercity` = ask PKP Intercity again for bookings that carry
-    # a train query (see app.suppliers.quotes).
-    quotes: QuotesKind = "static"
+    # The supplier plugins, comma-separated ids (see app.suppliers.providers): the simulators
+    # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`; the
+    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`.
+    suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
     # How far (in percent of the stored amount) a re-quote may move before the group's shares
     # are re-split. 0 = any change re-splits.
     price_tolerance_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+
+    @field_validator("researcher", mode="before")
+    @classmethod
+    def _read_legacy_researcher(cls, value: object) -> object:
+        """`fixture` was the deterministic researcher before suppliers became plugins; an
+        existing `.env` keeps working with its successor."""
+        return "catalog" if value == "fixture" else value
 
     @field_validator("cors_origins")
     @classmethod
@@ -179,11 +185,15 @@ class Settings(BaseSettings):
         return self.app_env in _LOCAL_ENVS
 
     @property
-    def demo_train_supplier_url(self) -> str | None:
-        """Where train bookings point in a demo: the fake rail supplier, or None (real URL)."""
+    def demo_rail_url(self) -> str | None:
+        """The base URL the `demo_rail` supplier lives under, or None outside a demo."""
         if not self.demo_supplier_url or not self.demo_routes_enabled:
             return None
-        return f"{self.demo_supplier_url.rstrip('/')}/api/demo-supplier/rail"
+        return self.demo_supplier_url.rstrip("/")
+
+    @property
+    def supplier_ids(self) -> list[str]:
+        return [part.strip() for part in self.suppliers.split(",") if part.strip()]
 
 
 @lru_cache

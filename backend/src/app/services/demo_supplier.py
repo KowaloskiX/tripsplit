@@ -17,30 +17,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from html import escape
 
-from app.core.domain.bookings import PKP_INTERCITY_PURCHASE_CAP
+from app.suppliers.demo_rail import BASE_PATH, MAX_PASSENGERS_PER_PURCHASE, TRAINS, Train
 
-BASE_PATH = "/api/demo-supplier/rail"
+__all__ = ["BASE_PATH", "MAX_PASSENGERS_PER_PURCHASE", "TRAINS", "Train"]
+
 # What the search form offers; a purchase itself is capped at MAX_PASSENGERS_PER_PURCHASE.
 MAX_PASSENGERS = 9
-MAX_PASSENGERS_PER_PURCHASE = PKP_INTERCITY_PURCHASE_CAP
 _FIELD_MAX = 100
 CURRENCY = "PLN"
-
-
-@dataclass(frozen=True, slots=True)
-class Train:
-    code: str
-    name: str
-    departs: str
-    arrives: str
-    price_per_person_minor: int
-
-
-TRAINS: tuple[Train, ...] = (
-    Train("EC-111", "EC 111 Praha", "06:20", "14:05", 18_900),
-    Train("EC-113", "EC 113 Vltava", "10:25", "18:10", 21_900),
-    Train("EN-407", "EN 407 Chopin", "22:40", "07:05", 24_900),
-)
 
 
 @dataclass(frozen=True, slots=True)

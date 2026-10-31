@@ -67,12 +67,19 @@ def test_api_docs_are_local_only() -> None:
     assert Settings(app_env="prod", auth_secret=STRONG_SECRET).expose_api_docs is False
 
 
-def test_demo_train_supplier_only_on_local_envs() -> None:
+def test_demo_rail_supplier_only_on_local_envs() -> None:
     """A demo must never send the agent to a real carrier — and prod never to the fake one."""
-    assert Settings(app_env="dev").demo_train_supplier_url is None
+    assert Settings(app_env="dev").demo_rail_url is None
     assert (
-        Settings(app_env="dev", demo_supplier_url="http://localhost:8000/").demo_train_supplier_url
-        == "http://localhost:8000/api/demo-supplier/rail"
+        Settings(app_env="dev", demo_supplier_url="http://localhost:8000/").demo_rail_url
+        == "http://localhost:8000"
     )
     prod = Settings(app_env="prod", auth_secret=STRONG_SECRET, demo_supplier_url="http://x")
-    assert prod.demo_train_supplier_url is None
+    assert prod.demo_rail_url is None
+
+
+def test_supplier_ids_are_a_trimmed_list() -> None:
+    assert Settings(suppliers=" sim_rail, pkp_intercity ,,").supplier_ids == [
+        "sim_rail",
+        "pkp_intercity",
+    ]

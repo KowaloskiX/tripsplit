@@ -66,6 +66,20 @@ need an unmerged domain feature are `pending`; scenarios documenting a bug are `
 same scenarios run in pytest (`tests/e2e/test_trip_scenarios.py`). Exit code 1 = an unexpected
 step failure or invariant violation.
 
+## Suppliers (plugins)
+
+The trip flow is supplier-agnostic: rail, flights, buses, stays and activities are adapters
+behind `backend/src/app/suppliers/ports.py` (`SupplierAdapter`), each declaring
+`SupplierCapabilities` (kind/mode, channel `api`/`agent`/`manual`, purchase cap, holds, quote
+TTL, required traveller fields). Services read capabilities, never supplier names. Enable them
+with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`).
+
+```bash
+cd backend && uv run trip-harness run all            # simulated suppliers, scripted agent
+cd backend && uv run trip-harness run prague_happy_path --live-search   # real PKP (~20 s)
+uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
+```
+
 ## API bridge
 
 ```bash

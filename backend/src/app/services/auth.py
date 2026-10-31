@@ -36,6 +36,7 @@ from app.repositories.auth import (
     SessionRepository,
     UserRepository,
 )
+from app.repositories.travellers import TravellerProfileRepository
 from app.repositories.trips import ContributionRepository, MemberRepository, VoteRepository
 
 # We do not write `last_seen_at` on every request — one UPDATE per window.
@@ -74,6 +75,7 @@ class AuthService:
         self.trip_members = MemberRepository()
         self.votes = VoteRepository()
         self.contributions = ContributionRepository()
+        self.traveller_profiles = TravellerProfileRepository()
 
     async def register(
         self, email: str, password: str, organization_name: str
@@ -241,6 +243,8 @@ class AuthService:
             await self.trip_members.delete_for_user(identifier, session=session)
             await self.votes.delete_for_user(identifier, session=session)
             await self.contributions.delete_for_user(identifier, session=session)
+            # Personal data (passport number): nothing of it may outlive the account.
+            await self.traveller_profiles.delete_for_user(identifier, session=session)
             user = await self.users.get_by_id(identifier, session=session)
             if user is not None:
                 await user.delete(session=session)

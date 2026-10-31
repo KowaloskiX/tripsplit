@@ -9,6 +9,7 @@ import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
 import { ProposalsPanel } from "@/features/proposals";
+import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
 import type { TripStatus } from "@/lib/api";
 
@@ -96,6 +97,7 @@ function RoomPage(): ReactNode {
             </section>
           )}
           {!paying && showContributions && <ContributionsPanel room={room} />}
+          <TravellerDetailsPanel room={room} />
           <ProposalsPanel room={room} />
           {import.meta.env.DEV && <DemoPanel room={room} />}
         </div>
