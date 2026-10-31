@@ -14,3 +14,11 @@ describe("formatMoney", () => {
     expect(formatDelta(-1_200, "PLN")).toBe("-12.00 PLN");
   });
 });
+
+describe("one money format everywhere (QA finding 5)", () => {
+  it("matches the backend feed messages, whatever the browser locale", () => {
+    // core.domain.bookings.format_money(328_800, "PLN") == "3 288.00 PLN"
+    expect(formatMoney(328_800)).toBe("3 288.00 PLN");
+    expect(formatMoney(328_800, "EUR")).toBe("3 288.00 EUR");
+  });
+});

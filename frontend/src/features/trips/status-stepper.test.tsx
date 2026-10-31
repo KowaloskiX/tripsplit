@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import { StatusStepper, stepsFor } from "./status-stepper";
+import { owesTopUp, StatusStepper, stepsFor } from "./status-stepper";
 
 describe("StatusStepper", () => {
   it("marks earlier stages done and the current one as the step", () => {
@@ -28,5 +28,23 @@ describe("StatusStepper", () => {
 
   it("shows a booked trip as complete", () => {
     expect(stepsFor("booked").every((step) => step.state === "done")).toBe(true);
+  });
+
+  it("after a dearer rebooking shows a Top-up alert, not a fresh Paying step", () => {
+    const shares = [
+      { paid_minor: 54_800, outstanding_minor: 1_890 },
+      { paid_minor: 54_800, outstanding_minor: 1_890 },
+    ];
+    expect(owesTopUp("paying", shares)).toBe(true);
+    expect(owesTopUp("paying", [{ paid_minor: 0, outstanding_minor: 54_800 }])).toBe(false);
+    expect(owesTopUp("rebooking", shares)).toBe(false);
+    const steps = stepsFor("paying", { topUp: true });
+    expect(steps.map((step) => [step.label, step.state])).toEqual([
+      ["Collecting", "done"],
+      ["Voting", "done"],
+      ["Top-up", "alert"],
+      ["Rebooking", "upcoming"],
+      ["Booked", "upcoming"],
+    ]);
   });
 });

@@ -5,10 +5,9 @@ import { Stamp } from "@/components/ui/stamp";
 import { Typewriter } from "@/components/ui/typewriter";
 import { KIND_FILL, KindIcon } from "@/features/proposals";
 import type { BookingResponse, BookingStatus } from "@/lib/api";
+import { formatMoney } from "@/lib/money";
 import { useArrivedAt } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-
-import { formatMoney } from "./money";
 
 const WORKING: ReadonlySet<BookingStatus> = new Set(["running", "approved"]);
 

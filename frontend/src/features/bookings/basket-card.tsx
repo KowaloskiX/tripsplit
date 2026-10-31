@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { apiErrorMessage, type TripBookingsResponse } from "@/lib/api";
-
+import { formatMoney } from "@/lib/money";
 import { BatchRefusals } from "./batch-refusals";
+import { bookingTitle } from "./booking-title";
 import { CHANNEL_LABEL } from "./bookings-list";
-import { formatMoney } from "./money";
 import { useApproveAll } from "./mutations";
 
 /**
@@ -33,7 +33,9 @@ export function BasketCard({ trip }: { trip: TripBookingsResponse }): ReactNode 
             {waiting.map((booking) => (
               <li key={booking.id} className="flex items-baseline justify-between gap-3 py-2">
                 <span className="min-w-0">
-                  <span className="block truncate text-sm text-ink">{booking.title}</span>
+                  <span className="block truncate text-sm text-ink">
+                    {bookingTitle(booking.title)}
+                  </span>
                   <span className="ticket-mono text-xs text-muted">
                     {booking.supplier} · {CHANNEL_LABEL[booking.channel]}
                   </span>

@@ -151,8 +151,8 @@ class SimSupplier:
                 self._offer(
                     ref=f"{first.number}:{request.depart_date}:{label}:{len(legs)}",
                     title=(
-                        f"{RAIL_CARRIER} {first.number} {first.name} {segments[0].origin} -> "
-                        f"{segments[0].destination} ({label} class, {trip})"
+                        f"{RAIL_CARRIER} {first.number} {first.name} · {segments[0].origin} → "
+                        f"{segments[0].destination} · {label} class · {trip}"
                     ),
                     seller=RAIL_CARRIER,
                     per_person=per_person,
@@ -214,8 +214,8 @@ class SimSupplier:
                 self._offer(
                     ref=f"{carrier.code}:{numbers}:{request.depart_date}:{len(legs)}",
                     title=(
-                        f"{carrier.name} {numbers} {segments[0].origin} -> "
-                        f"{segments[0].destination} ({trip})"
+                        f"{carrier.name} {numbers} · {segments[0].origin} → "
+                        f"{segments[0].destination} · {trip}"
                     ),
                     seller=carrier.name,
                     per_person=per_person,

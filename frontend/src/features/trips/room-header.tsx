@@ -7,7 +7,7 @@ import type { RoomResponse } from "@/lib/api";
 
 import { InviteLink } from "./invite-link";
 import { LeaveTripButton } from "./leave-trip-button";
-import { StatusStepper } from "./status-stepper";
+import { owesTopUp, StatusStepper } from "./status-stepper";
 
 function formatDates(from: string, to: string): string {
   const format = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
@@ -49,7 +49,7 @@ export function RoomHeader({ room }: { room: RoomResponse }): ReactNode {
         </div>
       </div>
       <Panel className="px-2 py-5 sm:px-6 sm:py-6">
-        <StatusStepper status={trip.status} />
+        <StatusStepper status={trip.status} topUp={owesTopUp(trip.status, room.contributions)} />
       </Panel>
     </header>
   );
