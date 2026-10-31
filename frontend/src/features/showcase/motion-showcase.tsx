@@ -5,8 +5,13 @@ import { Button } from "@/components/ui/button";
 import { DEMO_RAIL_TOTAL_MS } from "@/features/agent-graph";
 import { usePrefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
-
 import { LandingScene, PackagesScene, SharesScene, VotingScene } from "./scenes-early";
+import {
+  GroupPhonesScene,
+  MissionControlScene,
+  QuickPlanScene,
+  TrustScene,
+} from "./scenes-headline";
 import { BookingScene, DisruptionScene, FeedScene, TransitionsScene } from "./scenes-late";
 
 type Scene = {
@@ -20,6 +25,41 @@ type Scene = {
 };
 
 export const SCENES: readonly Scene[] = [
+  {
+    key: "phones",
+    title: "Six phones",
+    caption:
+      "Votes, then payments land on everyone's phone; the counter rolls to 6/6 and hands off.",
+    durationMs: 10_000,
+    wide: true,
+    render: () => <GroupPhonesScene />,
+  },
+  {
+    key: "mission",
+    title: "Mission control",
+    caption:
+      "The agent's browser and run, the supplier API log, the stay's prebook → book, tickets stacking.",
+    durationMs: 12_500,
+    wide: true,
+    render: () => <MissionControlScene />,
+  },
+  {
+    key: "quick-plan",
+    title: "Plan a trip",
+    caption:
+      "Ask in one line; the agent types, then deals three packages. Take one to choose who pays.",
+    durationMs: 6000,
+    wide: true,
+    render: () => <QuickPlanScene />,
+  },
+  {
+    key: "trust",
+    title: "Trust",
+    caption:
+      "Where every price comes from, links to check it, photos that fail gracefully. Examples never look real.",
+    durationMs: 4000,
+    render: () => <TrustScene />,
+  },
   {
     key: "landing",
     title: "Landing",
