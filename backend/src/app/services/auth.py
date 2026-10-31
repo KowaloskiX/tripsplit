@@ -36,6 +36,7 @@ from app.repositories.auth import (
     SessionRepository,
     UserRepository,
 )
+from app.repositories.trips import ContributionRepository, MemberRepository, VoteRepository
 
 # We do not write `last_seen_at` on every request — one UPDATE per window.
 _LAST_SEEN_REFRESH = timedelta(minutes=15)
@@ -70,6 +71,9 @@ class AuthService:
         self.sessions = SessionRepository()
         self.organizations = OrganizationRepository()
         self.identity = IdentityRepository()
+        self.trip_members = MemberRepository()
+        self.votes = VoteRepository()
+        self.contributions = ContributionRepository()
 
     async def register(
         self, email: str, password: str, organization_name: str
@@ -232,6 +236,11 @@ class AuthService:
         async def purge(session: AsyncClientSession) -> None:
             await self.sessions.delete_for_user(identifier, session=session)
             await self.identity.delete_memberships_for_user(identifier, session=session)
+            # Trip participation. The trips themselves stay: the rest of the group still owns
+            # them, and the money already collected has to remain accountable.
+            await self.trip_members.delete_for_user(identifier, session=session)
+            await self.votes.delete_for_user(identifier, session=session)
+            await self.contributions.delete_for_user(identifier, session=session)
             user = await self.users.get_by_id(identifier, session=session)
             if user is not None:
                 await user.delete(session=session)

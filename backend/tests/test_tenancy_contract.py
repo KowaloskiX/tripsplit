@@ -22,6 +22,16 @@ TENANT_EXEMPT_COLLECTIONS = frozenset(
         "users",  # a user can belong to many organizations
         "user_sessions",  # a session belongs to a user, not to an organization
         "organizations",  # the tenant itself
+        # Trips: friends from DIFFERENT organizations share one trip through an invite link,
+        # so the boundary is trip membership (checked in the services), not organization_id.
+        "trips",
+        "trip_members",
+        "proposals",
+        "votes",
+        "contributions",
+        "trip_events",
+        "bookings",
+        "agent_runs",
     }
 )
 
@@ -68,6 +78,11 @@ async def test_unique_constraints_exist_in_database(database: Database) -> None:
         "user_sessions": [("token_hash", 1)],
         "organizations": [("slug", 1)],
         "memberships": [("user_id", 1), ("organization_id", 1)],
+        "trips": [("invite_code", 1)],
+        "trip_members": [("trip_id", 1), ("user_id", 1)],
+        "votes": [("trip_id", 1), ("user_id", 1)],
+        "contributions": [("trip_id", 1), ("user_id", 1)],
+        "agent_runs": [("run_id", 1)],
     }
     for collection, key in expected_unique.items():
         indexes = await database.database[collection].index_information()

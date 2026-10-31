@@ -8,6 +8,21 @@ has to be added here — otherwise queries against it fail with `CollectionWasNo
 from typing import Any
 
 from app.models.auth import User, UserSession
+from app.models.bookings import AgentRun, Booking
 from app.models.organizations import Membership, Organization
+from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember, Vote
 
-DOCUMENT_MODELS: tuple[type[Any], ...] = (User, UserSession, Organization, Membership)
+DOCUMENT_MODELS: tuple[type[Any], ...] = (
+    User,
+    UserSession,
+    Organization,
+    Membership,
+    Trip,
+    TripMember,
+    Proposal,
+    Vote,
+    Contribution,
+    TripEvent,
+    Booking,
+    AgentRun,
+)

@@ -9,7 +9,10 @@ field, so a new collection enters scope automatically and fails until
 `AuthService.delete_user` handles it.
 """
 
+from datetime import date
 from typing import Any
+
+from beanie import PydanticObjectId
 
 from app.core.config import Settings
 from app.core.domain.result import Ok
@@ -17,6 +20,7 @@ from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.documents import DOCUMENT_MODELS
 from app.models.auth import User
+from app.models.trips import Contribution, Trip, TripMember, Vote
 from app.services.auth import AuthService
 
 EMAIL = "cascade@example.com"
@@ -25,6 +29,25 @@ PASSWORD = "correct-horse-battery-staple"
 
 def _models_referencing_user() -> list[type[Any]]:
     return [model for model in DOCUMENT_MODELS if "user_id" in model.model_fields]
+
+
+async def _join_a_trip(user_id: PydanticObjectId | None) -> None:
+    """Registration does not create trip participation, so the fixture adds it: one trip
+    joined, one vote cast, one share owed — every trip-side collection that carries user_id."""
+    assert user_id is not None
+    trip = await Trip(
+        title="Cascade trip",
+        origin="Warszawa",
+        date_from=date(2026, 11, 20),
+        date_to=date(2026, 11, 22),
+        group_size=2,
+        organizer_id=user_id,
+        invite_code="cascade-invite",
+    ).insert()
+    assert trip.id is not None
+    await TripMember(trip_id=trip.id, user_id=user_id, display_name="Cascade").insert()
+    await Vote(trip_id=trip.id, proposal_id=PydanticObjectId(), user_id=user_id).insert()
+    await Contribution(trip_id=trip.id, user_id=user_id, amount_minor=10_000).insert()
 
 
 async def test_delete_user_leaves_no_orphans(database: Database, settings: Settings) -> None:
@@ -40,6 +63,8 @@ async def test_delete_user_leaves_no_orphans(database: Database, settings: Setti
     # The service speaks in strings, the database in ObjectId — a raw query has to convert, or
     # it silently matches nothing. See `app.db.identifiers`.
     stored_id = to_object_id(user_id)
+
+    await _join_a_trip(stored_id)
 
     referencing = _models_referencing_user()
     assert referencing, "no collection carries user_id — the contract would be meaningless"
