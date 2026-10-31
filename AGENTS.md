@@ -93,6 +93,34 @@ DUFFEL_LIVE=1 uv run pytest tests/test_duffel.py                    # + the live
 uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
 ```
 
+## Demo on real data
+
+The app itself (not only the harness) can run on real suppliers. In the repo-root `.env`:
+
+```bash
+SUPPLIERS=pkp_intercity,duffel,sim_stay,sim_activity   # + liteapi once feat/liteapi is merged
+DUFFEL_API_KEY=duffel_test_...                          # a TEST token; live is refused
+DEMO_SUPPLIER_URL=http://localhost:8000
+HOLDS=off
+PKP_TRANSPORT=browser                                   # the default
+```
+
+- **Real:** PKP Intercity train search and re-quotes (unofficial e-IC JSON gateway through one
+  shared headless Camoufox in the API process — ~5 s warm-up on the first PKP call, then about
+  1 s per call; a 6-person return trip needs ~25 s of research), Duffel flight search, quotes and
+  orders in **test mode** (Duffel Airways etc., nothing is charged).
+- **Simulated:** stays and activities (`sim_*`), the group's payments (`PAYMENTS=fake`) and the
+  train *purchase* — with `DEMO_SUPPLIER_URL` set, train bookings point the agent at our own
+  demo rail site, never at intercity.pl.
+- **No real money moves anywhere.** Duffel test orders are free, payments are fake, and the
+  agent stops before any real payment page.
+- `HOLDS=off`: nothing is held at voting close; each purchase re-quotes right before it starts
+  (a moved price re-splits the shares, `price_changed`), and an API supplier books when the
+  basket is approved (Duffel instant order). `HOLDS=on` restores holds at voting close.
+- One click each in the room: **Book everything** (`POST /trips/{id}/bookings/start-all`) and
+  **Approve basket** (`POST /trips/{id}/bookings/approve-all`, refused unless every share is
+  paid). The live agent panel draws the run's plan from `GET /agent-runs/{run_id}/graph`.
+
 ## API bridge
 
 ```bash
