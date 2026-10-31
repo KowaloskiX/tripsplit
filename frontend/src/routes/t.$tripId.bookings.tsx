@@ -17,16 +17,16 @@ export const Route = createFileRoute("/t/$tripId/bookings")({
 function BookingsPage(): ReactNode {
   const { tripId } = Route.useParams();
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-12">
+    <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
       <Link
         to="/t/$tripId"
         params={{ tripId }}
-        className="font-mono text-xs text-muted hover:text-ink"
+        className="text-sm font-medium text-accent underline-offset-4 hover:underline"
       >
         ← back to the trip
       </Link>
-      <h1 className="mt-4 font-mono text-2xl tracking-tight text-ink">Bookings</h1>
-      <p className="mt-2 max-w-lg text-sm leading-relaxed text-muted">
+      <h1 className="display mt-4 text-5xl text-ink">Bookings</h1>
+      <p className="mt-2 max-w-lg text-base leading-relaxed text-muted">
         The agent buys each part of the trip on the supplier's site. Watch it live; nothing is paid
         until the organizer approves the summary.
       </p>

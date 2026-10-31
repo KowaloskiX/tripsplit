@@ -19,6 +19,13 @@ import { ManualCompletionForm } from "./manual-completion-form";
 import { formatMoney } from "./money";
 import { useStartBooking } from "./mutations";
 
+/** Pastel fill per kind, matching the package cards: transport sky, stay lime, activity blush. */
+const KIND_FILL: Record<BookingKind, string> = {
+  train: "bg-pastel-sky",
+  stay: "bg-pastel-lime",
+  activity: "bg-pastel-blush",
+};
+
 const KIND_ICON: Record<BookingKind, typeof TrainFront> = {
   train: TrainFront,
   stay: BedDouble,
@@ -70,11 +77,17 @@ export function BookingsList({
         const showRun = booking.run !== null && booking.status !== "cancelled";
         return (
           <Panel key={booking.id} className={booking.status === "cancelled" ? "opacity-60" : ""}>
-            <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <Icon aria-label={booking.kind} className="size-5 shrink-0 text-muted" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-ink">{booking.title}</p>
-                <p className="font-mono text-xs text-muted">
+            <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
+              <span
+                className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-pastel-ink ${KIND_FILL[booking.kind]}`}
+              >
+                <Icon aria-label={booking.kind} className="size-5" />
+              </span>
+              <div className="min-w-[12rem] flex-1">
+                <p className="text-base font-medium leading-snug tracking-[-0.01em] text-ink">
+                  {booking.title}
+                </p>
+                <p className="ticket-mono mt-0.5 text-xs text-muted">
                   {booking.supplier} · {formatMoney(booking.amount_minor, trip.currency)}
                   {passengersLabel(booking)}
                 </p>
@@ -96,7 +109,8 @@ export function BookingsList({
               </div>
             )}
             {showRun && (
-              <div className="border-t border-line p-3">
+              <div className="p-3 sm:p-4">
+                <div aria-hidden className="perforation mb-3" />
                 <LiveAgentPanel
                   tripId={trip.trip_id}
                   booking={booking}

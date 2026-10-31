@@ -18,13 +18,14 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
   return (
     <Panel>
       <PanelHeader>
-        <span>shares</span>
+        <span>Shares</span>
         <span>{formatMoney(trip.total_minor, trip.currency)} total</span>
       </PanelHeader>
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 sm:p-5">
         {pay.error && <ErrorCallout>{apiErrorMessage(pay.error)}</ErrorCallout>}
         {canPay && (
           <Button
+            size="lg"
             className="w-full"
             onClick={() => pay.mutate({ path: { trip_id: trip.id } })}
             disabled={pay.isPending}
@@ -35,7 +36,7 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
           </Button>
         )}
         {mine !== null && mine.refund_minor > 0 && (
-          <p className="text-sm text-live">
+          <p className="rounded-[var(--radius-control)] bg-info-soft px-3.5 py-2.5 text-sm text-info">
             You get {formatMoney(mine.refund_minor, trip.currency)} back — you paid more than your
             current share.
           </p>
@@ -46,7 +47,7 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
           </p>
         )}
         {trip.status === "booking" && (
-          <p className="text-sm text-live">
+          <p className="rounded-[var(--radius-control)] bg-success-soft px-3.5 py-2.5 text-sm text-success">
             Everyone paid — the organizer can start the bookings above.
           </p>
         )}

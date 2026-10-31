@@ -65,34 +65,37 @@ function RoomPage(): ReactNode {
 
   const showContributions = room.contributions.length > 0;
   const showBookings = BOOKING_PHASE.has(room.trip.status);
+  const paying = room.trip.status === "paying";
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-6 py-10">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:py-10">
       <RoomHeader room={room} />
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        <TripFeed tripId={tripId} myUserId={room.my_user_id} />
-        <div className="space-y-6">
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+        {/* On a phone the stage card comes first: it is what needs doing now. */}
+        <div className="order-2 lg:sticky lg:top-24 lg:order-1">
+          <TripFeed tripId={tripId} myUserId={room.my_user_id} currency={room.trip.currency} />
+        </div>
+        <div className="order-1 space-y-6 lg:order-2">
+          {/* While the group pays, the shares are the stage card; afterwards the bookings are. */}
+          {paying && showContributions && <ContributionsPanel room={room} />}
           {showBookings && (
             <section aria-labelledby="bookings-heading" className="space-y-3">
               <div className="flex items-baseline justify-between gap-3">
-                <h2
-                  id="bookings-heading"
-                  className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted"
-                >
-                  bookings &amp; live agent
+                <h2 id="bookings-heading" className="text-2xl tracking-[-0.03em] text-ink">
+                  Bookings &amp; live agent
                 </h2>
                 <Link
                   to="/t/$tripId/bookings"
                   params={{ tripId }}
-                  className="font-mono text-xs text-muted underline underline-offset-4 hover:text-ink"
+                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
                 >
-                  full screen
+                  Full screen
                 </Link>
               </div>
               <TripBookings tripId={tripId} />
             </section>
           )}
-          {showContributions && <ContributionsPanel room={room} />}
+          {!paying && showContributions && <ContributionsPanel room={room} />}
           <ProposalsPanel room={room} />
           {import.meta.env.DEV && <DemoPanel room={room} />}
         </div>

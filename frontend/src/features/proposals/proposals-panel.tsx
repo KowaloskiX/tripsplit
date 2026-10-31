@@ -27,25 +27,28 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
   return (
     <Panel>
       <PanelHeader>
-        <span>packages</span>
+        <span>{status === "voting" ? "Vote for a package" : "Packages"}</span>
         {status === "voting" && (
           <span>{room.proposals.reduce((sum, p) => sum + p.votes, 0)} votes</span>
         )}
       </PanelHeader>
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-4 sm:p-5">
         {error && <ErrorCallout>{apiErrorMessage(error)}</ErrorCallout>}
 
         {status === "proposing" && (
           <p className="flex items-center gap-2 text-sm text-muted" role="status">
-            <Loader2 className="size-4 animate-spin text-accent" aria-hidden />
+            <Loader2
+              className="size-4 animate-spin text-ink motion-reduce:animate-none"
+              aria-hidden
+            />
             The agent is researching trains, stays and things to do…
           </p>
         )}
 
         {status === "collecting" &&
           (isOrganizer ? (
-            <div className="space-y-2">
-              <p className="text-sm text-muted">
+            <div className="space-y-3">
+              <p className="text-[15px] text-muted">
                 When the group is in, ask the agent for three ready-to-buy packages.
               </p>
               <Button onClick={() => generate.mutate({ path })} disabled={generate.isPending}>

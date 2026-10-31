@@ -30,9 +30,9 @@ export function ApprovalCard({
 }: ApprovalCardProps): ReactNode {
   const amount = formatMoney(amountMinor, currency);
   return (
-    <Panel className="border-accent/60" role="region" aria-label="Approve the payment">
+    <Panel className="border-ink" role="region" aria-label="Approve the payment">
       <PanelHeader>
-        <span className="text-accent">approval needed</span>
+        <span className="text-warn">Approval needed</span>
         <span>{supplier}</span>
       </PanelHeader>
       <div className="space-y-4 p-4">
@@ -42,7 +42,7 @@ export function ApprovalCard({
           className="w-full rounded-[var(--radius-control)] border border-line"
         />
         <div>
-          <p className="font-mono text-2xl tracking-tight text-ink">
+          <p className="ticket-mono text-2xl text-ink">
             {amount} <span className="text-xs text-muted">budgeted</span>
           </p>
           {/* The budget comes from the package research; the binding price is the supplier's,
