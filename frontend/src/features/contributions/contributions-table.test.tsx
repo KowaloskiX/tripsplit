@@ -53,4 +53,16 @@ describe("ContributionsTable", () => {
     const rows = screen.getAllByRole("row").slice(1);
     expect(within(rows[2] as HTMLElement).getByText(/^refund /)).toBeInTheDocument();
   });
+
+  it("shows the exact amount paid, grosze included, once everyone paid", () => {
+    const contributions = NAMES.map((name, index) => ({
+      ...share(`u${index}`, name, true),
+      amount_minor: 74_039,
+      paid_minor: 74_039,
+    }));
+    render(<ContributionsTable contributions={contributions} currency="PLN" myUserId="u0" />);
+
+    expect(screen.getAllByText(/4\s442\.34\sPLN/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/4\s442\.00/)).not.toBeInTheDocument();
+  });
 });
