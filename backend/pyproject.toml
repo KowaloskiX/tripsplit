@@ -15,7 +15,7 @@ dependencies = [
     "camoufox[geoip]>=0.4.0",
     "playwright>=1.44.0",
     "openai>=1.40.0",
-    "python-dotenv>=1.0.0",
+    "python-dotenv>=1.2.4",
     # Supplier JSON clients (app.suppliers).
     "httpx>=0.27",
 ]
@@ -25,7 +25,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.13",
     "pytest>=8.3",
-    "pytest-asyncio>=0.24",
+    "pytest-asyncio>=1.4.1",
     "httpx>=0.27",
     "import-linter>=2.1",
     "testcontainers[mongodb,redis]>=4.15.0",
