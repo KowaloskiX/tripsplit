@@ -27,12 +27,19 @@ export function MessageInput({ tripId }: { tripId: string }): ReactNode {
       </label>
       <Input
         id="feed-message"
+        className="rounded-full px-4"
         placeholder="Message the group…"
         value={text}
         maxLength={2000}
         onChange={(event) => setText(event.target.value)}
       />
-      <Button type="submit" disabled={post.isPending || !text.trim()} aria-label="Send">
+      <Button
+        type="submit"
+        size="icon"
+        className="size-11 shrink-0"
+        disabled={post.isPending || !text.trim()}
+        aria-label="Send"
+      >
         <SendHorizontal className="size-4" aria-hidden />
       </Button>
     </form>

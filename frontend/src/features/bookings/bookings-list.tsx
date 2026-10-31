@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel } from "@/components/ui/panel";
-import { KindIcon } from "@/features/proposals";
+import { KIND_FILL, KindIcon } from "@/features/proposals";
 import {
   apiErrorMessage,
   type BookingResponse,
@@ -75,15 +75,17 @@ export function BookingsList({
           trip.is_organizer && booking.channel === "api" && booking.status === "awaiting_approval";
         return (
           <Panel key={booking.id} className={booking.status === "cancelled" ? "opacity-60" : ""}>
-            <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <KindIcon
-                kind={booking.kind}
-                mode={booking.mode}
-                className="size-5 shrink-0 text-muted"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-ink">{booking.title}</p>
-                <p className="font-mono text-xs text-muted">
+            <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
+              <span
+                className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-pastel-ink ${KIND_FILL[booking.kind]}`}
+              >
+                <KindIcon kind={booking.kind} mode={booking.mode} className="size-5" />
+              </span>
+              <div className="min-w-[12rem] flex-1">
+                <p className="text-base font-medium leading-snug tracking-[-0.01em] text-ink">
+                  {booking.title}
+                </p>
+                <p className="ticket-mono mt-0.5 text-xs text-muted">
                   {booking.supplier} ·{" "}
                   <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}
                   {formatMoney(booking.amount_minor, trip.currency)}
@@ -119,7 +121,8 @@ export function BookingsList({
               </div>
             )}
             {showRun && (
-              <div className="border-t border-line p-3">
+              <div className="p-3 sm:p-4">
+                <div aria-hidden className="perforation mb-3" />
                 <LiveAgentPanel
                   tripId={trip.trip_id}
                   booking={booking}

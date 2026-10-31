@@ -19,10 +19,10 @@ function JoinPage(): ReactNode {
   const { inviteCode } = Route.useParams();
   return (
     <div className="mx-auto w-full max-w-sm px-6 py-16 lg:py-24">
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">invite</p>
-      <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">You are invited on a trip</h1>
+      <p className="eyebrow">invite</p>
+      <h1 className="display mt-3 text-5xl text-ink">You are invited on a trip</h1>
       <p className="mt-3 text-sm text-muted">Tell the group what to call you.</p>
-      <Panel className="mt-7 p-5">
+      <Panel className="mt-7 p-6">
         <JoinTripForm inviteCode={inviteCode} />
       </Panel>
     </div>

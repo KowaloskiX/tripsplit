@@ -27,7 +27,7 @@ export function DisruptionPanel({ trip }: { trip: TripBookingsResponse }): React
   return (
     <Panel>
       <PanelHeader>
-        <span>demo · disruption</span>
+        <span>Demo · disruption</span>
         <span>dev only</span>
       </PanelHeader>
       <div className="space-y-3 p-4">
@@ -45,7 +45,7 @@ export function DisruptionPanel({ trip }: { trip: TripBookingsResponse }): React
               {formatMoney(result.total_minor, trip.currency)} (
               {formatDelta(result.total_minor - result.previous_total_minor, trip.currency)}).
             </p>
-            <ul className="divide-y divide-line font-mono text-xs">
+            <ul className="divide-y divide-line text-sm tabular-nums">
               {result.shares.map((share) => (
                 <li key={share.user_id} className="flex justify-between gap-3 py-1.5">
                   <span className="text-ink">{share.display_name}</span>

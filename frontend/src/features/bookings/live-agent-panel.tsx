@@ -71,7 +71,7 @@ export function LiveAgentPanel({
   return (
     <Panel>
       <PanelHeader>
-        <span>{working ? "live · agent" : "agent run"}</span>
+        <span>{working ? "Live · agent working" : "Agent run"}</span>
         <span>
           step {live?.step ?? run.steps}
           {run.cost_usd > 0 ? ` · $${run.cost_usd.toFixed(3)}` : ""}
@@ -90,7 +90,7 @@ export function LiveAgentPanel({
           className="w-full rounded-[var(--radius-control)] border border-line bg-surface-sunken"
           onError={() => setFailedTick(tick)}
         />
-        {reason && working && <p className="font-mono text-xs text-muted">{reason}</p>}
+        {reason && working && <p className="text-sm text-muted">{reason}</p>}
         <RunNotice booking={booking} reason={reason} isOrganizer={isOrganizer} />
       </div>
     </Panel>
@@ -109,19 +109,19 @@ function RunNotice({
   switch (booking.status) {
     case "awaiting_approval":
       return (
-        <p className="text-sm text-accent">
+        <p className="text-sm text-warn">
           The summary is ready. Waiting for the organizer to approve the payment.
         </p>
       );
     case "confirmed":
       return (
-        <p className="text-sm text-live">
+        <p className="text-sm font-medium text-success">
           Confirmed{booking.confirmation_ref ? ` · booking number ${booking.confirmation_ref}` : ""}
         </p>
       );
     case "handoff":
       return (
-        <p className="text-sm text-accent">
+        <p className="text-sm text-warn">
           A human needs to finish this on{" "}
           <a className="underline" href={booking.supplier_url} target="_blank" rel="noreferrer">
             {booking.supplier}

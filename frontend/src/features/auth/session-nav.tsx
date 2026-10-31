@@ -40,7 +40,7 @@ export function SessionNav(): ReactNode {
 
   return (
     <>
-      <span className="hidden font-mono text-xs text-muted sm:inline">{user.email}</span>
+      <span className="hidden px-2 text-sm text-muted md:inline">{user.email}</span>
       <Button variant="outline" size="sm" onClick={() => logout()} disabled={isSigningOut}>
         Sign out
       </Button>

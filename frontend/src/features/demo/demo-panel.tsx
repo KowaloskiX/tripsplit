@@ -29,9 +29,9 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
   const favourite = room.my_vote_proposal_id ?? room.proposals[0]?.id;
 
   return (
-    <details className="rounded-[var(--radius-panel)] border border-dashed border-line px-4 py-3">
-      <summary className="cursor-pointer font-mono text-[11px] uppercase tracking-[0.14em] text-muted">
-        demo controls (dev only)
+    <details className="rounded-[var(--radius-panel)] border border-dashed border-line px-5 py-3.5">
+      <summary className="cursor-pointer text-sm font-medium text-muted">
+        Demo controls (dev only)
       </summary>
       <div className="mt-3 space-y-3">
         {error && <ErrorCallout>{apiErrorMessage(error)}</ErrorCallout>}

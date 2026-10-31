@@ -21,10 +21,10 @@ function RegisterPage(): ReactNode {
 
   return (
     <div className="mx-auto w-full max-w-sm px-6 py-16 lg:py-24">
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">new account</p>
-      <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">Create an organization</h1>
+      <p className="eyebrow">new account</p>
+      <h1 className="display mt-3 text-5xl text-ink">Create your account</h1>
 
-      <Panel className="mt-7 p-5">
+      <Panel className="mt-7 p-6">
         {user ? (
           <p className="text-sm text-muted">
             You are already signed in as {user.email}.{" "}

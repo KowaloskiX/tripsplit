@@ -5,6 +5,13 @@ import type { BookingKind, TransportMode } from "@/lib/api";
 
 type Icon = typeof TrainFront;
 
+/** Pastel card fill per kind: transport sky, stay lime, activity blush. */
+export const KIND_FILL: Record<BookingKind, string> = {
+  transport: "bg-pastel-sky",
+  stay: "bg-pastel-lime",
+  activity: "bg-pastel-blush",
+};
+
 const MODE_ICON: Record<TransportMode, Icon> = {
   rail: TrainFront,
   flight: Plane,

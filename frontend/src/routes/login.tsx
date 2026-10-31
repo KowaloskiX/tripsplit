@@ -21,10 +21,10 @@ function LoginPage(): ReactNode {
 
   return (
     <div className="mx-auto w-full max-w-sm px-6 py-16 lg:py-24">
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">sign in</p>
-      <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">Back to your organization</h1>
+      <p className="eyebrow">sign in</p>
+      <h1 className="display mt-3 text-5xl text-ink">Welcome back</h1>
 
-      <Panel className="mt-7 p-5">
+      <Panel className="mt-7 p-6">
         {user ? (
           <p className="text-sm text-muted">
             You are signed in as {user.email}.{" "}
@@ -49,7 +49,7 @@ function LoginPage(): ReactNode {
           search={redirectTo ? { redirect: redirectTo } : {}}
           className="text-accent underline underline-offset-2"
         >
-          Create an organization
+          Create an account
         </Link>
         .
       </p>
