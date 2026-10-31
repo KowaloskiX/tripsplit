@@ -1,33 +1,79 @@
 @import "tailwindcss";
+@import "@fontsource-variable/instrument-sans";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/fragment-mono/400.css";
 
-/* Theme switching via a class on <html> — not prefers-color-scheme alone. */
+/* Theme switching via a class on <html> — not prefers-color-scheme alone. A `.dark` subtree
+   (the header, the landing hero) gets the night palette on its own. */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* One place to reskin the whole skeleton: change these values, not the components. */
+/*
+ * One place to reskin the whole app: change these values, not the components.
+ *
+ * High contrast first: black and white carry the page, lime is the one highlight (never text
+ * on white — it fails contrast), pastels are card fills only and always carry black text.
+ * Money has three states of its own so a glance tells who is fine: paid, owes, refund.
+ */
 :root {
-  --bg: #f2f5f7;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-sunken: #e9eef2;
-  --ink: #0f1419;
-  --muted: #5a6672;
-  --line: #d6dde3;
-  --accent: #a8480b;
+  --surface-sunken: #f4f4f1;
+  --ink: #000000;
+  --muted: #5b5b5b;
+  --line: rgb(0 0 0 / 0.09);
+  --accent: #000000;
   --accent-ink: #ffffff;
-  --live: #0b6e7a;
-  --danger: #a3231f;
+  --live: #000000;
+
+  --lime: #c7ff9f;
+  --pastel-sky: #8fe3ff;
+  --pastel-lime: #d3efab;
+  --pastel-blush: #ffe3e3;
+  --pastel-ink: #000000;
+
+  --success: #1f6a1c;
+  --success-soft: #e2f6cf;
+  --warn: #8a4a00;
+  --warn-soft: #ffeccc;
+  --danger: #b3261e;
+  --danger-soft: #ffe3e3;
+  --info: #0a5a75;
+  --info-soft: #d9f5ff;
+
+  --agent-bg: #000000;
+  --agent-fg: #ffffff;
+  --agent-tag: #c7ff9f;
+
+  --elev-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -18px rgb(0 0 0 / 0.18);
+  --elev-pop: 0 2px 6px rgb(0 0 0 / 0.08), 0 32px 64px -24px rgb(0 0 0 / 0.35);
 }
 
 .dark {
-  --bg: #0e1216;
-  --surface: #151b21;
-  --surface-sunken: #10151a;
-  --ink: #e7edf3;
-  --muted: #94a3b0;
-  --line: #232c34;
-  --accent: #e89445;
-  --accent-ink: #17110a;
-  --live: #45b8c6;
-  --danger: #f08d84;
+  --bg: #000000;
+  --surface: #0e0e0e;
+  --surface-sunken: #181818;
+  --ink: #ffffff;
+  --muted: #a6a6a6;
+  --line: rgb(255 255 255 / 0.1);
+  --accent: #ffffff;
+  --accent-ink: #000000;
+  --live: #c7ff9f;
+
+  --success: #b5f08a;
+  --success-soft: #16260d;
+  --warn: #ffc56e;
+  --warn-soft: #2b1d07;
+  --danger: #ff9b94;
+  --danger-soft: #2e1110;
+  --info: #8fe3ff;
+  --info-soft: #0b2530;
+
+  --agent-bg: #172212;
+  --agent-fg: #ffffff;
+  --agent-tag: #c7ff9f;
+
+  --elev-card: 0 0 0 1px rgb(255 255 255 / 0.04);
+  --elev-pop: 0 0 0 1px rgb(255 255 255 / 0.08), 0 32px 64px -24px rgb(0 0 0 / 0.9);
 }
 
 @theme inline {
@@ -40,15 +86,40 @@
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-live: var(--live);
+
+  --color-lime: var(--lime);
+  --color-pastel-sky: var(--pastel-sky);
+  --color-pastel-lime: var(--pastel-lime);
+  --color-pastel-blush: var(--pastel-blush);
+  --color-pastel-ink: var(--pastel-ink);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+
+  --color-agent-bg: var(--agent-bg);
+  --color-agent-fg: var(--agent-fg);
+  --color-agent-tag: var(--agent-tag);
 
   --font-sans:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    "Instrument Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+  --font-mono: "Fragment Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  --radius-control: 6px;
-  --radius-panel: 10px;
+  --radius-control: 16px;
+  --radius-panel: 32px;
+  --radius-pill: 9999px;
+
+  --shadow-card: var(--elev-card);
+  --shadow-pop: var(--elev-pop);
+
+  --ease-calm: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @layer base {
@@ -65,15 +136,56 @@
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline: 2px solid var(--color-ink);
+    outline-offset: 3px;
   }
 }
 
-/* Cascading entrance for the readout rows — the only animation on the page. */
+/* A small uppercase mono tag above a heading or a card section. */
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* Display type: large, regular weight, tight. */
+@utility display {
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  line-height: 0.95;
+}
+
+/* The serif-italic accent word inside a headline. */
+@utility accent-word {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+/* Amounts, refs, train numbers and times: monospaced and tabular, like a ticket. */
+@utility ticket-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* A perforated tear line — the one ticket motif, used sparingly. */
+@utility perforation {
+  background-image: radial-gradient(circle, var(--color-line) 1.5px, transparent 1.6px);
+  background-size: 10px 4px;
+  background-repeat: repeat-x;
+  background-position: center;
+  height: 4px;
+}
+
+/* Cascading entrance for the readout rows. */
 @keyframes readout-in {
   from {
     opacity: 0;
@@ -88,12 +200,6 @@
 .readout-row {
   animation: readout-in 320ms ease-out both;
   animation-delay: calc(var(--row-index, 0) * 45ms);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .readout-row {
-    animation: none;
-  }
 }
 
 /* Indeterminate progress for a route transition: we do not know how long it will take, so the
@@ -111,10 +217,59 @@
   animation: route-pending-slide 1.1s ease-in-out infinite;
 }
 
+/* A soft halo around whatever is happening right now (the running agent step, the live stage). */
+@keyframes halo {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--halo-color, var(--color-lime)) 80%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
+}
+
+.halo {
+  animation: halo 1.4s var(--ease-calm) infinite;
+}
+
+/* A node lighting up the moment it settles. */
+@keyframes settle {
+  from {
+    transform: scale(0.94);
+    opacity: 0.6;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+.settle {
+  animation: settle 220ms var(--ease-calm) both;
+}
+
+/* The connector line filling as the run passes through it. */
+.flow-fill {
+  transition: transform 400ms var(--ease-calm);
+  transform-origin: top;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .readout-row,
+  .halo,
+  .settle {
+    animation: none;
+  }
+
   .route-pending-bar {
     animation: none;
     width: 100%;
     opacity: 0.5;
+  }
+
+  /* Unlayered, so it beats every Tailwind utility without !important. */
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms;
   }
 }

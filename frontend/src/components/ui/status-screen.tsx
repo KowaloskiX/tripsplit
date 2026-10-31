@@ -22,10 +22,10 @@ export function StatusScreen({
 }): ReactNode {
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col items-start px-6 py-24">
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-accent">{code}</p>
-      <h1 className="mt-3 font-mono text-2xl tracking-tight text-ink">{title}</h1>
+      <p className="eyebrow">{code}</p>
+      <h1 className="display mt-3 text-5xl text-ink">{title}</h1>
       {description && (
-        <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{description}</p>
+        <p className="mt-3 max-w-lg text-base leading-relaxed text-muted">{description}</p>
       )}
       {action && <div className="mt-8">{action}</div>}
     </div>
