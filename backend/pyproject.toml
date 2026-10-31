@@ -39,6 +39,7 @@ strict-queries = "scripts.strict_queries:main"
 agent-run = "app.agent.runner:main"
 agent-login = "app.agent.login:main"
 intercity-search = "app.suppliers.intercity_cli:main"
+trip-harness = "app.harness.cli:main"
 
 [build-system]
 requires = ["hatchling"]
