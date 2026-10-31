@@ -8,6 +8,7 @@ import { TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
+import { AttractionsPanel } from "@/features/itinerary";
 import { BookingStage } from "@/features/mission-control";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
@@ -109,6 +110,8 @@ function RoomPage(): ReactNode {
               <TripPotCard pot={room.pot} currency={room.trip.currency} />
             </div>
           )}
+          {/* After the package vote — while the group pays, it never blocks the money. */}
+          <AttractionsPanel room={room} />
           <TravellerDetailsPanel room={room} />
           <ProposalsPanel room={room} />
           {import.meta.env.DEV && <DemoPanel room={room} />}

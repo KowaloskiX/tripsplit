@@ -12,6 +12,7 @@ import {
   QuickPlanScene,
   TrustScene,
 } from "./scenes-headline";
+import { AttractionsScene, ItineraryScene } from "./scenes-itinerary";
 import { BookingScene, DisruptionScene, FeedScene, TransitionsScene } from "./scenes-late";
 
 type Scene = {
@@ -88,6 +89,22 @@ export const SCENES: readonly Scene[] = [
     caption: "Badges pop, the bar springs, the last share stamps “6/6 paid” and the stepper moves.",
     durationMs: 7500,
     render: () => <SharesScene />,
+  },
+  {
+    key: "attractions",
+    title: "What do we do there?",
+    caption:
+      "Votes land on attraction cards: avatars stack, counts roll, the favourites join the plan.",
+    durationMs: 5000,
+    render: () => <AttractionsScene />,
+  },
+  {
+    key: "itinerary",
+    title: "Day plan",
+    caption: "Days rise in around the train times; the museum tickets go queued, buying, booked.",
+    durationMs: 6000,
+    wide: true,
+    render: () => <ItineraryScene />,
   },
   {
     key: "booking",
