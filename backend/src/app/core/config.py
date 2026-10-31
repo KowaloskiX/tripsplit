@@ -106,8 +106,9 @@ class Settings(BaseSettings):
     demo_supplier_url: str = ""
     # The supplier plugins, comma-separated ids (see app.suppliers.providers): the simulators
     # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`; the
-    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `duffel`
-    # (real flights through the Duffel API — needs `duffel_api_key`).
+    # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `liteapi`
+    # (real hotels through LiteAPI — needs `liteapi_key`); `duffel` (real flights through the
+    # Duffel API — needs `duffel_api_key`).
     suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
     # How `pkp_intercity` reaches PKP's gateway: `browser` = one shared headless Camoufox
     # for the process (PKP sits behind Akamai, which resets plain HTTP); `http` = httpx.
@@ -120,6 +121,10 @@ class Settings(BaseSettings):
     # How far (in percent of the stored amount) a re-quote may move before the group's shares
     # are re-split. 0 = any change re-splits.
     price_tolerance_percent: float = Field(default=0.0, ge=0.0, le=100.0)
+    # The `liteapi` stays supplier (app.suppliers.liteapi). A SANDBOX key (`sand_...`) is
+    # required; any other key is refused unless `liteapi_allow_live` — real rooms, real money.
+    liteapi_key: SecretStr | None = None
+    liteapi_allow_live: bool = False
     # The `duffel` flights supplier (app.suppliers.duffel). A TEST key (`duffel_test_...`) is
     # required; a live key is refused unless `duffel_allow_live` — real tickets, real money.
     duffel_api_key: SecretStr | None = None

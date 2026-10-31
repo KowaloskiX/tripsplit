@@ -72,7 +72,13 @@ The trip flow is supplier-agnostic: rail, flights, buses, stays and activities a
 behind `backend/src/app/suppliers/ports.py` (`SupplierAdapter`), each declaring
 `SupplierCapabilities` (kind/mode, channel `api`/`agent`/`manual`, purchase cap, holds, quote
 TTL, required traveller fields). Services read capabilities, never supplier names. Enable them
-with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`, `duffel`).
+with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`, `liteapi`, `duffel`).
+
+`liteapi` = real hotels through the LiteAPI SANDBOX (`LITEAPI_KEY=sand_...`; any other key is
+refused unless `LITEAPI_ALLOW_LIVE=true`): city hotels + rates for the whole party in one booking
+(rooms = pairs of adults, an odd one in a triple), prebook = the hold (15 min), book with the
+sandbox test card (`ACC_CREDIT_CARD`) on approval, `GET /bookings/{id}` reports cancellations.
+Search keeps only picks LiteAPI can prebook right now (many sandbox rates cannot).
 
 **Duffel (real flights, test mode).** `SUPPLIERS=...,duffel` plus `DUFFEL_API_KEY=duffel_test_...`
 in `.env` enables `suppliers/duffel.py`: real offer search, a named HOLD order at Duffel, payment
@@ -87,6 +93,8 @@ re-finds the same flights by number + departure time. City -> airport codes: `su
 ```bash
 cd backend && uv run trip-harness run all            # simulated suppliers, scripted agent
 cd backend && uv run trip-harness run prague_happy_path --live-search   # real PKP (~20 s)
+cd backend && uv run trip-harness run prague_liteapi_live --live-stays  # real hotel, sandbox (~15 s)
+uv run trip-harness run prague_liteapi_live --live-stays --live-search  # + real PKP train (~40 s)
 uv run trip-harness run barcelona_duffel_live --live-flights        # real Duffel test API (~6 s)
 uv run trip-harness run barcelona_duffel_slow_group --live-flights  # expired offer re-found
 DUFFEL_LIVE=1 uv run pytest tests/test_duffel.py                    # + the live search smoke test

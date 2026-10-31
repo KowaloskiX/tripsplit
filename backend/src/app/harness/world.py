@@ -3,8 +3,9 @@ plugins, one clock for all of them and a scripted agent.
 
 `--live-search` swaps the simulated rail carrier for the real PKP Intercity adapter (search and
 re-quote through a headless browser); `--live-agent` swaps it for the demo rail site and lets
-the real agent subprocess buy there; `--live-flights` plugs in the real `duffel` adapter
-against Duffel's TEST API for scenarios that list it. Every other supplier stays simulated.
+the real agent subprocess buy there; `--live-stays` plugs in the real `liteapi` adapter (the
+LiteAPI sandbox) and `--live-flights` the real `duffel` adapter (Duffel's TEST API) for
+scenarios that list them. Every other supplier stays simulated.
 """
 
 import contextlib
@@ -41,9 +42,11 @@ from app.suppliers.duffel import SUPPLIER_ID as DUFFEL
 from app.suppliers.duffel import DuffelConfig, DuffelLog, DuffelSupplier
 from app.suppliers.duffel_client import DuffelClient
 from app.suppliers.intercity import BrowserTransport
+from app.suppliers.liteapi import SUPPLIER_ID as LITEAPI
+from app.suppliers.liteapi import LiteApiLog, liteapi_supplier
 from app.suppliers.pkp import LiveSearchLog, PkpIntercitySupplier
 from app.suppliers.ports import SupplierAdapter
-from app.suppliers.providers import duffel_config, duffel_supplier
+from app.suppliers.providers import duffel_config, duffel_supplier, liteapi_config
 from app.suppliers.registry import SupplierRegistry
 from app.suppliers.sim import SIM_CAPABILITIES, SimBehaviour, sim_supplier
 
@@ -63,6 +66,8 @@ class Options:
     live_search: bool = False
     # Base URL of a backend serving /api/demo-supplier/rail; set => live agent for rail.
     live_agent_base_url: str | None = None
+    # The real LiteAPI sandbox for the `liteapi` supplier; without it such scenarios are pending.
+    live_stays: bool = False
     # The real Duffel TEST API for the `duffel` supplier; without it such scenarios are pending.
     live_flights: bool = False
     # Tests only: answers Duffel's API instead of the network (with `live_flights`).
@@ -107,6 +112,7 @@ class World:
     researcher: CatalogResearcher
     launcher: AgentLauncher
     live_search_log: LiveSearchLog | None = None
+    liteapi_log: LiteApiLog | None = None
     duffel_log: DuffelLog | None = None
     resources: contextlib.AsyncExitStack = field(default_factory=contextlib.AsyncExitStack)
     browser: BrowserTransport | None = None
@@ -136,10 +142,20 @@ class World:
         adapters: list[SupplierAdapter] = []
         browser: BrowserTransport | None = None
         pkp: PkpIntercitySupplier | None = None
+        liteapi_log: LiteApiLog | None = None
         duffel_log: DuffelLog | None = None
         for spec in scenario.suppliers:
             behaviour = copy.deepcopy(spec.behaviour) if spec.behaviour else SimBehaviour()
-            if spec.id == DUFFEL:
+            if spec.id == LITEAPI:
+                if not options.live_stays:
+                    continue  # the scenario is reported pending (Scenario.live_stays_only)
+                config = liteapi_config(settings)
+                if config is None:
+                    raise RuntimeError("--live-stays needs a sandbox (sand_...) LITEAPI_KEY")
+                liteapi = liteapi_supplier(config, clock.now)
+                liteapi_log = liteapi.log
+                adapters.append(liteapi)
+            elif spec.id == DUFFEL:
                 if not options.live_flights:
                     continue  # the scenario is reported pending (Scenario.live_flights_only)
                 duffel = cls._duffel(settings, options, clock)
@@ -211,6 +227,7 @@ class World:
             researcher=researcher,
             launcher=launcher,
             live_search_log=pkp.log if pkp is not None else None,
+            liteapi_log=liteapi_log,
             duffel_log=duffel_log,
             browser=browser,
         )

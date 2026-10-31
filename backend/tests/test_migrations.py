@@ -102,10 +102,6 @@ async def test_supplier_plugins_forward_and_backward(database: Database) -> None
                 "invite_code": "migration-trip",
                 "chosen_proposal_id": None,
                 "total_minor": 0,
-                # Added by the LATER trip_preferences migration; present here because the
-                # validator in place (when another test applied it) is today's.
-                "earliest_departure_hour": None,
-                "max_transfers": None,
                 "created_at": DEPARTS,
                 "updated_at": DEPARTS,
             },

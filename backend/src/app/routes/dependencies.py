@@ -26,7 +26,8 @@ from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerService
 from app.services.trips import TripService
 from app.suppliers.duffel import DuffelConfig
-from app.suppliers.providers import build_registry, duffel_config, pkp_transport
+from app.suppliers.liteapi import LiteApiConfig
+from app.suppliers.providers import build_registry, duffel_config, liteapi_config, pkp_transport
 from app.suppliers.registry import SupplierRegistry
 
 # routes/ -> app/ -> src/ -> backend/: the agent subprocess runs from the backend directory.
@@ -83,18 +84,26 @@ OptionalUser = Annotated[AuthenticatedUser | None, Depends(get_optional_user)]
 def _registry(
     supplier_ids: tuple[str, ...],
     demo_rail_url: str | None,
+    liteapi: LiteApiConfig | None,
     duffel: DuffelConfig | None,
     pkp: PkpTransportKind,
 ) -> SupplierRegistry:
     """One registry per configuration and process: a simulated supplier remembers its holds
     between requests, like the real one would, and PKP keeps one warm browser."""
-    return build_registry(supplier_ids, demo_rail_url, duffel, pkp=pkp_transport(pkp))
+    return build_registry(
+        supplier_ids, demo_rail_url, liteapi=liteapi, duffel=duffel, pkp=pkp_transport(pkp)
+    )
 
 
 def get_supplier_registry(settings: SettingsDep) -> SupplierRegistry:
+    liteapi = liteapi_config(settings) if "liteapi" in settings.supplier_ids else None
     duffel = duffel_config(settings) if "duffel" in settings.supplier_ids else None
     return _registry(
-        tuple(settings.supplier_ids), settings.demo_rail_url, duffel, settings.pkp_transport
+        tuple(settings.supplier_ids),
+        settings.demo_rail_url,
+        liteapi,
+        duffel,
+        settings.pkp_transport,
     )
 
 

@@ -138,8 +138,8 @@ def test_duffel_is_configured_only_with_a_usable_key() -> None:
     config = duffel_config(Settings(duffel_api_key=TEST_KEY, duffel_fx_eur_pln=4.25))
     assert config is not None
     assert config.rates_to_pln()["EUR"] == Decimal("4.25")
-    assert build_registry(["duffel", "sim_stay"], None, config).ids == ["duffel", "sim_stay"]
-    assert build_registry(["duffel", "sim_stay"], None, None).ids == ["sim_stay"]
+    assert build_registry(["duffel", "sim_stay"], None, duffel=config).ids == ["duffel", "sim_stay"]
+    assert build_registry(["duffel", "sim_stay"], None, duffel=None).ids == ["sim_stay"]
     assert duffel_supplier(config).display_name == "Duffel (airline API, test mode)"
 
 
