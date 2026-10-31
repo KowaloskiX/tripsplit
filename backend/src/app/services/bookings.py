@@ -238,6 +238,7 @@ class BookingService:
         price_tolerance_percent: float = 0.0,
         payments: PaymentProvider | None = None,
         clock: Clock = utc_now,
+        holds: bool = False,
     ) -> None:
         self.db = db
         # Refunds overpayments once the trip is booked (see `_settle_refunds`).
@@ -248,7 +249,11 @@ class BookingService:
         self.clock = clock
         # Holds and re-quotes right before every purchase (see `start`).
         self.prices = SupplierPrices(
-            db, self.suppliers, clock=clock, price_tolerance_percent=price_tolerance_percent
+            db,
+            self.suppliers,
+            clock=clock,
+            price_tolerance_percent=price_tolerance_percent,
+            holds=holds,
         )
         self.travellers = TravellerService()
         self.runs_dir = runs_dir.resolve()

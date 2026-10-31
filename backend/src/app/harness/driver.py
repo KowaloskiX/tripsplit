@@ -303,6 +303,7 @@ class Driver:
                 expected_events=expected_events if outcome == "ok" else (),
                 suppliers=self.world.suppliers,
                 now=self.world.clock.now(),
+                holds=self.scenario.holds,
             )
             violations = check_all(context, dict(self.scenario.known_violations))
             for violation in violations:

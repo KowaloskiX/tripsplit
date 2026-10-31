@@ -2,12 +2,13 @@
 
 Everything here reads the supplier's capabilities, never its name:
 
-- `supports_hold` -> a hold is placed when the vote closes, so the price is locked while the
-  group pays (`hold_needs_traveller_details`: only once every passenger's required details
-  are in, otherwise when the purchase starts). A hold that lapsed before the purchase is
-  announced (HOLD_EXPIRED) and placed again — at whatever the supplier now asks.
-- otherwise -> the booking is re-quoted right before the purchase starts, unless its price
-  was confirmed by the supplier within the capability's `quote_ttl`.
+- `supports_hold` with HOLDS=on -> a hold is placed when the vote closes, so the price is
+  locked while the group pays (`hold_needs_traveller_details`: only once every passenger's
+  required details are in, otherwise when the purchase starts). A hold that lapsed before the
+  purchase is announced (HOLD_EXPIRED) and placed again — at whatever the supplier now asks.
+- otherwise (HOLDS=off is the default) -> the booking is re-quoted right before the purchase
+  starts, unless its price was confirmed by the supplier within the capability's `quote_ttl`;
+  an API supplier then books without a hold when the summary is approved.
 
 A new price beyond the tolerance takes the ONE re-split path: the booking's amount changes, the
 shares are re-split, the feed gets PRICE_CHANGED, and a rise that leaves somebody owing sends
@@ -75,8 +76,12 @@ class SupplierPrices:
         *,
         clock: Clock = utc_now,
         price_tolerance_percent: float = 0.0,
+        holds: bool = False,
     ) -> None:
         self.db = db
+        # HOLDS=on: suppliers that support holds lock the price at voting close. Off: nothing
+        # is held, every purchase re-quotes right before it starts.
+        self.holds = holds
         self.suppliers = suppliers
         self.clock = clock
         self.price_tolerance_percent = price_tolerance_percent
@@ -97,7 +102,10 @@ class SupplierPrices:
 
     async def place_holds(self, trip: Trip) -> None:
         """Holds every booking whose supplier supports it. Called right after the vote closed,
-        outside its transaction: a hold is a call to a supplier and cannot be replayed."""
+        outside its transaction: a hold is a call to a supplier and cannot be replayed.
+        Nothing happens with holds off."""
+        if not self.holds:
+            return
         members = await self.members.for_trip(identifier_of(trip))
         for booking in await self.bookings.for_trip(identifier_of(trip)):
             adapter = self.adapter_of(booking)
@@ -136,9 +144,11 @@ class SupplierPrices:
         if adapter is None:
             return BookingError.SUPPLIER_UNKNOWN
         members = await self.members.for_trip(identifier_of(trip))
-        if adapter.capabilities.supports_hold:
-            if hold_is_live(booking.hold_expires_at, self.clock()):
-                return None
+        if adapter.capabilities.supports_hold and hold_is_live(
+            booking.hold_expires_at, self.clock()
+        ):
+            return None
+        if adapter.capabilities.supports_hold and self.holds:
             return await self._hold(
                 trip, booking, adapter, members, expired=booking.hold_ref is not None
             )
@@ -153,7 +163,10 @@ class SupplierPrices:
             return None
         if quote is None:
             return await self._sold_out(trip, booking)
-        return await self._apply(trip, booking, quote.price_minor, {"quoted_at": self.clock()})
+        changes: dict[str, Any] = {"quoted_at": self.clock()}
+        if booking.hold_ref is not None:  # a lapsed hold must not reach the purchase
+            changes |= {"hold_ref": None, "hold_expires_at": None}
+        return await self._apply(trip, booking, quote.price_minor, changes)
 
     async def _hold(
         self,

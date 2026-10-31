@@ -329,6 +329,9 @@ class Scenario:
     live_flights_only: bool = False
     # PRICE_TOLERANCE_PERCENT for the scenario's trip flow (0 = any re-quote re-splits).
     price_tolerance_percent: float = 0.0
+    # HOLDS for the scenario's trip flow: off by default like the app; scenarios about holds
+    # turn them on explicitly.
+    holds: bool = False
 
     @property
     def members(self) -> tuple[str, ...]:

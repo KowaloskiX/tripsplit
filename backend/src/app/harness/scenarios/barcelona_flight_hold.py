@@ -28,6 +28,7 @@ LATE = FRIENDS[-1]
 
 SCENARIO = Scenario(
     name="barcelona_flight_hold",
+    holds=True,
     title="Barcelona by plane: the fare hold lapses while one friend pays late",
     description=(
         "Six friends fly Warszawa -> Barcelona. When the vote closes the airline API holds the "
