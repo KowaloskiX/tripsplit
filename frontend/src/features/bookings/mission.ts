@@ -51,8 +51,9 @@ function hostOf(url: string): string {
 }
 
 export function graphSteps(steps: readonly RunStepResponse[]): GraphStep[] {
-  return steps.map((step) => ({
-    id: `${step.index}`,
+  // `index` repeats across retries of a step; the position is unique.
+  return steps.map((step, position) => ({
+    id: `${position}-${step.index}`,
     label: step.node_id ?? step.kind,
     status: step.status,
   }));
@@ -166,7 +167,8 @@ export function useMission(tripId: string, title: string): MissionControlData | 
     currency: trip.currency,
     purchases: current.length,
     browser: {
-      frameSrc: runId ? frameSrc : null,
+      // Polled only while the agent works; the last frame stays on screen afterwards.
+      frameSrc: runId && agentWorking ? frameSrc : null,
       host: agent ? hostOf(agent.supplier_url) : "waiting for the agent",
       steps: graphSteps(steps),
     },

@@ -52,10 +52,11 @@ function RoomError({ error, reset }: { error: Error; reset: () => void }): React
 
 function RoomPage(): ReactNode {
   const { tripId } = Route.useParams();
-  const { data: room, isPending, isError } = useRoom(tripId);
+  const { data: room, isPending } = useRoom(tripId);
 
   if (isPending) return <div className="h-96" aria-hidden />;
-  if (isError || !room) {
+  // A failed poll (429, a blip) keeps the last room on screen; only no data at all is a 404.
+  if (!room) {
     return (
       <StatusScreen
         code="404"

@@ -22,7 +22,9 @@ const TRIP_STATUS_LABEL: Record<string, string> = {
 /** The booking screen of a trip: what is being bought, the live agent, the approval. */
 export function TripBookings({ tripId }: { tripId: string }): ReactNode {
   const query = useTripBookings(tripId);
-  if (query.error) return <ErrorCallout>{apiErrorMessage(query.error)}</ErrorCallout>;
+  // A failed poll keeps the last list on screen; only no data at all is an error.
+  if (query.error && !query.data)
+    return <ErrorCallout>{apiErrorMessage(query.error)}</ErrorCallout>;
   if (!query.data) return <p className="text-sm text-muted">Loading bookings…</p>;
   const trip = query.data;
 

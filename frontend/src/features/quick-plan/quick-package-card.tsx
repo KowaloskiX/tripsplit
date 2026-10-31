@@ -72,7 +72,7 @@ export function QuickPackageCard({
         {example ? (
           // Simulated suppliers (the demo fallback) can still be taken — labelled as such.
           <Button size="sm" variant="outline" onClick={() => onTake?.(pkg.id)}>
-            Take (example)
+            Take this
           </Button>
         ) : (
           <Button size="sm" variant="lime" onClick={() => onTake?.(pkg.id)}>

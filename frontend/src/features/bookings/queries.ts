@@ -19,7 +19,7 @@ export function useTripBookings(tripId: string) {
 export function useRunStatus(runId: string, active: boolean) {
   return useQuery({
     ...agentRunsStatusOptions({ path: { run_id: runId } }),
-    enabled: inBrowser,
+    enabled: inBrowser && runId !== "",
     refetchInterval: active ? RUN_POLL_MS : false,
   });
 }

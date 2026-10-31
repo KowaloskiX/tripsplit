@@ -68,7 +68,7 @@ export function StageView({ tripId, currency }: { tripId: string; currency: stri
   const { progress, start, stop } = useDirector(tripId);
   const running = progress.data?.state === "running";
   const lastBeat = progress.data?.beats.at(-1);
-  const error = start.error ?? stop.error ?? phones.error;
+  const error = start.error ?? stop.error ?? (phones.data ? null : phones.error);
   const play = (pace: DirectorPace) =>
     start.mutate({ path, body: { script: "full", pace, with_disruption: true } });
 
