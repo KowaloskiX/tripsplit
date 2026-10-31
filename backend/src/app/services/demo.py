@@ -32,17 +32,19 @@ from app.services.trip_access import TripAccess, load_access, require_organizer,
 from app.services.trips import JOINABLE_STATUSES, NotJoinableError
 
 DEMO_EMAIL_DOMAIN = "demo.tripsplit.invalid"
+# Full names: a carrier needs a first AND last name per traveller, and the booking agent types
+# them from the vault (`passenger_N_first_name` / `passenger_N_last_name`).
 DEMO_NAMES = (
-    "Ola",
-    "Kuba",
-    "Marta",
-    "Bartek",
-    "Zosia",
-    "Piotr",
-    "Kasia",
-    "Tomek",
-    "Ania",
-    "Michał",
+    "Ola Nowak",
+    "Kuba Mazur",
+    "Marta Lis",
+    "Bartek Pawlak",
+    "Zosia Sikora",
+    "Piotr Baran",
+    "Kasia Dudek",
+    "Tomek Wrona",
+    "Ania Kaczmarek",
+    "Michal Krawczyk",
 )
 
 
