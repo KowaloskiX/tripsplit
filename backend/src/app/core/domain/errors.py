@@ -20,3 +20,15 @@ class ApiError(StrEnum):
     METHOD_NOT_ALLOWED = "method_not_allowed"
     VALIDATION_FAILED = "validation_failed"
     INTERNAL_ERROR = "internal_error"
+
+
+class BookingError(StrEnum):
+    TRIP_NOT_FOUND = "trip_not_found"  # also what a non-member sees: no existence oracle
+    BOOKING_NOT_FOUND = "booking_not_found"
+    RUN_NOT_FOUND = "run_not_found"
+    FRAME_NOT_FOUND = "frame_not_found"
+    NOT_ORGANIZER = "not_organizer"
+    TRIP_NOT_READY = "trip_not_ready"  # Rule #1: nobody buys before everyone has paid
+    BOOKING_NOT_STARTABLE = "booking_not_startable"
+    NOT_AWAITING_APPROVAL = "not_awaiting_approval"
+    NOTHING_TO_DISRUPT = "nothing_to_disrupt"

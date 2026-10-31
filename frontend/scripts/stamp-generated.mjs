@@ -11,8 +11,10 @@
  */
 import { readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const GENERATED_DIR = new URL("../src/lib/api/generated", import.meta.url).pathname;
+// `fileURLToPath`, not `.pathname`: the latter keeps `%20` for a space in the repo path.
+const GENERATED_DIR = fileURLToPath(new URL("../src/lib/api/generated", import.meta.url));
 const HEADER = [
   "// GENERATED FILE — do not edit by hand.",
   "// Regenerate: uv run dump-openapi (backend) + pnpm --filter web generate:api",

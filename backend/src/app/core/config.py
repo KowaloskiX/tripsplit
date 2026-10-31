@@ -79,6 +79,15 @@ class Settings(BaseSettings):
     # and single-node). `redis://…` = one shared counter for every replica.
     rate_limit_storage_url: str = ""
 
+    # The booking agent (see app.agent). Relative paths resolve against `backend/` — the
+    # directory the agent subprocess runs in.
+    agent_var_dir: str = "var/agent"
+    # Optional flat JSON merged into every run's vault (e.g. real passenger names for a demo).
+    agent_vault_file: str = ""
+    # Show the agent's browser window (local debugging only).
+    agent_headful: bool = False
+    agent_max_steps: int = 40
+
     @field_validator("cors_origins")
     @classmethod
     def _reject_wildcard_origin(cls, value: str) -> str:
@@ -139,6 +148,11 @@ class Settings(BaseSettings):
         In production they are a ready-made manual: the full HTTP surface, validation limits
         and the error-code catalogue, plus the ability to send POSTs straight from a browser.
         """
+        return self.app_env in _LOCAL_ENVS
+
+    @property
+    def demo_routes_enabled(self) -> bool:
+        """The fake supplier and the disruption trigger exist on dev/test only."""
         return self.app_env in _LOCAL_ENVS
 
 

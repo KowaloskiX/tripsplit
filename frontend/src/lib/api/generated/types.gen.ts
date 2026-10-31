@@ -7,7 +7,121 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+/**
+ * AgentOutcome
+ *
+ * Mirrors `RunResult.outcome` in `app.agent.runner`.
+ */
+export type AgentOutcome = 'done' | 'handoff' | 'stuck' | 'max_steps' | 'error' | 'unknown';
+
+/**
+ * AgentRunResponse
+ */
+export type AgentRunResponse = {
+    /**
+     * Cost Usd
+     */
+    cost_usd: number;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Milestone
+     */
+    milestone: string | null;
+    outcome: AgentOutcome | null;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Run Id
+     */
+    run_id: string;
+    /**
+     * Started At
+     */
+    started_at: string | null;
+    status: AgentRunStatus;
+    /**
+     * Steps
+     */
+    steps: number;
+};
+
+/**
+ * AgentRunStatus
+ */
+export type AgentRunStatus = 'queued' | 'running' | 'finished';
+
 export type AppEnv = 'dev' | 'test' | 'staging' | 'prod';
+
+/**
+ * ApproveRequest
+ */
+export type ApproveRequest = {
+    /**
+     * Approved
+     */
+    approved: boolean;
+};
+
+/**
+ * BookingKind
+ */
+export type BookingKind = 'train' | 'stay' | 'activity';
+
+/**
+ * BookingResponse
+ */
+export type BookingResponse = {
+    /**
+     * Amount Minor
+     */
+    amount_minor: number;
+    /**
+     * Confirmation Ref
+     */
+    confirmation_ref: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    kind: BookingKind;
+    /**
+     * Replaces Booking Id
+     */
+    replaces_booking_id: string | null;
+    run: AgentRunResponse | null;
+    status: BookingStatus;
+    /**
+     * Supplier
+     */
+    supplier: string;
+    /**
+     * Supplier Url
+     */
+    supplier_url: string;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+};
+
+/**
+ * BookingStatus
+ */
+export type BookingStatus = 'pending' | 'running' | 'awaiting_approval' | 'approved' | 'confirmed' | 'handoff' | 'failed' | 'cancelled';
+
+/**
+ * ContributionStatus
+ */
+export type ContributionStatus = 'pending' | 'paid' | 'refund_due';
 
 /**
  * CurrentUserResponse
@@ -43,6 +157,48 @@ export type DependencyStatus = {
      */
     name: string;
     state: DependencyState;
+};
+
+/**
+ * DisruptionRequest
+ */
+export type DisruptionRequest = {
+    /**
+     * Booking Id
+     */
+    booking_id?: string | null;
+    /**
+     * Delay Minutes
+     */
+    delay_minutes?: number;
+    /**
+     * Price Change Percent
+     */
+    price_change_percent?: number;
+};
+
+/**
+ * DisruptionResponse
+ */
+export type DisruptionResponse = {
+    /**
+     * Cancelled Booking Id
+     */
+    cancelled_booking_id: string;
+    /**
+     * Previous Total Minor
+     */
+    previous_total_minor: number;
+    replacement: BookingResponse;
+    /**
+     * Shares
+     */
+    shares: Array<ShareChangeResponse>;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
+    trip_status: TripStatus;
 };
 
 /**
@@ -82,6 +238,38 @@ export type HealthStatus = {
      * Status
      */
     status: 'ok';
+};
+
+/**
+ * LiveStatusResponse
+ *
+ * What the runner reports in `status.json` right now.
+ */
+export type LiveStatusResponse = {
+    /**
+     * Cost Usd
+     */
+    cost_usd: number;
+    /**
+     * Milestone
+     */
+    milestone: string | null;
+    /**
+     * Outcome
+     */
+    outcome: string | null;
+    /**
+     * Reached
+     */
+    reached: Array<string>;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Step
+     */
+    step: number;
 };
 
 /**
@@ -168,6 +356,18 @@ export type RegisterRequest = {
 export type Role = 'owner' | 'admin' | 'member';
 
 /**
+ * RunStatusResponse
+ */
+export type RunStatusResponse = {
+    /**
+     * Booking Id
+     */
+    booking_id: string;
+    live: LiveStatusResponse;
+    run: AgentRunResponse;
+};
+
+/**
  * SessionResponse
  *
  * Response of `GET /api/auth/session` — `user: null` means "not signed in".
@@ -175,6 +375,76 @@ export type Role = 'owner' | 'admin' | 'member';
 export type SessionResponse = {
     user: CurrentUserResponse | null;
 };
+
+/**
+ * ShareChangeResponse
+ */
+export type ShareChangeResponse = {
+    /**
+     * Delta Minor
+     */
+    delta_minor: number;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Paid Minor
+     */
+    paid_minor: number;
+    /**
+     * Previous Minor
+     */
+    previous_minor: number;
+    /**
+     * Share Minor
+     */
+    share_minor: number;
+    status: ContributionStatus;
+    /**
+     * User Id
+     */
+    user_id: string;
+};
+
+/**
+ * TripBookingsResponse
+ */
+export type TripBookingsResponse = {
+    /**
+     * Bookings
+     */
+    bookings: Array<BookingResponse>;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Is Organizer
+     */
+    is_organizer: boolean;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
+    /**
+     * Travellers
+     */
+    travellers: number;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+    trip_status: TripStatus;
+};
+
+/**
+ * TripStatus
+ *
+ * collecting -> proposing -> voting -> paying -> booking -> booked -> done,
+ * with booked -> disrupted -> rebooking -> booked for post-purchase care.
+ */
+export type TripStatus = 'collecting' | 'proposing' | 'voting' | 'paying' | 'booking' | 'booked' | 'disrupted' | 'rebooking' | 'done';
 
 /**
  * ValidationError
@@ -203,6 +473,72 @@ export type ValidationError = {
      */
     type: string;
 };
+
+export type AgentRunsFrameData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/agent-runs/{run_id}/frame';
+};
+
+export type AgentRunsFrameErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AgentRunsFrameError = AgentRunsFrameErrors[keyof AgentRunsFrameErrors];
+
+export type AgentRunsFrameResponses = {
+    /**
+     * The newest frame of the run (live screencast or last screenshot).
+     */
+    200: unknown;
+};
+
+export type AgentRunsStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: string;
+    };
+    query?: never;
+    url: '/api/agent-runs/{run_id}/status';
+};
+
+export type AgentRunsStatusErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AgentRunsStatusError = AgentRunsStatusErrors[keyof AgentRunsStatusErrors];
+
+export type AgentRunsStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: RunStatusResponse;
+};
+
+export type AgentRunsStatusResponse = AgentRunsStatusResponses[keyof AgentRunsStatusResponses];
 
 export type AuthLoginData = {
     body: LoginRequest;
@@ -359,3 +695,171 @@ export type HealthReadyResponses = {
 };
 
 export type HealthReadyResponse = HealthReadyResponses[keyof HealthReadyResponses];
+
+export type BookingsListData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings';
+};
+
+export type BookingsListErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsListError = BookingsListErrors[keyof BookingsListErrors];
+
+export type BookingsListResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripBookingsResponse;
+};
+
+export type BookingsListResponse = BookingsListResponses[keyof BookingsListResponses];
+
+export type BookingsApproveData = {
+    body: ApproveRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+        /**
+         * Booking Id
+         */
+        booking_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings/{booking_id}/approve';
+};
+
+export type BookingsApproveErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsApproveError = BookingsApproveErrors[keyof BookingsApproveErrors];
+
+export type BookingsApproveResponses = {
+    /**
+     * Successful Response
+     */
+    200: BookingResponse;
+};
+
+export type BookingsApproveResponse = BookingsApproveResponses[keyof BookingsApproveResponses];
+
+export type BookingsStartData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+        /**
+         * Booking Id
+         */
+        booking_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings/{booking_id}/start';
+};
+
+export type BookingsStartErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsStartError = BookingsStartErrors[keyof BookingsStartErrors];
+
+export type BookingsStartResponses = {
+    /**
+     * Successful Response
+     */
+    202: BookingResponse;
+};
+
+export type BookingsStartResponse = BookingsStartResponses[keyof BookingsStartResponses];
+
+export type DemoDisruptionData = {
+    body: DisruptionRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/disruption';
+};
+
+export type DemoDisruptionErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoDisruptionError = DemoDisruptionErrors[keyof DemoDisruptionErrors];
+
+export type DemoDisruptionResponses = {
+    /**
+     * Successful Response
+     */
+    200: DisruptionResponse;
+};
+
+export type DemoDisruptionResponse = DemoDisruptionResponses[keyof DemoDisruptionResponses];

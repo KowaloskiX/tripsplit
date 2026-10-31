@@ -16,20 +16,47 @@ export {
 } from "./client";
 export { apiErrorMessage } from "./errors";
 export {
+  agentRunsStatusOptions,
   authLoginMutation,
   authLogoutMutation,
   authRegisterMutation,
   authSessionOptions,
   authSessionQueryKey,
+  bookingsApproveMutation,
+  bookingsListOptions,
+  bookingsListQueryKey,
+  bookingsStartMutation,
+  demoDisruptionMutation,
   healthGetOptions,
 } from "./generated/@tanstack/react-query.gen";
 export type {
+  AgentOutcome,
+  AgentRunResponse,
+  BookingKind,
+  BookingResponse,
+  BookingStatus,
+  ContributionStatus,
   CurrentUserResponse,
+  DisruptionResponse,
   ErrorResponse,
   HealthStatus,
+  LiveStatusResponse,
   LoginRequest,
   OrganizationSummary,
   RegisterRequest,
   Role,
+  RunStatusResponse,
   SessionResponse,
+  ShareChangeResponse,
+  TripBookingsResponse,
+  TripStatus,
 } from "./generated/types.gen";
+
+/**
+ * The newest frame of an agent run, for an `<img src>`. A binary response is not something the
+ * generated JSON client can hand to an image tag, so the URL is built here — next to the client
+ * that owns the API's paths — rather than in a feature. `tick` busts the browser cache.
+ */
+export function agentRunFrameUrl(runId: string, tick: number): string {
+  return `/api/agent-runs/${encodeURIComponent(runId)}/frame?t=${tick}`;
+}

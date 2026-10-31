@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses } from './types.gen';
+import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -20,6 +20,16 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * Run Frame
+ */
+export const agentRunsFrame = <ThrowOnError extends boolean = false>(options: Options<AgentRunsFrameData, ThrowOnError>): RequestResult<AgentRunsFrameResponses, AgentRunsFrameErrors, ThrowOnError> => (options.client ?? client).get<AgentRunsFrameResponses, AgentRunsFrameErrors, ThrowOnError>({ url: '/api/agent-runs/{run_id}/frame', ...options });
+
+/**
+ * Run Status
+ */
+export const agentRunsStatus = <ThrowOnError extends boolean = false>(options: Options<AgentRunsStatusData, ThrowOnError>): RequestResult<AgentRunsStatusResponses, AgentRunsStatusErrors, ThrowOnError> => (options.client ?? client).get<AgentRunsStatusResponses, AgentRunsStatusErrors, ThrowOnError>({ url: '/api/agent-runs/{run_id}/status', ...options });
 
 /**
  * Login
@@ -80,3 +90,39 @@ export const healthGet = <ThrowOnError extends boolean = false>(options?: Option
  * when the database dies: pods wait instead of restarting over and over.
  */
 export const healthReady = <ThrowOnError extends boolean = false>(options?: Options<HealthReadyData, ThrowOnError>): RequestResult<HealthReadyResponses, HealthReadyErrors, ThrowOnError> => (options?.client ?? client).get<HealthReadyResponses, HealthReadyErrors, ThrowOnError>({ url: '/api/health/ready', ...options });
+
+/**
+ * List Bookings
+ */
+export const bookingsList = <ThrowOnError extends boolean = false>(options: Options<BookingsListData, ThrowOnError>): RequestResult<BookingsListResponses, BookingsListErrors, ThrowOnError> => (options.client ?? client).get<BookingsListResponses, BookingsListErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings', ...options });
+
+/**
+ * Approve Booking
+ */
+export const bookingsApprove = <ThrowOnError extends boolean = false>(options: Options<BookingsApproveData, ThrowOnError>): RequestResult<BookingsApproveResponses, BookingsApproveErrors, ThrowOnError> => (options.client ?? client).post<BookingsApproveResponses, BookingsApproveErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/bookings/{booking_id}/approve',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Start Booking
+ */
+export const bookingsStart = <ThrowOnError extends boolean = false>(options: Options<BookingsStartData, ThrowOnError>): RequestResult<BookingsStartResponses, BookingsStartErrors, ThrowOnError> => (options.client ?? client).post<BookingsStartResponses, BookingsStartErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings/{booking_id}/start', ...options });
+
+/**
+ * Simulate Disruption
+ *
+ * The demo's last scene: the train is delayed, the agent rebooks and re-splits.
+ */
+export const demoDisruption = <ThrowOnError extends boolean = false>(options: Options<DemoDisruptionData, ThrowOnError>): RequestResult<DemoDisruptionResponses, DemoDisruptionErrors, ThrowOnError> => (options.client ?? client).post<DemoDisruptionResponses, DemoDisruptionErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/demo/disruption',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});

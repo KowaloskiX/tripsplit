@@ -1,6 +1,109 @@
 {
   "components": {
     "schemas": {
+      "AgentOutcome": {
+        "description": "Mirrors `RunResult.outcome` in `app.agent.runner`.",
+        "enum": [
+          "done",
+          "handoff",
+          "stuck",
+          "max_steps",
+          "error",
+          "unknown"
+        ],
+        "title": "AgentOutcome",
+        "type": "string"
+      },
+      "AgentRunResponse": {
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "milestone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AgentRunStatus"
+          },
+          "steps": {
+            "title": "Steps",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "run_id",
+          "status",
+          "outcome",
+          "milestone",
+          "steps",
+          "reason",
+          "cost_usd",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "AgentRunResponse",
+        "type": "object"
+      },
+      "AgentRunStatus": {
+        "enum": [
+          "queued",
+          "running",
+          "finished"
+        ],
+        "title": "AgentRunStatus",
+        "type": "string"
+      },
       "AppEnv": {
         "enum": [
           "dev",
@@ -8,6 +111,133 @@
           "staging",
           "prod"
         ],
+        "type": "string"
+      },
+      "ApproveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "approved"
+        ],
+        "title": "ApproveRequest",
+        "type": "object"
+      },
+      "BookingKind": {
+        "enum": [
+          "train",
+          "stay",
+          "activity"
+        ],
+        "title": "BookingKind",
+        "type": "string"
+      },
+      "BookingResponse": {
+        "properties": {
+          "amount_minor": {
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "confirmation_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation Ref"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BookingKind"
+          },
+          "replaces_booking_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Replaces Booking Id"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentRunResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "supplier": {
+            "title": "Supplier",
+            "type": "string"
+          },
+          "supplier_url": {
+            "title": "Supplier Url",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "trip_id",
+          "kind",
+          "title",
+          "supplier",
+          "supplier_url",
+          "amount_minor",
+          "status",
+          "confirmation_ref",
+          "replaces_booking_id",
+          "run"
+        ],
+        "title": "BookingResponse",
+        "type": "object"
+      },
+      "BookingStatus": {
+        "enum": [
+          "pending",
+          "running",
+          "awaiting_approval",
+          "approved",
+          "confirmed",
+          "handoff",
+          "failed",
+          "cancelled"
+        ],
+        "title": "BookingStatus",
+        "type": "string"
+      },
+      "ContributionStatus": {
+        "enum": [
+          "pending",
+          "paid",
+          "refund_due"
+        ],
+        "title": "ContributionStatus",
         "type": "string"
       },
       "CurrentUserResponse": {
@@ -61,6 +291,79 @@
           "state"
         ],
         "title": "DependencyStatus",
+        "type": "object"
+      },
+      "DisruptionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "booking_id": {
+            "anyOf": [
+              {
+                "maxLength": 24,
+                "minLength": 24,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Id"
+          },
+          "delay_minutes": {
+            "default": 140,
+            "maximum": 1440.0,
+            "minimum": 1.0,
+            "title": "Delay Minutes",
+            "type": "integer"
+          },
+          "price_change_percent": {
+            "default": 5.0,
+            "maximum": 300.0,
+            "minimum": -90.0,
+            "title": "Price Change Percent",
+            "type": "number"
+          }
+        },
+        "title": "DisruptionRequest",
+        "type": "object"
+      },
+      "DisruptionResponse": {
+        "properties": {
+          "cancelled_booking_id": {
+            "title": "Cancelled Booking Id",
+            "type": "string"
+          },
+          "previous_total_minor": {
+            "title": "Previous Total Minor",
+            "type": "integer"
+          },
+          "replacement": {
+            "$ref": "#/components/schemas/BookingResponse"
+          },
+          "shares": {
+            "items": {
+              "$ref": "#/components/schemas/ShareChangeResponse"
+            },
+            "title": "Shares",
+            "type": "array"
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          },
+          "trip_status": {
+            "$ref": "#/components/schemas/TripStatus"
+          }
+        },
+        "required": [
+          "cancelled_booking_id",
+          "replacement",
+          "trip_status",
+          "previous_total_minor",
+          "total_minor",
+          "shares"
+        ],
+        "title": "DisruptionResponse",
         "type": "object"
       },
       "ErrorResponse": {
@@ -121,6 +424,62 @@
           "env"
         ],
         "title": "HealthStatus",
+        "type": "object"
+      },
+      "LiveStatusResponse": {
+        "description": "What the runner reports in `status.json` right now.",
+        "properties": {
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "number"
+          },
+          "milestone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Milestone"
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome"
+          },
+          "reached": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reached",
+            "type": "array"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "step": {
+            "title": "Step",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "milestone",
+          "reached",
+          "step",
+          "reason",
+          "outcome",
+          "cost_usd"
+        ],
+        "title": "LiveStatusResponse",
         "type": "object"
       },
       "LoginRequest": {
@@ -247,6 +606,27 @@
         "title": "Role",
         "type": "string"
       },
+      "RunStatusResponse": {
+        "properties": {
+          "booking_id": {
+            "title": "Booking Id",
+            "type": "string"
+          },
+          "live": {
+            "$ref": "#/components/schemas/LiveStatusResponse"
+          },
+          "run": {
+            "$ref": "#/components/schemas/AgentRunResponse"
+          }
+        },
+        "required": [
+          "booking_id",
+          "run",
+          "live"
+        ],
+        "title": "RunStatusResponse",
+        "type": "object"
+      },
       "SessionResponse": {
         "description": "Response of `GET /api/auth/session` — `user: null` means \"not signed in\".",
         "properties": {
@@ -266,6 +646,109 @@
         ],
         "title": "SessionResponse",
         "type": "object"
+      },
+      "ShareChangeResponse": {
+        "properties": {
+          "delta_minor": {
+            "title": "Delta Minor",
+            "type": "integer"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "paid_minor": {
+            "title": "Paid Minor",
+            "type": "integer"
+          },
+          "previous_minor": {
+            "title": "Previous Minor",
+            "type": "integer"
+          },
+          "share_minor": {
+            "title": "Share Minor",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ContributionStatus"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "previous_minor",
+          "share_minor",
+          "delta_minor",
+          "paid_minor",
+          "status"
+        ],
+        "title": "ShareChangeResponse",
+        "type": "object"
+      },
+      "TripBookingsResponse": {
+        "properties": {
+          "bookings": {
+            "items": {
+              "$ref": "#/components/schemas/BookingResponse"
+            },
+            "title": "Bookings",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "is_organizer": {
+            "title": "Is Organizer",
+            "type": "boolean"
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          },
+          "travellers": {
+            "title": "Travellers",
+            "type": "integer"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          },
+          "trip_status": {
+            "$ref": "#/components/schemas/TripStatus"
+          }
+        },
+        "required": [
+          "trip_id",
+          "trip_status",
+          "currency",
+          "total_minor",
+          "travellers",
+          "is_organizer",
+          "bookings"
+        ],
+        "title": "TripBookingsResponse",
+        "type": "object"
+      },
+      "TripStatus": {
+        "description": "collecting -> proposing -> voting -> paying -> booking -> booked -> done,\nwith booked -> disrupted -> rebooking -> booked for post-purchase care.",
+        "enum": [
+          "collecting",
+          "proposing",
+          "voting",
+          "paying",
+          "booking",
+          "booked",
+          "disrupted",
+          "rebooking",
+          "done"
+        ],
+        "title": "TripStatus",
+        "type": "string"
       },
       "ValidationError": {
         "properties": {
@@ -315,6 +798,111 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/agent-runs/{run_id}/frame": {
+      "get": {
+        "operationId": "agent-runs-frame",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "image/jpeg": {},
+              "image/png": {}
+            },
+            "description": "The newest frame of the run (live screencast or last screenshot)."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Frame",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/agent-runs/{run_id}/status": {
+      "get": {
+        "operationId": "agent-runs-status",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Status",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
     "/api/auth/login": {
       "post": {
         "operationId": "auth-login",
@@ -561,6 +1149,313 @@
         "summary": "Readiness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/bookings": {
+      "get": {
+        "operationId": "bookings-list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripBookingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Bookings",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/bookings/{booking_id}/approve": {
+      "post": {
+        "operationId": "bookings-approve",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "booking_id",
+            "required": true,
+            "schema": {
+              "title": "Booking Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApproveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve Booking",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/bookings/{booking_id}/start": {
+      "post": {
+        "operationId": "bookings-start",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "booking_id",
+            "required": true,
+            "schema": {
+              "title": "Booking Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Booking",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/demo/disruption": {
+      "post": {
+        "description": "The demo's last scene: the train is delayed, the agent rebooks and re-splits.",
+        "operationId": "demo-disruption",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DisruptionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisruptionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Simulate Disruption",
+        "tags": [
+          "demo"
         ]
       }
     }
