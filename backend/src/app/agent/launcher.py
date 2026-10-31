@@ -21,6 +21,8 @@ from pathlib import Path
 from typing import IO, Any, Protocol
 
 LOG_FILE = "agent.log"
+# The child's pid, so a restarted backend can tell an orphaned-but-alive run from a lost one.
+PID_FILE = "agent.pid"
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +86,39 @@ def _cleanup(vault: Path, log: IO[bytes]) -> None:
         log.close()
 
 
+def live_pid(run_dir: Path) -> int | None:
+    """The run's agent pid if that process is still alive, else None."""
+    try:
+        pid = int((run_dir / PID_FILE).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return None
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return None
+    except PermissionError:  # alive, owned by someone else
+        return pid
+    return pid
+
+
+class PidHandle:
+    """Waits on a process this backend did not start (it survived a backend restart).
+
+    There is no exit code for a non-child, so it resolves with -1; `result.json` carries the
+    outcome anyway.
+    """
+
+    def __init__(self, run_dir: Path, poll_s: float = 1.0) -> None:
+        self._run_dir = run_dir
+        self._poll_s = poll_s
+
+    async def wait(self) -> int:
+        while True:
+            if await asyncio.to_thread(live_pid, self._run_dir) is None:
+                return -1
+            await asyncio.sleep(self._poll_s)
+
+
 class SubprocessLauncher:
     """`python -m app.agent.runner ... --await-approval` with the backend dir as cwd."""
 
@@ -127,6 +162,8 @@ class SubprocessLauncher:
         except BaseException:
             await asyncio.to_thread(_cleanup, vault, log)
             raise
+        pid_file = self._var_dir / "runs" / spec.run_id / PID_FILE
+        await asyncio.to_thread(pid_file.write_text, str(process.pid), "utf-8")
         return _ProcessHandle(process, vault, log)
 
     def _prepare(self, spec: LaunchSpec) -> tuple[Path, IO[bytes]]:

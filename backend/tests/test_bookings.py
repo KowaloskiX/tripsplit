@@ -6,6 +6,7 @@ The `FakeLauncher` behaves like the real runner on disk: it writes `status.json`
 
 import asyncio
 import json
+import os
 import secrets
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from datetime import date
@@ -472,7 +473,9 @@ async def test_cheaper_rebooking_marks_refunds_and_goes_straight_to_rebooking(
     assert start.status_code == 202, start.text
 
 
-async def test_disruption_needs_a_booked_trip(booking_app: FastAPI, client: AsyncClient) -> None:
+async def test_disruption_needs_a_confirmed_booking(
+    booking_app: FastAPI, client: AsyncClient
+) -> None:
     organizer = await _register(client, "org@example.com")
     trip, _, _ = await _seed_trip(organizer, [], TripStatus.BOOKING)
     response = await client.post(
@@ -482,6 +485,84 @@ async def test_disruption_needs_a_booked_trip(booking_app: FastAPI, client: Asyn
     )
     assert response.status_code == 409
     assert response.json()["code"] == BookingError.NOTHING_TO_DISRUPT
+
+
+async def test_a_confirmed_train_can_be_disrupted_before_the_stay_is_booked(
+    booking_app: FastAPI, client: AsyncClient
+) -> None:
+    """The demo books the train first; the delay scene must not wait for the stay."""
+    organizer = await _register(client, "org@example.com")
+    trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKING)
+    await train.set({"status": BookingStatus.CONFIRMED})
+    body = await _disrupt(client, trip, 5)
+    assert body["cancelled_booking_id"] == str(train.id)
+
+
+async def _orphan(
+    client: AsyncClient, runs_dir: Path, booking_status: BookingStatus
+) -> tuple[Trip, Booking, Path]:
+    """A booking whose agent run was RUNNING when the backend died: no monitor watches it."""
+    organizer = await _register(client, "org@example.com")
+    trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKING, booking_status)
+    run_id = f"b{train.id}-1"
+    await AgentRun(
+        run_id=run_id, booking_id=identifier_of(train), trip_id=identifier_of(trip)
+    ).insert()
+    await train.set({"current_run_id": run_id})
+    run_dir = runs_dir / run_id
+    run_dir.mkdir()
+    return trip, train, run_dir
+
+
+async def test_an_orphaned_run_with_a_result_is_applied(
+    booking_app: FastAPI, client: AsyncClient, runs_dir: Path
+) -> None:
+    trip, train, run_dir = await _orphan(client, runs_dir, BookingStatus.APPROVED)
+    result = {"outcome": "done", "reason": "ok", "steps": 9, "confirmation_ref": "SIM-1"}
+    _write(run_dir / "result.json", result)
+
+    listing = (await client.get(f"/api/trips/{trip.id}/bookings")).json()
+    item = next(b for b in listing["bookings"] if b["id"] == str(train.id))
+    assert item["status"] == BookingStatus.CONFIRMED
+    assert item["confirmation_ref"] == "SIM-1"
+    assert item["run"]["status"] == "finished"
+    assert EventKind.BOOKING_CONFIRMED in await _kinds(trip)
+
+
+async def test_a_lost_run_fails_its_booking(
+    booking_app: FastAPI, client: AsyncClient, runs_dir: Path
+) -> None:
+    trip, train, _ = await _orphan(client, runs_dir, BookingStatus.AWAITING_APPROVAL)
+
+    listing = (await client.get(f"/api/trips/{trip.id}/bookings")).json()
+    item = next(b for b in listing["bookings"] if b["id"] == str(train.id))
+    assert item["status"] == BookingStatus.FAILED
+    assert item["run"]["outcome"] == AgentOutcome.ERROR
+    assert item["run"]["reason"] == "agent process lost (backend restarted)"
+    # A failed booking can be started again from the UI.
+    start = await client.post(
+        f"/api/trips/{trip.id}/bookings/{train.id}/start", headers=_csrf(client)
+    )
+    assert start.status_code == 202, start.text
+
+
+@pytest.mark.usefixtures("drain_monitors")
+async def test_an_orphaned_but_alive_agent_gets_a_new_monitor(
+    booking_app: FastAPI, client: AsyncClient, runs_dir: Path
+) -> None:
+    trip, train, run_dir = await _orphan(client, runs_dir, BookingStatus.RUNNING)
+    (run_dir / "agent.pid").write_text(str(os.getpid()), encoding="utf-8")  # alive: us
+    _write(run_dir / "status.json", {"milestone": "review", "step": 5})
+
+    async def synced() -> bool:
+        run = await AgentRun.find_one(AgentRun.booking_id == identifier_of(train))
+        return run is not None and run.steps == 5
+
+    assert await _booking_status(client, trip, train) == BookingStatus.RUNNING
+    await _until(synced, "the re-attached monitor to sync status.json")
+    assert len(running_monitors()) == 1
+    assert await _booking_status(client, trip, train) == BookingStatus.RUNNING
+    assert len(running_monitors()) == 1, "a second listing must not attach a second monitor"
 
 
 async def test_demo_routes_are_absent_outside_dev_and_test(

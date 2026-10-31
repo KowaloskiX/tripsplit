@@ -19,7 +19,7 @@ from beanie import PydanticObjectId
 from pymongo.asynchronous.client_session import AsyncClientSession
 from pymongo.errors import DuplicateKeyError
 
-from app.agent.launcher import AgentLauncher, LaunchSpec, RunHandle
+from app.agent.launcher import AgentLauncher, LaunchSpec, PidHandle, RunHandle, live_pid
 from app.core.domain.bookings import (
     BOOKING_STATUSES_THAT_START,
     TRIP_STATUSES_THAT_BUY,
@@ -71,6 +71,15 @@ AWAITING_APPROVAL_OUTCOME = "awaiting_approval"
 # Strong references to the monitors: the event loop keeps only weak ones, so an unreferenced
 # task can be garbage-collected mid-run.
 _MONITORS: set[asyncio.Task[None]] = set()
+# Run ids watched by THIS process. After a backend restart it is empty, which is how an
+# orphaned run (its monitor died with the old process) is recognised.
+_WATCHED: set[str] = set()
+# Bookings whose agent run may still need a monitor.
+_IN_FLIGHT = frozenset(
+    {BookingStatus.RUNNING, BookingStatus.AWAITING_APPROVAL, BookingStatus.APPROVED}
+)
+LAUNCH_FAILED_REASON = "The agent could not be started."
+LOST_REASON = "agent process lost (backend restarted)"
 
 
 # The record routes map onto a response — named here so `app.routes` need not import models.
@@ -288,6 +297,7 @@ class BookingService:
         if not isinstance(access, Ok):
             return access
         trip, member = access.value
+        await self._reconcile_orphans(identifier_of(trip))
         items = [
             BookingWithRun(booking=booking, run=await self._current_run(booking))
             for booking in await self.bookings.for_trip(identifier_of(trip))
@@ -339,6 +349,8 @@ class BookingService:
         members = await self.members.for_trip(identifier_of(trip))
         attempt = len(await self.runs.for_booking(identifier_of(booking))) + 1
         run_id = run_id_for(to_text(identifier_of(booking)), attempt)
+        # Claimed before the run exists, so a listing meanwhile does not take it for an orphan.
+        _WATCHED.add(run_id)
         try:
             run = await self.runs.add(
                 AgentRun(
@@ -350,6 +362,7 @@ class BookingService:
                 )
             )
         except DuplicateKeyError:  # a concurrent start for the same booking won the race
+            # The claim stays: it belongs to the winner's run (same id) now.
             return Err(BookingError.BOOKING_NOT_STARTABLE)
         await self.bookings.update(
             booking, {"status": BookingStatus.RUNNING, "current_run_id": run_id}
@@ -373,12 +386,18 @@ class BookingService:
             handle = await self.launcher.start(spec)
         except Exception:
             logger.exception("could not launch the agent for run %s", run_id)
-            await self._finish(run_id, None, launch_failed=True)
+            await self._finish(run_id, None, failure_reason=LAUNCH_FAILED_REASON)
+            _WATCHED.discard(run_id)
             return Ok(BookingWithRun(booking=booking, run=run))
+        self._monitor(run_id, handle)
+        return Ok(BookingWithRun(booking=booking, run=run))
+
+    def _monitor(self, run_id: str, handle: RunHandle) -> None:
+        _WATCHED.add(run_id)
         task = asyncio.create_task(self._watch(run_id, handle), name=f"agent-run-{run_id}")
         _MONITORS.add(task)
         task.add_done_callback(_MONITORS.discard)
-        return Ok(BookingWithRun(booking=booking, run=run))
+        task.add_done_callback(lambda _: _WATCHED.discard(run_id))
 
     def _goal_for(self, booking: Booking, travellers: int) -> str:
         return (
@@ -413,7 +432,42 @@ class BookingService:
             await self._finish(run_id, waiter.result())
         except Exception:
             logger.exception("monitor of agent run %s crashed", run_id)
-            await self._finish(run_id, None, launch_failed=True)
+            await self._finish(run_id, None, failure_reason="The agent monitor crashed.")
+
+    async def _reconcile_orphans(self, trip_id: PydanticObjectId) -> None:
+        """Runs whose monitor died with a previous backend process must not stay stuck.
+
+        A result on disk is applied as the monitor would have; a still-alive agent gets a new
+        monitor; anything else is over — the run ends in ERROR and the booking FAILED.
+        """
+        for booking in await self.bookings.for_trip(trip_id):
+            run_id = booking.current_run_id
+            if booking.status not in _IN_FLIGHT or run_id is None or run_id in _WATCHED:
+                continue
+            run = await self.runs.get_by_run_id(run_id)
+            if run is None or run.status is AgentRunStatus.FINISHED or run_id in _WATCHED:
+                continue
+            # Claimed with no await since the check, so a concurrent listing skips this run.
+            _WATCHED.add(run_id)
+            await self._adopt(run_id)
+
+    async def _adopt(self, run_id: str) -> None:
+        run_dir = self.runs_dir / run_id
+        try:
+            if await asyncio.to_thread(live_pid, run_dir) is not None:
+                logger.warning("re-attaching a monitor to orphaned agent run %s", run_id)
+                self._monitor(run_id, PidHandle(run_dir, self.poll_s))
+                return
+            if await asyncio.to_thread((run_dir / RESULT_FILE).is_file):
+                logger.warning("applying the result of orphaned agent run %s", run_id)
+                await self._finish(run_id, None)
+            else:
+                logger.warning("agent run %s was lost with a previous backend", run_id)
+                await self._finish(run_id, None, failure_reason=LOST_REASON)
+        except BaseException:
+            _WATCHED.discard(run_id)
+            raise
+        _WATCHED.discard(run_id)
 
     async def _sync(self, run_id: str) -> None:
         """status.json -> AgentRun; the summary being ready -> AWAITING_APPROVAL + feed."""
@@ -453,24 +507,20 @@ class BookingService:
         )
 
     async def _finish(
-        self, run_id: str, exit_code: int | None, launch_failed: bool = False
+        self, run_id: str, exit_code: int | None, failure_reason: str | None = None
     ) -> None:
         run = await self.runs.get_by_run_id(run_id)
-        if run is None:
+        if run is None or run.status is AgentRunStatus.FINISHED:
             return
         raw = (
             None
-            if launch_failed
+            if failure_reason is not None
             else await asyncio.to_thread(_read_json, self.runs_dir / run_id / RESULT_FILE)
         )
         outcome = _outcome_of(raw) if raw is not None else AgentOutcome.ERROR
         reason = str((raw or {}).get("reason") or "")
         if raw is None:
-            reason = (
-                "The agent could not be started."
-                if launch_failed
-                else f"The agent exited (code {exit_code}) without a result."
-            )
+            reason = failure_reason or f"The agent exited (code {exit_code}) without a result."
         await self.runs.update(
             run,
             {
@@ -606,7 +656,9 @@ class BookingService:
         if not isinstance(access, Ok):
             return access
         trip, _ = access.value
-        if trip.status is not TripStatus.BOOKED:
+        # BOOKING too: a demo books the train first, and a delay can hit it before the rest
+        # is bought. Without a CONFIRMED booking there is nothing to disrupt either way.
+        if trip.status not in (TripStatus.BOOKING, TripStatus.BOOKED):
             return Err(BookingError.NOTHING_TO_DISRUPT)
         bookings = await self.bookings.for_trip(identifier_of(trip))
         target = self._disrupted_booking(bookings, booking_id)
