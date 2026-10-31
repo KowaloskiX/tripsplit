@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
+import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -92,6 +92,26 @@ export const healthGet = <ThrowOnError extends boolean = false>(options?: Option
 export const healthReady = <ThrowOnError extends boolean = false>(options?: Options<HealthReadyData, ThrowOnError>): RequestResult<HealthReadyResponses, HealthReadyErrors, ThrowOnError> => (options?.client ?? client).get<HealthReadyResponses, HealthReadyErrors, ThrowOnError>({ url: '/api/health/ready', ...options });
 
 /**
+ * Read My Details
+ */
+export const travellerDetailsRead = <ThrowOnError extends boolean = false>(options?: Options<TravellerDetailsReadData, ThrowOnError>): RequestResult<TravellerDetailsReadResponses, unknown, ThrowOnError> => (options?.client ?? client).get<TravellerDetailsReadResponses, unknown, ThrowOnError>({ url: '/api/me/traveller-details', ...options });
+
+/**
+ * Update My Details
+ *
+ * Sets the caller's own details; fields left out stay as they are. The document number
+ * is write-only: the response carries it masked.
+ */
+export const travellerDetailsUpdate = <ThrowOnError extends boolean = false>(options: Options<TravellerDetailsUpdateData, ThrowOnError>): RequestResult<TravellerDetailsUpdateResponses, TravellerDetailsUpdateErrors, ThrowOnError> => (options.client ?? client).put<TravellerDetailsUpdateResponses, TravellerDetailsUpdateErrors, ThrowOnError>({
+    url: '/api/me/traveller-details',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * List Trips
  */
 export const tripsList = <ThrowOnError extends boolean = false>(options?: Options<TripsListData, ThrowOnError>): RequestResult<TripsListResponses, unknown, ThrowOnError> => (options?.client ?? client).get<TripsListResponses, unknown, ThrowOnError>({ url: '/api/trips', ...options });
@@ -135,6 +155,14 @@ export const tripsRoom = <ThrowOnError extends boolean = false>(options: Options
 export const bookingsList = <ThrowOnError extends boolean = false>(options: Options<BookingsListData, ThrowOnError>): RequestResult<BookingsListResponses, BookingsListErrors, ThrowOnError> => (options.client ?? client).get<BookingsListResponses, BookingsListErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings', ...options });
 
 /**
+ * Check Disruptions
+ *
+ * Asks the suppliers that report disruptions about the trip's bought bookings; every
+ * notice with a replacement is rebooked and re-split. Empty = nothing happened.
+ */
+export const bookingsCheckDisruptions = <ThrowOnError extends boolean = false>(options: Options<BookingsCheckDisruptionsData, ThrowOnError>): RequestResult<BookingsCheckDisruptionsResponses, BookingsCheckDisruptionsErrors, ThrowOnError> => (options.client ?? client).post<BookingsCheckDisruptionsResponses, BookingsCheckDisruptionsErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings/disruptions/check', ...options });
+
+/**
  * Approve Booking
  */
 export const bookingsApprove = <ThrowOnError extends boolean = false>(options: Options<BookingsApproveData, ThrowOnError>): RequestResult<BookingsApproveResponses, BookingsApproveErrors, ThrowOnError> => (options.client ?? client).post<BookingsApproveResponses, BookingsApproveErrors, ThrowOnError>({
@@ -175,7 +203,7 @@ export const contributionsPay = <ThrowOnError extends boolean = false>(options: 
 /**
  * Simulate Disruption
  *
- * The demo's last scene: the train is delayed, the agent rebooks and re-splits.
+ * The demo's last scene: the transport is delayed, the agent rebooks and re-splits.
  */
 export const demoDisruption = <ThrowOnError extends boolean = false>(options: Options<DemoDisruptionData, ThrowOnError>): RequestResult<DemoDisruptionResponses, DemoDisruptionErrors, ThrowOnError> => (options.client ?? client).post<DemoDisruptionResponses, DemoDisruptionErrors, ThrowOnError>({
     url: '/api/trips/{trip_id}/demo/disruption',

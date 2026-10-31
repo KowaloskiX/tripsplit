@@ -69,8 +69,11 @@ export type ApproveRequest = {
 
 /**
  * BookingKind
+ *
+ * What a purchase is, independent of who sells it. How a transport moves is its
+ * `TransportMode`; the supplier behind it is a plugin (see `app.suppliers.ports`).
  */
-export type BookingKind = 'train' | 'stay' | 'activity';
+export type BookingKind = 'transport' | 'stay' | 'activity';
 
 /**
  * BookingResponse
@@ -80,15 +83,21 @@ export type BookingResponse = {
      * Amount Minor
      */
     amount_minor: number;
+    channel: SupplierChannel;
     /**
      * Confirmation Ref
      */
     confirmation_ref: string | null;
     /**
+     * Hold Expires At
+     */
+    hold_expires_at: string | null;
+    /**
      * Id
      */
     id: string;
     kind: BookingKind;
+    mode: TransportMode | null;
     /**
      * Passenger User Ids
      */
@@ -103,6 +112,10 @@ export type BookingResponse = {
      * Supplier
      */
     supplier: string;
+    /**
+     * Supplier Id
+     */
+    supplier_id: string;
     /**
      * Supplier Url
      */
@@ -199,6 +212,10 @@ export type CreateTripRequest = {
      */
     date_to: string;
     /**
+     * Destination
+     */
+    destination?: string;
+    /**
      * Display Name
      */
     display_name: string;
@@ -214,6 +231,7 @@ export type CreateTripRequest = {
      * Title
      */
     title: string;
+    transport_mode?: TransportMode | null;
 };
 
 /**
@@ -343,7 +361,7 @@ export type EventActor = 'agent' | 'member' | 'system';
 /**
  * EventKind
  */
-export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued';
+export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued' | 'hold_placed' | 'hold_expired' | 'traveller_details_missing';
 
 /**
  * EventResponse
@@ -472,6 +490,14 @@ export type MemberResponse = {
     display_name: string;
     role: MemberRole;
     /**
+     * Traveller Details Complete
+     */
+    traveller_details_complete: boolean;
+    /**
+     * Traveller Details Missing
+     */
+    traveller_details_missing: Array<TravellerField>;
+    /**
      * User Id
      */
     user_id: string;
@@ -549,10 +575,15 @@ export type ProposalItemResponse = {
      */
     details: string;
     kind: BookingKind;
+    mode: TransportMode | null;
     /**
      * Price Minor
      */
     price_minor: number;
+    /**
+     * Segments
+     */
+    segments: Array<SegmentResponse>;
     /**
      * Starts At
      */
@@ -717,6 +748,36 @@ export type SeedMembersRequest = {
 };
 
 /**
+ * SegmentResponse
+ */
+export type SegmentResponse = {
+    /**
+     * Arrives At
+     */
+    arrives_at: string;
+    /**
+     * Carrier
+     */
+    carrier: string;
+    /**
+     * Departs At
+     */
+    departs_at: string;
+    /**
+     * Destination
+     */
+    destination: string;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Origin
+     */
+    origin: string;
+};
+
+/**
  * SessionResponse
  *
  * Response of `GET /api/auth/session` — `user: null` means "not signed in".
@@ -755,6 +816,83 @@ export type ShareChangeResponse = {
      */
     user_id: string;
 };
+
+/**
+ * SupplierChannel
+ *
+ * How a purchase at a supplier is made.
+ */
+export type SupplierChannel = 'api' | 'agent' | 'manual';
+
+/**
+ * TransportMode
+ */
+export type TransportMode = 'rail' | 'flight' | 'bus' | 'ferry';
+
+/**
+ * TravellerDetailsRequest
+ *
+ * Only the fields sent are changed; null or absent leaves a field as it is.
+ */
+export type TravellerDetailsRequest = {
+    /**
+     * Date Of Birth
+     */
+    date_of_birth?: string | null;
+    /**
+     * Document Expiry
+     */
+    document_expiry?: string | null;
+    /**
+     * Document Number
+     */
+    document_number?: string | null;
+    /**
+     * Full Name
+     */
+    full_name?: string | null;
+    /**
+     * Nationality
+     */
+    nationality?: string | null;
+};
+
+/**
+ * TravellerDetailsResponse
+ */
+export type TravellerDetailsResponse = {
+    /**
+     * Date Of Birth
+     */
+    date_of_birth: string | null;
+    /**
+     * Document Expiry
+     */
+    document_expiry: string | null;
+    /**
+     * Document Number Masked
+     */
+    document_number_masked: string | null;
+    /**
+     * Full Name
+     */
+    full_name: string;
+    /**
+     * Nationality
+     */
+    nationality: string | null;
+    /**
+     * Provided
+     */
+    provided: Array<TravellerField>;
+};
+
+/**
+ * TravellerField
+ *
+ * A piece of traveller data a supplier may require per passenger.
+ */
+export type TravellerField = 'full_name' | 'date_of_birth' | 'nationality' | 'document_number' | 'document_expiry';
 
 /**
  * TripBookingsResponse
@@ -816,6 +954,10 @@ export type TripResponse = {
      */
     date_to: string;
     /**
+     * Destination
+     */
+    destination: string;
+    /**
      * Group Size
      */
     group_size: number;
@@ -840,6 +982,7 @@ export type TripResponse = {
      * Total Minor
      */
     total_minor: number;
+    transport_mode: TransportMode | null;
 };
 
 /**
@@ -1119,6 +1262,47 @@ export type HealthReadyResponses = {
 
 export type HealthReadyResponse = HealthReadyResponses[keyof HealthReadyResponses];
 
+export type TravellerDetailsReadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/me/traveller-details';
+};
+
+export type TravellerDetailsReadResponses = {
+    /**
+     * Successful Response
+     */
+    200: TravellerDetailsResponse;
+};
+
+export type TravellerDetailsReadResponse = TravellerDetailsReadResponses[keyof TravellerDetailsReadResponses];
+
+export type TravellerDetailsUpdateData = {
+    body: TravellerDetailsRequest;
+    path?: never;
+    query?: never;
+    url: '/api/me/traveller-details';
+};
+
+export type TravellerDetailsUpdateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TravellerDetailsUpdateError = TravellerDetailsUpdateErrors[keyof TravellerDetailsUpdateErrors];
+
+export type TravellerDetailsUpdateResponses = {
+    /**
+     * Successful Response
+     */
+    200: TravellerDetailsResponse;
+};
+
+export type TravellerDetailsUpdateResponse = TravellerDetailsUpdateResponses[keyof TravellerDetailsUpdateResponses];
+
 export type TripsListData = {
     body?: never;
     path?: never;
@@ -1262,6 +1446,50 @@ export type BookingsListResponses = {
 };
 
 export type BookingsListResponse = BookingsListResponses[keyof BookingsListResponses];
+
+export type BookingsCheckDisruptionsData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings/disruptions/check';
+};
+
+export type BookingsCheckDisruptionsErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsCheckDisruptionsError = BookingsCheckDisruptionsErrors[keyof BookingsCheckDisruptionsErrors];
+
+export type BookingsCheckDisruptionsResponses = {
+    /**
+     * Response Bookings-Check-Disruptions
+     *
+     * Successful Response
+     */
+    200: Array<DisruptionResponse>;
+};
+
+export type BookingsCheckDisruptionsResponse = BookingsCheckDisruptionsResponses[keyof BookingsCheckDisruptionsResponses];
 
 export type BookingsApproveData = {
     body: ApproveRequest;
