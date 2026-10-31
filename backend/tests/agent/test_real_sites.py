@@ -1,5 +1,5 @@
 """Real third-party sites as canned observations: BlazeDemo (a public flight-booking demo
-built for test automation) and PKP Intercity's e-IC up to the sign-in / guest wall."""
+built for test automation) and PKP Intercity's e-IC up to the filled guest form."""
 
 from typing import Any
 
@@ -9,6 +9,7 @@ from app.agent.rules import RuleEngine, choose_fare, choose_offer, detect_stage
 from app.agent.runner import RunResult, reached_planned_handoff
 from app.agent.site_profiles import Stage, profile_for
 from app.agent.vault import Vault
+from app.core.domain.bookings import is_real_eic
 from tests.agent.pages import button, el, state, textbox
 
 BLAZE = "https://blazedemo.com/"
@@ -206,12 +207,61 @@ def test_a_header_button_on_a_results_page_is_not_an_offer_choice() -> None:
     assert [s.get("choice") for s in steps] == [None, "offer"]
 
 
-def test_the_guest_wall_is_a_planned_handoff_that_still_counts_as_success() -> None:
+def test_the_filled_guest_form_is_a_planned_handoff_that_still_counts_as_success() -> None:
     profile = profile_for(EIC)
-    assert profile.handoff_milestone == "guest_screen"
+    assert profile.handoff_milestone == "guest_form_filled"
     stopped = RunResult(run_id="r", url=EIC, goal="g", outcome="handoff")
-    stopped.milestones = ["results", "fare", "guest_screen"]
+    stopped.milestones = ["results", "fare", "guest_screen", "guest_form_filled"]
     assert reached_planned_handoff(stopped, profile)
     blocked = RunResult(run_id="r", url=EIC, goal="g", outcome="handoff", milestones=["results"])
     assert not reached_planned_handoff(blocked, profile)
     assert not reached_planned_handoff(stopped, profile_for(BLAZE))
+
+
+def test_the_guest_wall_is_passed_through_continue_as_guest() -> None:
+    wall = state(
+        [
+            button(1, "LOG IN"),
+            button(2, "REGISTER"),
+            el(3, "a", "link", text="Continue as Guest"),
+        ],
+        "Sign in LOG IN REGISTER Continue as Guest",
+        url=EIC,
+    )
+    decision = _engine(EIC, EIC_GOAL).decide(wall)
+    assert decision is not None
+    assert decision.actions == [{"action": "click", "ref": 3, "milestone": "guest_screen"}]
+
+
+def test_the_guest_form_is_filled_then_handed_off_without_any_consent_or_submit() -> None:
+    vault = Vault({"email": "demo.guest@example.com"})
+    engine = RuleEngine(
+        goal=parse_goal(EIC_GOAL, vault),
+        profile=profile_for(EIC),
+        vault_get=vault.get,
+        vault_keys=vault.planner_keys(),
+    )
+    form = state(
+        [
+            textbox(1, "email", "E-mail", required=True),
+            textbox(2, "email2", "E-mail repeat", required=True),
+            el(3, "input", "checkbox", type="checkbox", label="I accept the e-IC Regulations"),
+            button(4, "SAVE"),
+        ],
+        "Enter data E-mail E-mail repeat I accept the e-IC Regulations SAVE",
+        url="https://sso.intercity.pl/oauth_server/oauth/register?type=guest",
+    )
+    decision = engine.decide(form)
+    assert decision is not None
+    fill, handoff = decision.actions
+    assert fill["action"] == "fill_form"
+    assert [f["ref"] for f in fill["fields"]] == [1, 2]
+    assert handoff["action"] == "handoff"
+    assert handoff["milestone"] == "guest_form_filled"
+
+
+def test_only_intercity_hosts_count_as_the_real_e_ic_checkout() -> None:
+    assert is_real_eic(EIC)
+    assert is_real_eic("https://sso.intercity.pl/x")
+    assert not is_real_eic("http://localhost:8000/api/demo-supplier/rail")
+    assert not is_real_eic("https://intercity.pl.evil.example/")

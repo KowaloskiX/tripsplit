@@ -72,12 +72,33 @@ PLANNER=claude-cli uv run agent-run --url https://blazedemo.com/ --run-id blaze-
 AGENT_FINAL_CLICK=real uv run agent-run --url https://blazedemo.com/ --run-id blaze-replay --mode replay \
   --goal "Book a flight from Boston to Rome for 2 passengers, cheapest, ..." --vault /tmp/vault-2.json --await-approval
 # 2. PKP Intercity e-IC (REAL): search -> 3 adults -> EC 131 -> Super Promo 2nd class -> confirm
-#    modal -> automatic seats -> GO TO PAYMENTS -> STOP at the sign-in / "Continue as Guest" wall
-#    (milestone guest_screen, outcome handoff by design). No data is ever typed. Pick a date ~3 weeks out.
+#    modal -> automatic seats -> GO TO PAYMENTS -> "Continue as Guest" (rule) -> fill the guest
+#    form (e-mail + repeat, from the vault) -> STOP (milestone guest_form_filled, outcome handoff
+#    by design). The regulations toggle and SAVE are never touched. Pick a date ~3 weeks out.
 URL="https://ebilet.intercity.pl/polaczenia-miedzynarodowe?dwyj=2026-11-20&swyj=5100065&sprzy=5400014&time=06%3A00&przy=0&sprzez=&ticket100=1010&ticket50=&polbez=0"
 GOAL="Select (do NOT buy or pay) tickets Warszawa Centralna -> Praha hl.n. on 2026-11-20 for 3 passengers (3 adults, normal fare), 2nd class, the cheapest non-refundable fare on the first morning EuroCity. The page starts with 1 adult: first use the header's CHANGE to set 3 adults and confirm. Then open that train, choose the non-refundable 2nd class fare, accept the fare confirmation modal, keep the automatic seat assignment, press GO TO PAYMENTS and stop at the sign-in / Continue as Guest screen. Never type any personal data."
 PLANNER=claude-cli uv run agent-run --url "$URL" --goal "$GOAL" --run-id ic-record --max-llm-calls 25
 uv run agent-run --url "$URL" --goal "$GOAL" --run-id ic-replay --mode replay
+```
+
+Guest form (2026-10-31, vault `/tmp/vault-ic-guest.json`: email demo.guest@example.com, phone,
+3 fake passengers): auto 11 steps / 0 LLM / 31 s, `--mode replay` 11 steps / 0 LLM / 31 s —
+the 9 flow steps plus 2 rule steps (`handoff_pass` click, `_handoff_form` fill + handoff). The
+e-IC guest form (sso.intercity.pl) asks only for the e-mail twice, then consents + SAVE.
+
+**From the app (`PKP_CHECKOUT=real`).** pkp_intercity offers then point the agent at the real
+e-IC results page (`suppliers/intercity.py:results_url`, one adult in the URL — the agent sets
+the party via CHANGE), the booking goal carries `REAL_EIC_CHECKOUT` (`core/domain/bookings.py`),
+the vault's `email` is `DEMO_GUEST_EMAIL`, and the run ends HANDOFF ("ready for you to pay on
+intercity.pl") — the room shows it with "complete manually". Replay needs no Claude once
+`var/agent/trajectories/ebilet.intercity.pl.flow.json` exists (recorded for 3 adults: use a
+party of 3, or 6 = two purchases of 3).
+
+```bash
+SUPPLIERS=pkp_intercity,duffel,sim_stay,sim_activity
+PKP_CHECKOUT=real
+PLANNER=none
+DEMO_GUEST_EMAIL=demo.guest@example.com
 ```
 
 Measured on 2026-10-31: BlazeDemo record 5 steps / 1 LLM call / 28 s, replay (Boston -> Rome, 2
@@ -91,9 +112,11 @@ What the profiles (`agent/site_profiles.py`: `BLAZEDEMO`, `INTERCITY`) and playb
 - **Party size on e-IC is set in the UI, never in the URL.** `ticket100=1010;1010;1010` shows
   "3x Passengers / 1 x Adults" and the summary page crashes ("Oops! Something went wrong");
   the profile's `party_shown` keeps rules from choosing an offer until the header reads "3 x Adults".
-- **Planned handoff** (`handoff_markers` / `handoff_milestone`): checked before anything else
-  each step (the generic modal closer would dismiss the sign-in wall); the run ends `handoff`
-  at `guest_screen` and its flow is still saved.
+- **Planned handoff** (`handoff_markers` / `handoff_milestone` / `handoff_pass`): the wall is
+  checked before anything else each step (the generic modal closer would dismiss it). With
+  `handoff_pass` the rules click through it and the next form is filled (textboxes only, never
+  a checkbox, nothing submitted) and the run ends `handoff` at `guest_form_filled`; without it
+  the wall itself is the stop. The flow is still saved.
 - **Fare boxes** (`fare_buttons`, stage `fare`): first fare of the goal's class = non-refundable,
   last = flexible; replayed as a choice from the goal, not a fixed button.
 - **Modals:** `observe` lists only the controls of an open dialog and clears stale refs.

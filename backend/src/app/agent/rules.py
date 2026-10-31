@@ -498,6 +498,8 @@ class RuleEngine:
             wait = [{"action": "wait", "ms": 1000, "milestone": None}]
             return RuleDecision(stage, wait, "page not rendered yet")
         self._waits = 0
+        if (wall := self._pass_wall(state)) is not None:
+            return wall
         handler = {
             Stage.CONFIRMATION: self._confirmation,
             Stage.UNAVAILABLE: self._unavailable,
@@ -509,6 +511,53 @@ class RuleEngine:
             Stage.FARE: self._fare,
         }.get(stage)
         return handler(state, stage) if handler else None
+
+    def _pass_wall(self, state: dict[str, Any]) -> RuleDecision | None:
+        """Click the profile's way through a sign-in wall ("Continue as Guest"), if shown."""
+        if not self.profile.handoff_pass:
+            return None
+        elements: list[Element] = state.get("elements") or []
+        hits = [
+            el
+            for el in elements
+            if el.get("role") in ("link", "button")
+            and re.search(self.profile.handoff_pass, button_label(el), re.I)
+        ]
+        if len(hits) != 1 or _unfilled_form(elements):
+            return None
+        click = {"action": "click", "ref": hits[0]["ref"], "milestone": "guest_screen"}
+        return RuleDecision(Stage.UNKNOWN, [click], "through the sign-in wall as a guest")
+
+    def _handoff_form(self, state: dict[str, Any], stage: Stage) -> RuleDecision:
+        """Fill what the vault can, then stop BEFORE any checkbox or submit: a planned handoff.
+
+        Checkboxes (the regulations, marketing consents) are never ticked and nothing is
+        clicked; an unmapped field is left for the person who takes over.
+        """
+        fills: list[dict[str, Any]] = []
+        positions: dict[FieldKind, int] = {}
+        for el in state["elements"]:
+            role = classify_field(el)
+            if role is None or el.get("role") != "textbox" or el.get("tag") == "select":
+                continue
+            positions[role.kind] = positions.get(role.kind, 0) + 1
+            value = self.field_value(el, role, positions[role.kind])
+            if not value or self._current_matches(el, value):
+                continue
+            fills.append({"ref": el["ref"], "text": value})
+        milestone = self.profile.handoff_milestone or "handoff"
+        plan: list[Action] = []
+        if fills:
+            plan.append({"action": "fill_form", "fields": fills, "milestone": stage.value})
+        plan.append(
+            {
+                "action": "handoff",
+                "reason": f"planned handoff at {milestone}: the form is filled, nothing "
+                "submitted — a person accepts the regulations and pays",
+                "milestone": milestone,
+            }
+        )
+        return RuleDecision(stage, plan, f"{len(fills)} field(s) filled, then handoff")
 
     def _confirmation(self, state: dict[str, Any], stage: Stage) -> RuleDecision:
         m = re.search(self.profile.confirmation_ref, str(state.get("text") or ""))
@@ -656,6 +705,8 @@ class RuleEngine:
         return current == value
 
     def _form(self, state: dict[str, Any], stage: Stage) -> RuleDecision | None:
+        if stage is Stage.PASSENGERS and self.profile.handoff_pass:
+            return self._handoff_form(state, stage)
         elements: list[Element] = state["elements"]
         fills: list[dict[str, Any]] = []
         actions: list[Action] = []

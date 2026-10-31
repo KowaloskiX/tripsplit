@@ -94,11 +94,17 @@ def _registry(
     liteapi: LiteApiConfig | None,
     duffel: DuffelConfig | None,
     pkp: PkpTransportKind,
+    pkp_real_checkout: bool = False,
 ) -> SupplierRegistry:
     """One registry per configuration and process: a simulated supplier remembers its holds
     between requests, like the real one would, and PKP keeps one warm browser."""
     return build_registry(
-        supplier_ids, demo_rail_url, liteapi=liteapi, duffel=duffel, pkp=pkp_transport(pkp)
+        supplier_ids,
+        demo_rail_url,
+        liteapi=liteapi,
+        duffel=duffel,
+        pkp=pkp_transport(pkp),
+        pkp_real_checkout=pkp_real_checkout,
     )
 
 
@@ -111,6 +117,7 @@ def get_supplier_registry(settings: SettingsDep) -> SupplierRegistry:
         liteapi,
         duffel,
         settings.pkp_transport,
+        settings.pkp_checkout == "real",
     )
 
 
@@ -174,6 +181,7 @@ def get_booking_service(
         holds=settings.holds_enabled,
         payments=build_payment_provider(settings, database),
         escrow=build_escrow(settings, database),
+        guest_email=settings.demo_guest_email,
     )
 
 

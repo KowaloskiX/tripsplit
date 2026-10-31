@@ -77,6 +77,11 @@ class SiteProfile:
     # A run ending there still counts as a success for recording the flow.
     handoff_markers: tuple[str, ...] = ()
     handoff_milestone: str = ""
+    # The control that goes THROUGH that wall (e.g. "Continue as Guest"). When set, the wall
+    # is not the stop: the rules click it, fill the next form from the vault (never a
+    # checkbox, so never the regulations) and hand off at `handoff_milestone` before any
+    # submit. Empty = the wall itself is the planned stop.
+    handoff_pass: str = ""
     # Fare buttons inside an opened offer; group 1 = the travel class. The site lists the
     # cheapest (non-refundable) fare of a class first and the flexible one last.
     fare_buttons: str = ""
@@ -115,6 +120,7 @@ class SiteProfile:
             lead_passenger_only=self.lead_passenger_only,
             handoff_markers=self.handoff_markers,
             handoff_milestone=self.handoff_milestone,
+            handoff_pass=self.handoff_pass,
             fare_buttons=self.fare_buttons,
             party_shown=self.party_shown,
             target_patience=self.target_patience,
@@ -226,11 +232,12 @@ INTERCITY = SiteProfile(
     },
     unavailable=(r"no offers fulfil the criteria", r"przerwa technologiczna"),
     max_passengers_per_purchase=5,
-    # "GO TO PAYMENTS" opens a sign-in wall (log in / register / continue as guest). Going on
-    # means an e-mail address and accepting the e-IC regulations on someone's behalf, so the
-    # agent hands over here: the selection is done, a person continues.
+    # "GO TO PAYMENTS" opens a sign-in wall (log in / register / continue as guest). The agent
+    # continues as a guest and fills the guest form from the vault, then hands over BEFORE
+    # accepting the e-IC regulations or submitting anything: a person checks and pays.
     handoff_markers=(r"continue as (?:a )?guest", r"kontynuuj jako gość"),
-    handoff_milestone="guest_screen",
+    handoff_milestone="guest_form_filled",
+    handoff_pass=r"^(?:continue as (?:a )?guest|kontynuuj jako gość)$",
     # "BUY A TICKET" opens fare boxes: Non-refundable (Super Promo) first, Flexible second,
     # per class; an unavailable class has a disabled button.
     fare_buttons=r"^(?:choose|wybierz) (?:class|klas[aęy]) ([12])$",

@@ -425,7 +425,8 @@ def run(req: RunRequest) -> RunResult:
         for step in range(first, last + 1):
             # A planned handoff point of this site (e.g. a sign-in / guest wall): stop BEFORE
             # anything else runs — auto_dismiss would close that very modal.
-            if (marker := _planned_handoff(browser.page, profile)) is not None:
+            marker = _planned_handoff(browser.page, profile)
+            if marker is not None and not profile.handoff_pass:
                 browser.screenshot(os.path.join(artifacts, f"{step:02d}-handoff.png"))
                 milestone = profile.handoff_milestone or "handoff"
                 if milestone != last_milestone:
@@ -437,8 +438,10 @@ def run(req: RunRequest) -> RunResult:
                 result.reason = f"planned handoff at {milestone}: the site shows '{marker}'"
                 status(step, result.reason)
                 break
-            # RECOVER (pre): clear overlays, then check for human-only gates.
-            auto_dismiss(browser.page)
+            # RECOVER (pre): clear overlays (never the wall the rules are about to pass), then
+            # check for human-only gates.
+            if marker is None:
+                auto_dismiss(browser.page)
             blocked, reason = detect_block(browser.page)
             if blocked:
                 browser.screenshot(os.path.join(artifacts, f"{step:02d}-handoff.png"))

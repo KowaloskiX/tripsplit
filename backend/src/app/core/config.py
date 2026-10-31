@@ -28,6 +28,7 @@ type BriefReaderKind = Literal["rules", "claude-cli"]
 type PaymentsKind = Literal["fake", "wallet"]
 type PkpTransportKind = Literal["browser", "http"]
 type HoldsMode = Literal["off", "on"]
+type PkpCheckoutKind = Literal["demo", "real"]
 
 
 class Settings(BaseSettings):
@@ -144,6 +145,13 @@ class Settings(BaseSettings):
     # How `pkp_intercity` reaches PKP's gateway: `browser` = one shared headless Camoufox
     # for the process (PKP sits behind Akamai, which resets plain HTTP); `http` = httpx.
     pkp_transport: PkpTransportKind = "browser"
+    # Where the agent BUYS a `pkp_intercity` train. `demo` (default): our fake rail site
+    # (needs `demo_supplier_url`). `real`: the real e-IC results page on intercity.pl — the
+    # agent sets the party, picks the fare, continues as a guest, fills the guest form and
+    # STOPS before the regulations / any submit: the booking ends as a handoff, a person pays.
+    pkp_checkout: PkpCheckoutKind = "demo"
+    # The (fake) contact e-mail the agent types into e-IC's guest form (`pkp_checkout=real`).
+    demo_guest_email: str = "demo.guest@example.com"
     # Supplier holds at voting close. `off` (default): nothing is held, every purchase
     # re-quotes right before it starts (a moved price takes the PRICE_CHANGED path) and an
     # API supplier books at the approval. `on`: suppliers that support holds lock the price

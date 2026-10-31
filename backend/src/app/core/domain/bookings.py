@@ -6,6 +6,7 @@ import math
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from urllib.parse import urlparse
 
 from app.core.domain.trips import (
     AgentOutcome,
@@ -25,6 +26,26 @@ TRIP_STATUSES_THAT_BUY: frozenset[TripStatus] = frozenset(
 BOOKING_STATUSES_THAT_START: frozenset[BookingStatus] = frozenset(
     {BookingStatus.PENDING, BookingStatus.FAILED, BookingStatus.HANDOFF}
 )
+
+
+# The real PKP Intercity shop (e-IC). A purchase sent there (`PKP_CHECKOUT=real`) is driven
+# up to the filled guest form and handed over BEFORE the regulations or any submit.
+REAL_EIC_HOST = "intercity.pl"
+REAL_EIC_CHECKOUT = (
+    "This is the REAL PKP Intercity e-IC site: select, never buy or pay. The page starts "
+    "with 1 adult: first use the header's CHANGE to set the number of adults and confirm. "
+    "Then open the chosen train, choose the cheapest non-refundable 2nd class fare, accept "
+    "the fare confirmation modal (it confirms the fare, it is not a payment), keep the "
+    "automatic seat assignment, press GO TO PAYMENTS, choose Continue as Guest, fill the "
+    "guest form from the vault and STOP before accepting the regulations or submitting "
+    "anything. Never log in, never register, never tick a checkbox."
+)
+
+
+def is_real_eic(url: str) -> bool:
+    """A purchase URL on the real e-IC shop (any intercity.pl host)."""
+    host = (urlparse(url or "").hostname or "").lower()
+    return host == REAL_EIC_HOST or host.endswith("." + REAL_EIC_HOST)
 
 
 def split_party(travellers: int, cap: int | None) -> list[int]:
