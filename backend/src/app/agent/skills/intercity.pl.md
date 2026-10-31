@@ -1,31 +1,69 @@
-# PKP Intercity (intercity.pl / bilet.intercity.pl) — DRAFT playbook
+# PKP Intercity (intercity.pl -> ebilet.intercity.pl, e-IC 2.0) — playbook
 
-Draft from the site's known structure, not yet verified by a live recon run. Keep only the
-stable shape here; refine with browser-harness before trusting it in a demo.
+Verified by a manual recon on 2026-10-31 for an international trip (Warszawa Centralna ->
+Praha hl.n.) up to the guest-data step. Steps after that are marked UNVERIFIED.
 
-- Consent: a cookie dialog appears on first visit. Accept all ("Akceptuję" / "Zaakceptuj
-  wszystkie" / "Accept all"). The site may also offer a language switch — Polish is fine.
-- Search form (milestone `search`): "Skąd" (from) and "Dokąd" (to) are autocomplete inputs —
-  type the station name, then click the matching suggestion (e.g. "Warszawa Centralna",
-  "Praha hl.n."); typing alone does not select a station. Date and time pickers: prefer
-  typing into the field if it accepts text, otherwise pick the day tile. Passengers: open the
-  passenger panel and set the number of "Normalny" (full-fare) adults to the group size; do
-  not add discounts unless the goal names them. Then "Wyszukaj" / "Szukaj połączenia".
-- Connection list (milestone `results`): rows with departure/arrival time, duration, number
-  of changes, train category (EIC / EC / IC / TLK) and the price. Pick the connection inside
-  the requested time window with the fewest changes. International trains to Praha are EC.
-  Click the row's "Kup bilet" / "Wybierz" button.
-- Class and seats: choose 2nd class ("Klasa 2") unless told otherwise. Seat preferences
-  (window/aisle, compartment) are optional — keep the defaults. Skip upsells (insurance,
-  "Bilet+" extras, meals).
-- Passenger data (milestone `passengers`): first and last name per traveller and the buyer's
-  email (often entered twice — "E-mail" and "Powtórz e-mail"). Use the vault keys
-  `passenger_N_first_name`, `passenger_N_last_name`, `email`. Tick only the REQUIRED terms
-  checkboxes (regulamin); leave marketing consents unticked.
-- Account: if "Kup bez logowania" / guest purchase is offered, take it. If a login is
-  REQUIRED and the profile is not logged in, call handoff (log in once with `agent-login`).
-- Summary (milestone `review`): route, date/time, class, passenger count and total price.
-  Verify against the goal; this is where stop_before_pay ends — call done, do NOT press
-  "Kupuję i płacę" / "Przejdź do płatności".
-- HANDOFF on: CAPTCHA, an SMS/BLIK code, a payment-operator iframe (Przelewy24, PayU, card
-  form), or a login wall.
+## Fastest path: skip the search form
+
+The search lands on a deterministic URL. If the goal names stations, a date and a time, `goto`
+it directly instead of filling the form (station codes come from
+`https://www.intercity.pl/station/get/?q=<name>`, field `h`):
+
+    https://ebilet.intercity.pl/polaczenia-miedzynarodowe?dwyj=YYYY-MM-DD&swyj=<from code>&sprzy=<to code>&time=HH%3AMM&przy=0&sprzez=&ticket100=1010&ticket50=&polbez=0
+
+Warszawa Centralna = 5100065, Praga Gł./Praha hl.n. = 5400014. Domestic trips use a sibling path
+(`/polaczenia` — UNVERIFIED).
+
+## Search form (only if you must)
+
+- Fields: `#stname-0` "Jadę z", `#stname-1` "Jadę do", `#date_picker` (RRRR-MM-DD, accepts
+  text), `#ic-seek-time`. Station inputs are autocomplete: type part of the name, then CLICK the
+  suggestion ("Warszawa Centralna", "Praga Gł./Praha hl.n.") — typing alone selects nothing.
+- Then "Wyszukaj" (milestone `search`). No cookie banner was shown on this visit.
+
+## Connection list (milestone `results`)
+
+- One card per connection: times, travel time, "Direct", train (e.g. "EC 131 Batory"), price per
+  class. Pick the one in the requested window; Warszawa -> Praha direct EC trains run in the
+  morning (EC 116 05:28, EC 131 07:52) and midday (EC 112 12:44), plus a night EN.
+- Click the card's "BUY A TICKET" / "KUP BILET". The card expands into fare boxes:
+  "Non-refundable offer" (Super Promo International, cheapest) and "Flexible offer" (eNRT,
+  refundable) per class. Unavailable classes show a grey "Unavailable" button.
+- Choose the fare the goal asks for; default to 2nd class. A non-refundable fare opens a
+  "Confirmation" modal — press "CONFIRM" (it confirms the fare, it is NOT a payment).
+
+## Seats (milestone `review` is NOT here yet)
+
+- URL `.../wybormiejsc`. "Seat selection preferences" + "Choose a place" (optional — keep the
+  automatic assignment), "Additional tickets" (bicycle, dog — leave at 0).
+- Press "GO TO PAYMENTS". Despite the label this opens the sign-in step, not a payment.
+
+## Account (milestone `account`)
+
+- URL `.../podsumowanie` shows a "Sign in" modal: Google / Facebook / Apple / LOG IN / REGISTER
+  and a "Continue as Guest" link. Take "Continue as Guest" unless the persistent profile is
+  already logged in.
+- Guest goes to `sso.intercity.pl/oauth_server/oauth/register?client_id=eic_guest...` with
+  `email`, `email-repeat` and consent toggles. Fill `{{vault.email}}` twice. Tick ONLY the
+  mandatory "I declare that I am familiar with the e-IC Regulations..." toggle; leave profiling
+  and marketing consents off. Then "SAVE".
+
+## UNVERIFIED after the guest step
+
+- Passenger names (`passenger_N_first_name` / `passenger_N_last_name`), possibly a date of
+  birth for international fares, then the summary with the final total. Stop there
+  (stop_before_pay) — the final prices are only binding in the summary.
+- Payment runs through an external operator (BLIK / PayU / Przelewy24 / card iframe) -> handoff.
+
+## Hard rules learned
+
+- **At most 5 passengers per online international purchase.** A 6-person request returns "No
+  offers fulfil the criteria". Split a larger group into several purchases (e.g. 3 + 3) — one
+  agent run per purchase.
+- **No sales 23:45-00:30** (until 01:00 on the 1st of the month) — the "technological break".
+  Do not schedule a run then.
+- Listed prices are indicative and cached for up to 5 minutes; the binding price is in the
+  summary. Compare it with the expected amount before calling done.
+- The site sits behind Akamai bot management. Act at a human pace; on any challenge page or
+  CAPTCHA call handoff, never retry in a loop.
+- HANDOFF on: CAPTCHA, SMS/BLIK code, a payment-operator iframe, a required login.
