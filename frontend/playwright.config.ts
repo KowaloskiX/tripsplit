@@ -43,6 +43,11 @@ export default defineConfig({
         RESEARCHER: "catalog",
         MONGODB_DATABASE: process.env.E2E_MONGODB_DATABASE ?? "app_e2e",
         CORS_ORIGINS: WEB_URL,
+        // Every test registers a fresh user, far beyond the production login limit. Counters
+        // stay in process memory: a shared Redis bucket would also count other local backends.
+        LOGIN_RATE_LIMIT: "1000/minute",
+        GLOBAL_RATE_LIMIT: "10000/minute",
+        RATE_LIMIT_STORAGE_URL: "",
       },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,

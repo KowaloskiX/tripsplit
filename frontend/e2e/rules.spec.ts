@@ -2,6 +2,10 @@ import { type BrowserContext, expect, type Page, test } from "@playwright/test";
 
 import { createTrip, demoControls, driveToPaying, parseMoneyMinor, registerUser } from "./helpers";
 
+// Three users register (argon2 on purpose is slow) and the rooms poll: on a busy machine the
+// default 30 s is too tight.
+test.describe.configure({ timeout: 90_000 });
+
 /** The double-submit CSRF header the app's own client sends on every mutation. */
 async function csrfHeader(context: BrowserContext): Promise<Record<string, string>> {
   const cookies = await context.cookies();
