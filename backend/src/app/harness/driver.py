@@ -72,6 +72,7 @@ from app.harness.scenario import (
     Pay,
     PayAllShares,
     PlanDays,
+    SelectOptions,
     SetPayBy,
     SiteAsksMore,
     StartBookings,
@@ -384,6 +385,8 @@ class Driver:
                 return await self._vote(step), ()
             case CloseVoting():
                 return await self._close(), ("proposal_chosen",)
+            case SelectOptions():
+                return await self._select(step), ("proposal_chosen",)
             case Pay():
                 paid = await self._pay(step)
                 await self._settle_auto_book()
@@ -479,10 +482,38 @@ class Driver:
             tally[index] = tally.get(index, 0) + 1
         return ", ".join(f"#{index}: {count} vote(s)" for index, count in sorted(tally.items()))
 
+    async def _select(self, step: SelectOptions) -> str:
+        world = self.world
+        listed = await world.proposals.options(world.trip_id, world.organizer_id)
+        if not isinstance(listed, Ok):
+            raise StepFailed(f"options: {_code(listed.error)}", _code(listed.error))
+        options = listed.value
+        try:
+            transport = options.transport[step.transport]
+            stay = options.stays[step.stay] if step.stay is not None else None
+            activities = [options.activities[i] for i in step.activities]
+        except IndexError as missing:
+            raise StepFailed(f"no such option ({missing})") from missing
+        chosen = await world.proposals.select(
+            world.trip_id,
+            world.organizer_id,
+            transport_option_id=transport.option_id,
+            stay_option_id=stay.option_id if stay is not None else None,
+            activity_option_ids=[a.option_id for a in activities],
+        )
+        self._raise_on(chosen)
+        picked = " + ".join(o.label for o in (transport, stay, *activities) if o is not None)
+        return f"{len(options.transport)} ways, {len(options.stays)} stays: picked {picked}; " + (
+            await self._close_summary()
+        )
+
     async def _close(self) -> str:
         world = self.world
         closed = await world.proposals.close_voting(world.trip_id, world.organizer_id)
         self._raise_on(closed)
+        return await self._close_summary()
+
+    async def _close_summary(self) -> str:
         snap = await self._snapshot()
         names = self._names()
         self.initial_shares = {

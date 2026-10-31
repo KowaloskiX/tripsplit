@@ -6,7 +6,7 @@ started it returns immediately while the agent works.
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Protocol
 
 from beanie import PydanticObjectId
@@ -15,9 +15,11 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from app.ai.research import (
     PackagePlan,
     PackageResearcher,
+    ResearchCandidates,
     SearchOutcome,
     SupplierProgress,
     TripBrief,
+    research_candidates,
     research_progress,
 )
 from app.core.background import BackgroundRunner
@@ -35,14 +37,14 @@ from app.core.domain.trips import (
 )
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id, to_text
-from app.models.trips import Contribution, Proposal, ProposalItem, TransportSegment, Trip
-from app.models.trust import stored_images, stored_links, stored_provenance
+from app.models.trips import Contribution, Proposal, ProposalItem, Trip, TripOption, TripOptions
 from app.repositories.bookings import BookingRepository
 from app.repositories.trips import (
     ContributionRepository,
     EventRepository,
     MemberRepository,
     ProposalRepository,
+    TripOptionsRepository,
     TripRepository,
     VoteRepository,
 )
@@ -50,7 +52,15 @@ from app.services.booking_plans import bookings_for_item
 from app.services.escrow import EscrowService
 from app.services.supplier_prices import SupplierPrices
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
-from app.services.trip_views import TripStatusView
+from app.services.trip_options import (
+    as_plans,
+    candidate_options,
+    custom_package,
+    from_plans,
+    proposal_item,
+    stored_options,
+)
+from app.services.trip_views import TripOptionsView, TripStatusView, trip_options_view
 from app.suppliers.call_log import current_trip, recorded_for_trip
 from app.suppliers.registry import SupplierRegistry
 
@@ -103,6 +113,7 @@ class ProposalService:
         self.contributions = ContributionRepository()
         self.events = EventRepository()
         self.bookings = BookingRepository()
+        self.options_repo = TripOptionsRepository()
 
     async def _access(self, trip_id: str, user_id: str) -> Result[TripAccess, TripError]:
         return await load_access(trip_id, user_id, trips=self.trips, members=self.members)
@@ -157,6 +168,8 @@ class ProposalService:
         if self.progress_events:
             research_progress.set(self._progress_sink(trip_id))
         current_trip.set(to_text(trip_id))  # this background task researches one trip
+        found = ResearchCandidates()
+        research_candidates.set(found)
         try:
             plans = await self.researcher.research(brief)
             if not plans:
@@ -175,7 +188,11 @@ class ProposalService:
                 "I could not put packages together this time. Try again in a moment.",
             )
             return
-        await self._store(trip_id, brief, await self._verified(plans))
+        options = candidate_options(plans, found)
+        option_plans = as_plans(options)
+        verified = await self._verified([*plans, *option_plans])
+        packages, checked = verified[: len(plans)], verified[len(plans) :]
+        await self._store(trip_id, brief, packages, from_plans(options, checked))
 
     async def _verified(self, plans: list[PackagePlan]) -> list[PackagePlan]:
         if self.verifier is None:
@@ -211,14 +228,23 @@ class ProposalService:
         return report
 
     async def _store(
-        self, trip_id: PydanticObjectId, brief: TripBrief, plans: list[PackagePlan]
+        self,
+        trip_id: PydanticObjectId,
+        brief: TripBrief,
+        plans: list[PackagePlan],
+        candidates: ResearchCandidates,
     ) -> None:
         proposals = [_proposal(trip_id, plan, brief) for plan in plans]
+        transport, stays, activities = stored_options(candidates)
+        options = TripOptions(
+            trip_id=trip_id, transport=transport, stays=stays, activities=activities
+        )
 
         async def write(session: AsyncClientSession) -> None:
             await self.votes.delete_for_trip(trip_id, session=session)
             await self.proposals.delete_for_trip(trip_id, session=session)
             await self.proposals.add_many(proposals, session=session)
+            await self.options_repo.replace(options, session=session)
             moved = await self.trips.transition_status(
                 trip_id, TripStatus.PROPOSING, TripStatus.VOTING, session=session
             )
@@ -296,8 +322,22 @@ class ProposalService:
             [vote.proposal_id for vote in votes],
         )
         winner = next(proposal for proposal in proposals if identifier_of(proposal) == winner_id)
+        return await self._choose(
+            trip, winner, chosen_message=f"The group picked “{winner.title}”."
+        )
+
+    async def _choose(
+        self, trip: Trip, winner: Proposal, *, chosen_message: str, new: bool = False
+    ) -> Result[TripStatusView, TripError]:
+        """Closes the vote on `winner` (inserted first when `new`): one share per current
+        member and the bookings of every item, in one transaction; then escrow + holds."""
+        trip_oid = identifier_of(trip)
+        trip_id = to_text(trip_oid)
 
         async def write(session: AsyncClientSession) -> None:
+            if new:
+                await self.proposals.add_many([winner], session=session)
+            winner_id = identifier_of(winner)
             moved = await self.trips.transition_status(
                 trip_oid, TripStatus.VOTING, TripStatus.PAYING, session=session
             )
@@ -336,7 +376,7 @@ class ProposalService:
                 trip_oid,
                 EventKind.PROPOSAL_CHOSEN,
                 EventActor.AGENT,
-                f"The group picked “{winner.title}”.",
+                chosen_message,
                 payload={"proposal_id": to_text(winner_id)},
                 session=session,
             )
@@ -377,6 +417,71 @@ class ProposalService:
             await self.prices.place_holds(fresh)
         return Ok(TripStatusView(trip_id=trip_id, status=TripStatus.PAYING))
 
+    async def options(self, trip_id: str, user_id: str) -> Result[TripOptionsView, TripError]:
+        """What the latest research found, to pick from step by step. INVALID_STATE while it
+        is still running; NO_PROPOSALS before any research finished."""
+        access = await self._access(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        trip = access.value.trip
+        if trip.status is TripStatus.PROPOSING:
+            return Err(TripError.INVALID_STATE)
+        stored = await self.options_repo.for_trip(identifier_of(trip))
+        if stored is None:
+            return Err(TripError.NO_PROPOSALS)
+        return Ok(
+            trip_options_view(stored, await self._travellers(trip), trip.budget_per_person_minor)
+        )
+
+    @recorded_for_trip
+    async def select(
+        self,
+        trip_id: str,
+        user_id: str,
+        *,
+        transport_option_id: str,
+        stay_option_id: str | None,
+        activity_option_ids: Sequence[str] = (),
+    ) -> Result[TripStatusView, TripError]:
+        """The organizer's own package from picked options: stored, chosen and the vote
+        closed in one go — shares and bookings exactly as when a vote closes."""
+        access = await self._access(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        error = require_organizer(access.value) or require_status(access.value, TripStatus.VOTING)
+        if error is not None:
+            return Err(error)
+        trip = access.value.trip
+        stored = await self.options_repo.for_trip(identifier_of(trip))
+        if stored is None:
+            return Err(TripError.NO_PROPOSALS)
+        picked = _picked(stored, transport_option_id, stay_option_id, activity_option_ids)
+        if picked is None:
+            return Err(TripError.OPTION_NOT_FOUND)
+        package = custom_package(
+            picked,
+            travellers=await self._travellers(trip),
+            budget_per_person_minor=trip.budget_per_person_minor,
+            currency=trip.currency,
+        )
+        winner = Proposal(
+            trip_id=identifier_of(trip),
+            title=package.title,
+            summary=package.summary,
+            items=list(package.items),
+            total_minor=package.total_minor,
+            per_person_minor=package.per_person_minor,
+            over_budget=package.over_budget,
+        )
+        return await self._choose(
+            trip, winner, chosen_message=f"Picked step by step: “{winner.title}”.", new=True
+        )
+
+    async def _travellers(self, trip: Trip) -> int:
+        """How many people the researched prices cover (as in `generate`)."""
+        members = await self.members.for_trip(identifier_of(trip))
+        return max(trip.group_size, len(members))
+
     def _capabilities(self, item: ProposalItem) -> SupplierCapabilities | None:
         adapter = self.suppliers.get(item.supplier_id) if item.supplier_id else None
         return adapter.capabilities if adapter is not None else None
@@ -391,43 +496,31 @@ class ProposalService:
         return proposal
 
 
+def _picked(
+    stored: TripOptions,
+    transport_option_id: str,
+    stay_option_id: str | None,
+    activity_option_ids: Sequence[str],
+) -> list[TripOption] | None:
+    """The picked options in package order, or None when any id is unknown."""
+    transports = {option.option_id: option for option in stored.transport}
+    stays = {option.option_id: option for option in stored.stays}
+    activities = {option.option_id: option for option in stored.activities}
+    transport = transports.get(transport_option_id)
+    stay = stays.get(stay_option_id) if stay_option_id is not None else None
+    chosen = [activities.get(option_id) for option_id in dict.fromkeys(activity_option_ids)]
+    if transport is None or (stay_option_id is not None and stay is None) or None in chosen:
+        return None
+    return [transport, *([stay] if stay is not None else []), *(a for a in chosen if a)]
+
+
 def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, brief: TripBrief) -> Proposal:
     share = per_person(plan.total_minor, brief.travellers)
     return Proposal(
         trip_id=trip_id,
         title=plan.title,
         summary=plan.summary,
-        items=[
-            ProposalItem(
-                kind=item.kind,
-                mode=item.mode,
-                title=item.title,
-                supplier=item.supplier,
-                supplier_url=item.supplier_url,
-                price_minor=item.price_minor,
-                details=item.details,
-                starts_at=item.starts_at,
-                supplier_id=item.supplier_id,
-                offer_ref=item.offer_ref,
-                segments=[
-                    TransportSegment(
-                        carrier=segment.carrier,
-                        number=segment.number,
-                        origin=segment.origin,
-                        destination=segment.destination,
-                        departs_at=segment.departs_at,
-                        arrives_at=segment.arrives_at,
-                    )
-                    for segment in item.segments
-                ],
-                refundable=item.refundable,
-                supplier_data=dict(item.supplier_data),
-                links=stored_links(item.links),
-                images=stored_images(item.images),
-                provenance=stored_provenance(item.provenance),
-            )
-            for item in plan.items
-        ],
+        items=[proposal_item(item) for item in plan.items],
         total_minor=plan.total_minor,
         per_person_minor=share,
         over_budget=is_over_budget(share, brief.budget_per_person_minor),

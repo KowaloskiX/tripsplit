@@ -1959,6 +1959,85 @@
         "title": "MessageResponse",
         "type": "object"
       },
+      "OptionResponse": {
+        "description": "One pickable option: a transport (one item, or out + back), a stay or an activity.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BookingKind"
+          },
+          "km_from_centre": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Km From Centre"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "option_id": {
+            "title": "Option Id",
+            "type": "string"
+          },
+          "over_budget": {
+            "title": "Over Budget",
+            "type": "boolean"
+          },
+          "per_person_minor": {
+            "title": "Per Person Minor",
+            "type": "integer"
+          },
+          "rating": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rating"
+          },
+          "stars": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stars"
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "option_id",
+          "kind",
+          "label",
+          "items",
+          "total_minor",
+          "per_person_minor",
+          "over_budget"
+        ],
+        "title": "OptionResponse",
+        "type": "object"
+      },
       "OrganizationSummary": {
         "properties": {
           "id": {
@@ -3540,6 +3619,44 @@
         "title": "TripBookingsResponse",
         "type": "object"
       },
+      "TripOptionsResponse": {
+        "description": "Every option the latest research found (transport cheapest first, stays by price).",
+        "properties": {
+          "activities": {
+            "items": {
+              "$ref": "#/components/schemas/OptionResponse"
+            },
+            "title": "Activities",
+            "type": "array"
+          },
+          "stays": {
+            "items": {
+              "$ref": "#/components/schemas/OptionResponse"
+            },
+            "title": "Stays",
+            "type": "array"
+          },
+          "transport": {
+            "items": {
+              "$ref": "#/components/schemas/OptionResponse"
+            },
+            "title": "Transport",
+            "type": "array"
+          },
+          "travellers": {
+            "title": "Travellers",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "travellers",
+          "transport",
+          "stays",
+          "activities"
+        ],
+        "title": "TripOptionsResponse",
+        "type": "object"
+      },
       "TripResponse": {
         "properties": {
           "brief": {
@@ -3678,6 +3795,40 @@
           "total_minor"
         ],
         "title": "TripResponse",
+        "type": "object"
+      },
+      "TripSelectionRequest": {
+        "additionalProperties": false,
+        "description": "The chat flow's picks, by `option_id` from `GET /trips/{id}/options`. Activities are a\ncomma-separated list (\"a0,a3\"; empty = none) — input fields stay scalars (see\n`tests/test_injection_contract.py`).",
+        "properties": {
+          "activity_option_ids": {
+            "default": "",
+            "pattern": "^(a\\d{1,2}(,a\\d{1,2}){0,15})?$",
+            "title": "Activity Option Ids",
+            "type": "string"
+          },
+          "stay_option_id": {
+            "anyOf": [
+              {
+                "pattern": "^s\\d{1,2}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Option Id"
+          },
+          "transport_option_id": {
+            "pattern": "^t\\d{1,2}$",
+            "title": "Transport Option Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "transport_option_id"
+        ],
+        "title": "TripSelectionRequest",
         "type": "object"
       },
       "TripStatus": {
@@ -6592,6 +6743,79 @@
         ]
       }
     },
+    "/api/trips/{trip_id}/options": {
+      "get": {
+        "description": "Every transport, stay and activity the latest research found, to pick one step at a\ntime. 409 while the research is still running.",
+        "operationId": "proposals-options",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripOptionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Trip Options",
+        "tags": [
+          "proposals"
+        ]
+      }
+    },
     "/api/trips/{trip_id}/pay-by": {
       "post": {
         "description": "The organizer moves the funding deadline (PAYING only, must be in the future).",
@@ -6743,6 +6967,89 @@
           }
         },
         "summary": "Generate Proposals",
+        "tags": [
+          "proposals"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/selection": {
+      "post": {
+        "description": "The organizer's picks become the trip's package and close the vote at once (shares and\nbookings as when a vote closes).",
+        "operationId": "proposals-select",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TripSelectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Select Options",
         "tags": [
           "proposals"
         ]

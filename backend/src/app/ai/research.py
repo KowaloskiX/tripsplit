@@ -102,3 +102,24 @@ type ProgressSink = Callable[[SupplierProgress], Awaitable[None]]
 # Set by whoever runs a research and wants per-supplier progress (ProposalService -> the feed);
 # a context variable, so every `PackageResearcher` wrapper passes it through untouched.
 research_progress: ContextVar[ProgressSink | None] = ContextVar("research_progress", default=None)
+
+
+@dataclass(slots=True)
+class ResearchCandidates:
+    """Every option a research considered, for picking a trip step by step (the chat flow):
+    each transport option is one or two items (a return, or a one-way out + back). Filled by
+    a researcher that has them; otherwise the stored packages' own items are the options."""
+
+    transports: list[tuple[PackageItemPlan, ...]] = field(default_factory=list)
+    stays: list[PackageItemPlan] = field(default_factory=list)
+    activities: list[PackageItemPlan] = field(default_factory=list)
+
+    @property
+    def empty(self) -> bool:
+        return not self.transports
+
+
+# Mutable on purpose: a researcher running in a child task fills the object it finds here.
+research_candidates: ContextVar[ResearchCandidates | None] = ContextVar(
+    "research_candidates", default=None
+)
