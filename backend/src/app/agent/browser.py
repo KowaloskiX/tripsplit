@@ -7,6 +7,11 @@ or ENGINE=firefox to fall back to vanilla Playwright (e.g. on a locked-down box)
 
 import contextlib
 import os
+import time
+from typing import Any
+
+# How often the live preview gets a new frame on engines without a CDP screencast.
+LIVE_FRAME_INTERVAL_S = 0.3
 
 
 def profile_dir_from_env():
@@ -16,15 +21,19 @@ def profile_dir_from_env():
 
 
 class Browser:
-    def __init__(self, headless=None):
+    def __init__(self, headless: bool | None = None) -> None:
         self.engine = os.getenv("ENGINE", "camoufox").lower()
         self.headless = headless if headless is not None else os.getenv("HEADLESS", "0") == "1"
         self._ctx = None  # camoufox context manager, if used
         self._pw = None  # playwright, if used
         self.browser = None
-        self.page = None
-        self._cdp = None  # CDP session for the live screencast
-        self.live_frame_path = None  # if set (Chromium), stream frames here
+        self.page: Any = None
+        self._cdp: Any = None  # CDP session for the live screencast
+        # If set, the live preview: a CDP screencast on Chromium, `live_tick` screenshots on
+        # Camoufox/Firefox (Playwright's sync API is single-threaded, so the runner ticks it
+        # between actions and while it waits).
+        self.live_frame_path: str | None = None
+        self._last_live = 0.0
         # Per-keystroke delay; 0 = instant fill (sites without bot management, per profile).
         self.type_delay_ms = 25
 
@@ -134,23 +143,62 @@ class Browser:
                 },
             )
 
+    def live_tick(self, force: bool = False) -> None:
+        """Engines without a screencast: refresh `live.jpg` at most every
+        LIVE_FRAME_INTERVAL_S, atomically (tmp + rename) so a reader never sees half a JPEG."""
+        if not self.live_frame_path or self._cdp is not None or self.page is None:
+            return
+        now = time.monotonic()
+        if not force and now - self._last_live < LIVE_FRAME_INTERVAL_S:
+            return
+        self._last_live = now
+        tmp = self.live_frame_path + ".tmp"
+        with contextlib.suppress(Exception):
+            self.page.screenshot(path=tmp, type="jpeg", quality=55, full_page=False)
+            os.replace(tmp, self.live_frame_path)
+
+    def idle(self, seconds: float) -> None:
+        """Wait `seconds` while keeping the live preview fresh (e.g. awaiting approval)."""
+        deadline = time.monotonic() + seconds
+        while (left := deadline - time.monotonic()) > 0:
+            self.live_tick()
+            step = min(left, LIVE_FRAME_INTERVAL_S)
+            try:
+                self.page.wait_for_timeout(int(step * 1000))
+            except Exception:
+                time.sleep(step)
+
     def goto(self, url):
         self.page.goto(url, wait_until="domcontentloaded", timeout=30000)
         self.settle()
 
-    def settle(self, timeout=None):
+    def settle(self, timeout: int | None = None) -> None:
         """Wait for the page to stop moving: network idle + a short paint delay.
         Ad/tracking-heavy stores never reach true network idle, so cap the wait low
         (SETTLE_MS, default 2.5s) instead of blocking the full timeout every step."""
         timeout = timeout if timeout is not None else int(os.getenv("SETTLE_MS", "2500"))
-        with contextlib.suppress(Exception):
-            self.page.wait_for_load_state("networkidle", timeout=timeout)
+        deadline = time.monotonic() + timeout / 1000
+        # In short slices, so the live preview keeps moving while the page loads.
+        while True:
+            self.live_tick()
+            left_ms = int((deadline - time.monotonic()) * 1000)
+            if left_ms <= 0:
+                break
+            try:
+                self.page.wait_for_load_state(
+                    "networkidle", timeout=min(left_ms, int(LIVE_FRAME_INTERVAL_S * 1000))
+                )
+                break
+            except Exception:
+                continue
         with contextlib.suppress(Exception):
             self.page.wait_for_timeout(300)
+        self.live_tick(force=True)
 
-    def screenshot(self, path):
+    def screenshot(self, path: str) -> None:
         with contextlib.suppress(Exception):
             self.page.screenshot(path=path, full_page=False)
+        self.live_tick(force=True)
 
     def close(self):
         with contextlib.suppress(Exception):
