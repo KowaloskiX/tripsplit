@@ -63,7 +63,7 @@ export function PhotoStrip({
   return (
     <div
       className={cn(
-        "relative grid auto-cols-fr grid-flow-col gap-1.5 overflow-hidden rounded-[20px]",
+        "relative grid auto-cols-fr grid-flow-col gap-1.5 overflow-hidden rounded-xl",
         className,
       )}
     >

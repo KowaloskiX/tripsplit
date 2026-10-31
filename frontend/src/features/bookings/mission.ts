@@ -142,7 +142,7 @@ function useActivity(tripId: string, active: boolean) {
   });
 }
 
-/** Mission control's data while the trip is buying; `null` = show the plain booking UI. */
+/** Mission control's data while a purchase is running; `null` = show the plain booking UI. */
 export function useMission(tripId: string, title: string): MissionControlData | null {
   const bookings = useTripBookings(tripId);
   const trip = bookings.data;
@@ -158,7 +158,8 @@ export function useMission(tripId: string, title: string): MissionControlData | 
   const activity = useActivity(tripId, live && anyRunning);
   const frameSrc = useCallback((tick: number) => agentRunFrameUrl(runId, tick), [runId]);
 
-  if (!trip || !live) return null;
+  // Only while something is actually being bought: the plain booking list says the rest.
+  if (!trip || !live || !current.some((booking) => WORKING.has(booking.status))) return null;
   const stay = current.find((booking) => booking.kind === "stay");
   const tickets = current.filter((booking) => booking.status === "confirmed").map(ticketOf);
   const steps = status.data?.live.steps ?? [];

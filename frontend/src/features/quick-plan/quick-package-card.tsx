@@ -29,7 +29,7 @@ export function QuickPackageCard({
       aria-label={pkg.title}
       data-example={example}
       className={cn(
-        "deal-in flex w-[84%] shrink-0 snap-center flex-col gap-3 rounded-[28px] bg-surface p-3 text-ink sm:w-[22.5rem]",
+        "deal-in flex w-[84%] shrink-0 snap-center flex-col gap-3 rounded-[var(--radius-panel)] bg-surface p-3 text-ink sm:w-[22.5rem]",
         // An example must never pass for a real offer: dashed, no shadow, muted.
         example ? "border-2 border-dashed border-ink/25" : "border border-line shadow-card",
       )}

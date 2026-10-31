@@ -71,12 +71,12 @@ export function BookingTicket({ booking, currency }: BookingTicketProps): ReactN
         aria-hidden
         className="relative z-10 h-2 rounded-full bg-surface-sunken ring-1 ring-line"
       />
-      <div className="-mt-1 mx-1.5 overflow-hidden rounded-b-[24px]">
+      <div className="-mt-1 mx-1.5 overflow-hidden rounded-b-xl">
         <section
           aria-label={`Ticket: ${booking.title}`}
           className={cn("text-pastel-ink", printing && "ticket-print")}
         >
-          <div className={cn("rounded-[24px]", KIND_FILL[booking.kind])}>
+          <div className={cn("rounded-xl", KIND_FILL[booking.kind])}>
             <div className="flex items-center justify-between gap-3 px-5 pt-5">
               <span className="ticket-mono text-[11px] uppercase">Ticket · {booking.supplier}</span>
               <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2.5 py-0.5 text-xs text-sun">

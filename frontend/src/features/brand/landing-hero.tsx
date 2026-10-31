@@ -131,7 +131,7 @@ export function ChatToTicket(): ReactNode {
           />
           <div className="-mt-1.5 overflow-hidden px-1 pb-4">
             <div className="cue ticket-print text-pastel-ink" style={at(2850)}>
-              <div className="rounded-t-[32px] bg-pastel-sea">
+              <div className="rounded-t-[var(--radius-panel)] bg-pastel-sea">
                 <div className="flex items-center justify-between px-6 pt-6">
                   <span className="ticket-mono text-xs uppercase">Boarding · PKP Intercity</span>
                   <TrainFront className="size-5" aria-hidden />
@@ -146,7 +146,7 @@ export function ChatToTicket(): ReactNode {
                 <div className="perforation mx-5 [--color-line:rgb(0_0_0/0.35)]" />
               </div>
               <div
-                className="cue stub-tear relative rounded-b-[32px] bg-pastel-sea"
+                className="cue stub-tear relative rounded-b-[var(--radius-panel)] bg-pastel-sea"
                 style={at(4000)}
               >
                 <span className="absolute -top-3 -left-3 size-6 rounded-full bg-bg" />

@@ -12,7 +12,7 @@ import { cueIndex, useSceneClock } from "./timeline";
 /** 1 · Landing: the headline cascade, then the chat thread printing a ticket. */
 export function LandingScene(): ReactNode {
   return (
-    <div className="dark flex flex-col items-center overflow-hidden rounded-[40px] bg-bg px-4 pt-4 pb-10 text-center text-ink sm:px-8">
+    <div className="dark flex flex-col items-center overflow-hidden rounded-[var(--radius-panel)] bg-bg px-4 pt-4 pb-10 text-center text-ink sm:px-8">
       <HeroHeadline />
       <ChatToTicket />
     </div>

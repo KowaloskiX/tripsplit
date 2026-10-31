@@ -105,6 +105,18 @@ export async function payMyShare(page: Page): Promise<void> {
 export async function fillMyTravellerDetails(page: Page, fullName: string): Promise<void> {
   const form = page.getByRole("form", { name: "Your traveller details" });
   if (!(await form.isVisible())) {
+    // The room folds the whole section into one row until it is needed.
+    const section = page.locator("details", {
+      has: page.locator("summary", { hasText: "Traveller details" }),
+    });
+    if (
+      (await section.count()) > 0 &&
+      !(await section.first().evaluate((el) => (el as HTMLDetailsElement).open))
+    ) {
+      await section.first().locator("summary").first().click();
+    }
+  }
+  if (!(await form.isVisible())) {
     // Collapsed before paying: "Add your travel details" (or "your travel details" once saved).
     await page.getByText(/your travel details$/i).click();
   }

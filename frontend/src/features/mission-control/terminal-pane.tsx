@@ -63,7 +63,7 @@ export function TerminalPane({ calls, className }: TerminalPaneProps): ReactNode
     <section
       aria-label="Supplier API calls"
       className={cn(
-        "dark flex min-h-0 flex-col overflow-hidden rounded-[28px] bg-agent-bg",
+        "dark flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-panel)] bg-agent-bg",
         className,
       )}
     >

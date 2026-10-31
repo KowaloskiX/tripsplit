@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { ConfettiBurst } from "@/components/ui/confetti-burst";
 import { DigitRoll } from "@/components/ui/number-roll";
 import { Stamp } from "@/components/ui/stamp";
 import { useArrivedAt } from "@/lib/motion";
@@ -32,7 +31,7 @@ export function MissionControl({
   return (
     <section
       aria-label="Mission control"
-      className="dark relative overflow-hidden rounded-[40px] bg-bg p-3 text-ink sm:p-4"
+      className="relative overflow-hidden rounded-[var(--radius-panel)] border border-line bg-surface-sunken p-2 text-ink sm:p-3"
     >
       <header className="flex flex-wrap items-end justify-between gap-3 px-3 pt-3 pb-4 sm:px-4">
         <div className="min-w-0">
@@ -40,14 +39,14 @@ export function MissionControl({
             {live && (
               <span
                 aria-hidden
-                className="size-1.5 animate-pulse rounded-full bg-sun motion-reduce:animate-none"
+                className="size-1.5 animate-pulse rounded-full bg-success motion-reduce:animate-none"
               />
             )}
             Mission control
           </p>
-          <h2 className="mt-1.5 text-2xl tracking-[-0.03em] text-ink sm:text-3xl">{title}</h2>
+          <h2 className="mt-1 text-lg font-medium text-ink">{title}</h2>
         </div>
-        <p className="ticket-mono text-3xl text-ink sm:text-4xl" aria-live="polite">
+        <p className="ticket-mono text-2xl text-ink" aria-live="polite">
           <span className="sr-only">
             {tickets.length} of {purchases} purchases done
           </span>
@@ -64,12 +63,11 @@ export function MissionControl({
           {calls && <TerminalPane calls={calls} />}
           {stay && <StayPane stay={stay} currency={currency} />}
         </div>
-        <div className="relative flex flex-col justify-center rounded-[28px] bg-surface px-4 pt-8 pb-5 lg:col-span-2 xl:col-span-1">
+        <div className="relative flex flex-col justify-center rounded-[var(--radius-panel)] border border-line bg-surface px-4 pt-8 pb-5 lg:col-span-2 xl:col-span-1">
           <p className="eyebrow absolute top-4 left-5">Tickets</p>
           <TicketStack tickets={tickets} purchases={purchases} />
           {celebrate && (
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <ConfettiBurst count={32} spread={190} />
               <Stamp tone="sun" rotate={-8} delayMs={500}>
                 all booked
               </Stamp>

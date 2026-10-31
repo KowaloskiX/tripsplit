@@ -54,7 +54,7 @@ export function PhoneFrame({ phone, phase, currency }: PhoneFrameProps): ReactNo
     <article
       aria-label={`${phone.name}'s phone`}
       className={cn(
-        "relative mx-auto flex aspect-[9/16] w-full max-w-[11rem] flex-col overflow-hidden rounded-[22px] border-4 sm:rounded-[28px] sm:border-[5px] border-[#2b2b2b] bg-surface shadow-pop transition-shadow duration-500",
+        "relative mx-auto flex aspect-[9/16] w-full max-w-[11rem] flex-col overflow-hidden rounded-[22px] border-4 sm:rounded-[var(--radius-panel)] sm:border-[5px] border-[#2b2b2b] bg-surface shadow-pop transition-shadow duration-500",
         settled && "ring-2 ring-sun ring-offset-2 ring-offset-bg",
       )}
     >
