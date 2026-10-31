@@ -227,6 +227,18 @@ class SiteAsksMore:
     percent: float
 
 
+@dataclass(frozen=True, slots=True)
+class VoteAttractions:
+    """After the package vote: `{attraction title: voters}`; `None` voters = everyone."""
+
+    votes: Mapping[str, Sequence[str] | None]
+
+
+@dataclass(frozen=True, slots=True)
+class PlanDays:
+    """The organizer plans the days from the attraction votes (and queues tickets)."""
+
+
 # ---- expectations -------------------------------------------------------------------------
 
 
@@ -355,6 +367,15 @@ class ExpectKyc:
 
 
 @dataclass(frozen=True, slots=True)
+class ExpectPlanned:
+    """`title` is a visit in the day plan; `tickets` = its ticket status (`to_buy`,
+    `buying`, `booked`, `needs_help`), `None` = no tickets needed."""
+
+    title: str
+    tickets: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ExpectError:
     """The NEXT step must fail with this domain error code (e.g. `trip_not_ready`)."""
 
@@ -384,6 +405,8 @@ type Action = (
     | SetPayBy
     | CheckFundingDeadlines
     | SiteAsksMore
+    | VoteAttractions
+    | PlanDays
 )
 type Expectation = (
     ExpectStatus
@@ -401,6 +424,7 @@ type Expectation = (
     | ExpectEscrow
     | ExpectPayment
     | ExpectKyc
+    | ExpectPlanned
     | ExpectError
 )
 type Step = Action | Expectation
@@ -421,6 +445,7 @@ EXPECTATIONS = (
     ExpectEscrow,
     ExpectPayment,
     ExpectKyc,
+    ExpectPlanned,
     ExpectError,
 )
 

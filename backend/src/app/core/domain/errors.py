@@ -21,6 +21,7 @@ class TripError(StrEnum):
     ORGANIZER_CANNOT_LEAVE = "organizer_cannot_leave"
     BOOKING_STARTED = "booking_started"  # too late to leave: the agent is already buying
     INVALID_DEADLINE = "invalid_pay_by"  # a funding deadline in the past
+    ATTRACTION_NOT_FOUND = "attraction_not_found"
 
 
 class ApiError(StrEnum):

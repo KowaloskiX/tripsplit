@@ -1,3 +1,5 @@
+import type { LinkResponse, ProvenanceResponse } from "@/lib/api";
+
 /**
  * Where an offer comes from and how to check it. Shapes the API will send on package and
  * booking cards (`provenance`, `links[]`, `images[]`); until then the UI is fed fake data.
@@ -57,4 +59,32 @@ export function provenanceLabel(provenance: Provenance, now: number = Date.now()
 
 export function isExample(provenance: Provenance | null | undefined): boolean {
   return provenance?.kind === "example";
+}
+
+/** What the API sends on a package item or a booking — absent fields on older records. */
+export type ApiTrust = {
+  links?: readonly LinkResponse[] | null | undefined;
+  images?: readonly string[] | null | undefined;
+  provenance?: ProvenanceResponse | null | undefined;
+};
+
+export function provenanceFromApi(
+  provenance: ProvenanceResponse | null | undefined,
+): Provenance | null {
+  if (!provenance) return null;
+  return {
+    kind: provenance.source,
+    source: provenance.supplier,
+    checked_at: provenance.checked_at,
+  };
+}
+
+export function imagesFromApi(
+  images: readonly string[] | null | undefined,
+  alt: string,
+): TrustImage[] {
+  return (images ?? []).map((url, index) => ({
+    url,
+    alt: index === 0 ? alt : `${alt} (${index + 1})`,
+  }));
 }

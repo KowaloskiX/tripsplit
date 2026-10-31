@@ -17,17 +17,20 @@ from app.suppliers.intercity import HttpTransport, SharedBrowserTransport, Trans
 from app.suppliers.liteapi import SUPPLIER_ID as LITEAPI
 from app.suppliers.liteapi import LiteApiConfig, liteapi_supplier
 from app.suppliers.liteapi_client import check_key as check_liteapi_key
+from app.suppliers.osm_activities import SUPPLIER_ID as OSM_ACTIVITIES
+from app.suppliers.osm_activities import OsmActivitiesSupplier
 from app.suppliers.pkp import PkpIntercitySupplier
 from app.suppliers.ports import SupplierAdapter
 from app.suppliers.registry import SupplierRegistry
 from app.suppliers.sim import SIM_CAPABILITIES, sim_supplier
+from app.suppliers.sim_tickets import SIGHTS, TICKETS, AttractionSupplier
 
 logger = logging.getLogger(__name__)
 
 PKP_INTERCITY = "pkp_intercity"
 DEMO_RAIL = "demo_rail"
 KNOWN_SUPPLIERS: frozenset[str] = frozenset(
-    {*SIM_CAPABILITIES, PKP_INTERCITY, DEMO_RAIL, LITEAPI, DUFFEL}
+    {*SIM_CAPABILITIES, PKP_INTERCITY, DEMO_RAIL, LITEAPI, DUFFEL, OSM_ACTIVITIES, TICKETS, SIGHTS}
 )
 
 
@@ -94,6 +97,9 @@ def _adapter(
 ) -> SupplierAdapter | None:
     if supplier_id in SIM_CAPABILITIES:
         return sim_supplier(supplier_id, utc_now)
+    if supplier_id in (TICKETS, SIGHTS):
+        # In a demo the agent buys attraction tickets on our own demo ticket shop.
+        return AttractionSupplier(supplier_id, site_url=demo_rail_url, clock=utc_now)
     if supplier_id == PKP_INTERCITY:
         # In a demo (`demo_rail_url`) the agent buys PKP's trains on our fake rail site.
         site = f"{demo_rail_url}{DEMO_RAIL_PATH}" if demo_rail_url is not None else None
@@ -104,6 +110,8 @@ def _adapter(
         return liteapi_supplier(liteapi, utc_now)
     if supplier_id == DUFFEL and duffel is not None:
         return duffel_supplier(duffel)
+    if supplier_id == OSM_ACTIVITIES:
+        return OsmActivitiesSupplier()
     return None
 
 

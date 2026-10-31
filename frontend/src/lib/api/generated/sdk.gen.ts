@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsGraphData, AgentRunsGraphErrors, AgentRunsGraphResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsActivityData, BookingsActivityErrors, BookingsActivityResponses, BookingsApproveAllData, BookingsApproveAllErrors, BookingsApproveAllResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartAllData, BookingsStartAllErrors, BookingsStartAllResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayAllSharesData, ContributionsPayAllSharesErrors, ContributionsPayAllSharesResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, ContributionsTopUpAndPayData, ContributionsTopUpAndPayErrors, ContributionsTopUpAndPayResponses, DemoDirectorProgressData, DemoDirectorProgressErrors, DemoDirectorProgressResponses, DemoDirectorStartData, DemoDirectorStartErrors, DemoDirectorStartResponses, DemoDirectorStopData, DemoDirectorStopErrors, DemoDirectorStopResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoPhonesData, DemoPhonesErrors, DemoPhonesResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsQuickCreateData, TripsQuickCreateErrors, TripsQuickCreateResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses, TripsSetPayByData, TripsSetPayByErrors, TripsSetPayByResponses, WalletKycData, WalletKycErrors, WalletKycResponses, WalletReadData, WalletReadResponses, WalletTopUpData, WalletTopUpErrors, WalletTopUpResponses, WalletTopUpStatusData, WalletTopUpStatusErrors, WalletTopUpStatusResponses } from './types.gen';
+import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsGraphData, AgentRunsGraphErrors, AgentRunsGraphResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AttractionsListData, AttractionsListErrors, AttractionsListResponses, AttractionsVoteData, AttractionsVoteErrors, AttractionsVoteResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsActivityData, BookingsActivityErrors, BookingsActivityResponses, BookingsApproveAllData, BookingsApproveAllErrors, BookingsApproveAllResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartAllData, BookingsStartAllErrors, BookingsStartAllResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayAllSharesData, ContributionsPayAllSharesErrors, ContributionsPayAllSharesResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, ContributionsTopUpAndPayData, ContributionsTopUpAndPayErrors, ContributionsTopUpAndPayResponses, DemoDirectorProgressData, DemoDirectorProgressErrors, DemoDirectorProgressResponses, DemoDirectorStartData, DemoDirectorStartErrors, DemoDirectorStartResponses, DemoDirectorStopData, DemoDirectorStopErrors, DemoDirectorStopResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoPhonesData, DemoPhonesErrors, DemoPhonesResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ItineraryGenerateData, ItineraryGenerateErrors, ItineraryGenerateResponses, ItineraryGetData, ItineraryGetErrors, ItineraryGetResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsQuickCreateData, TripsQuickCreateErrors, TripsQuickCreateResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses, TripsSetPayByData, TripsSetPayByErrors, TripsSetPayByResponses, WalletKycData, WalletKycErrors, WalletKycResponses, WalletReadData, WalletReadResponses, WalletTopUpData, WalletTopUpErrors, WalletTopUpResponses, WalletTopUpStatusData, WalletTopUpStatusErrors, WalletTopUpStatusResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -171,6 +171,21 @@ export const tripsQuickCreate = <ThrowOnError extends boolean = false>(options: 
  * The whole room in one response — the UI polls this one endpoint.
  */
 export const tripsRoom = <ThrowOnError extends boolean = false>(options: Options<TripsRoomData, ThrowOnError>): RequestResult<TripsRoomResponses, TripsRoomErrors, ThrowOnError> => (options.client ?? client).get<TripsRoomResponses, TripsRoomErrors, ThrowOnError>({ url: '/api/trips/{trip_id}', ...options });
+
+/**
+ * List Attractions
+ *
+ * Ranked attraction candidates at the destination with their voters (after the package
+ * vote; the list is fixed at the first request).
+ */
+export const attractionsList = <ThrowOnError extends boolean = false>(options: Options<AttractionsListData, ThrowOnError>): RequestResult<AttractionsListResponses, AttractionsListErrors, ThrowOnError> => (options.client ?? client).get<AttractionsListResponses, AttractionsListErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/attractions', ...options });
+
+/**
+ * Toggle Attraction Vote
+ *
+ * Toggles the caller's vote on one attraction; answers with the updated list.
+ */
+export const attractionsVote = <ThrowOnError extends boolean = false>(options: Options<AttractionsVoteData, ThrowOnError>): RequestResult<AttractionsVoteResponses, AttractionsVoteErrors, ThrowOnError> => (options.client ?? client).post<AttractionsVoteResponses, AttractionsVoteErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/attractions/{attraction_id}/vote', ...options });
 
 /**
  * List Bookings
@@ -372,6 +387,21 @@ export const demoVoteAll = <ThrowOnError extends boolean = false>(options: Optio
  * Read Feed
  */
 export const tripsFeed = <ThrowOnError extends boolean = false>(options: Options<TripsFeedData, ThrowOnError>): RequestResult<TripsFeedResponses, TripsFeedErrors, ThrowOnError> => (options.client ?? client).get<TripsFeedResponses, TripsFeedErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/feed', ...options });
+
+/**
+ * Get Itinerary
+ *
+ * The day-by-day plan (no days until the organizer plans them).
+ */
+export const itineraryGet = <ThrowOnError extends boolean = false>(options: Options<ItineraryGetData, ThrowOnError>): RequestResult<ItineraryGetResponses, ItineraryGetErrors, ThrowOnError> => (options.client ?? client).get<ItineraryGetResponses, ItineraryGetErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/itinerary', ...options });
+
+/**
+ * Generate Itinerary
+ *
+ * The organizer plans (or re-plans) the days from the votes; bookable visits queue their
+ * tickets, which re-splits the shares.
+ */
+export const itineraryGenerate = <ThrowOnError extends boolean = false>(options: Options<ItineraryGenerateData, ThrowOnError>): RequestResult<ItineraryGenerateResponses, ItineraryGenerateErrors, ThrowOnError> => (options.client ?? client).post<ItineraryGenerateResponses, ItineraryGenerateErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/itinerary/generate', ...options });
 
 /**
  * Leave Trip

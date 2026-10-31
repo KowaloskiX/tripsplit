@@ -1,6 +1,7 @@
 import { type QueryClient, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
+  contributionsPayAllSharesMutation,
   contributionsPayMutation,
   contributionsTopUpAndPayMutation,
   tripsFeedQueryKey,
@@ -59,5 +60,14 @@ export function useVerifyIdentity() {
         void queryClient.invalidateQueries({ queryKey: walletReadQueryKey() });
       }, 1_300);
     },
+  });
+}
+
+/** The organizer pays every outstanding share (topping their wallet up by the shortfall). */
+export function usePayAllShares(tripId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    ...contributionsPayAllSharesMutation(),
+    onSuccess: () => refreshAfterPayment(queryClient, tripId),
   });
 }

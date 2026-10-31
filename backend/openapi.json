@@ -127,6 +127,188 @@
         "title": "ApproveRequest",
         "type": "object"
       },
+      "AttractionKind": {
+        "enum": [
+          "museum",
+          "landmark",
+          "viewpoint",
+          "food",
+          "experience"
+        ],
+        "title": "AttractionKind",
+        "type": "string"
+      },
+      "AttractionResponse": {
+        "properties": {
+          "attraction_id": {
+            "title": "Attraction Id",
+            "type": "string"
+          },
+          "bookable": {
+            "title": "Bookable",
+            "type": "boolean"
+          },
+          "closes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closes"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AttractionKind"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "opens": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opens"
+          },
+          "price_per_person_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Per Person Minor"
+          },
+          "provenance": {
+            "title": "Provenance",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "voted_by_me": {
+            "title": "Voted By Me",
+            "type": "boolean"
+          },
+          "voters": {
+            "items": {
+              "$ref": "#/components/schemas/VoterResponse"
+            },
+            "title": "Voters",
+            "type": "array"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          },
+          "website": {
+            "title": "Website",
+            "type": "string"
+          }
+        },
+        "required": [
+          "attraction_id",
+          "title",
+          "kind",
+          "image_url",
+          "website",
+          "lat",
+          "lon",
+          "opens",
+          "closes",
+          "duration_minutes",
+          "price_per_person_minor",
+          "currency",
+          "bookable",
+          "provenance",
+          "rank",
+          "votes",
+          "voters",
+          "voted_by_me"
+        ],
+        "title": "AttractionResponse",
+        "type": "object"
+      },
+      "AttractionsResponse": {
+        "properties": {
+          "attractions": {
+            "items": {
+              "$ref": "#/components/schemas/AttractionResponse"
+            },
+            "title": "Attractions",
+            "type": "array"
+          },
+          "destination": {
+            "title": "Destination",
+            "type": "string"
+          },
+          "majority": {
+            "title": "Majority",
+            "type": "integer"
+          },
+          "members": {
+            "title": "Members",
+            "type": "integer"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "destination",
+          "members",
+          "majority",
+          "attractions"
+        ],
+        "title": "AttractionsResponse",
+        "type": "object"
+      },
       "BatchItemResponse": {
         "properties": {
           "booking": {
@@ -1029,7 +1211,9 @@
           "traveller_details_missing",
           "escrow_opened",
           "supplier_paid",
-          "funding_expired"
+          "funding_expired",
+          "attraction_voted",
+          "itinerary_ready"
         ],
         "title": "EventKind",
         "type": "string"
@@ -1270,6 +1454,188 @@
           "message"
         ],
         "title": "InsufficientFundsResponse",
+        "type": "object"
+      },
+      "ItemKind": {
+        "enum": [
+          "travel",
+          "attraction",
+          "meal",
+          "free"
+        ],
+        "title": "ItemKind",
+        "type": "string"
+      },
+      "ItineraryDayResponse": {
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ItineraryItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "label",
+          "items"
+        ],
+        "title": "ItineraryDayResponse",
+        "type": "object"
+      },
+      "ItineraryItemResponse": {
+        "properties": {
+          "attraction_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attraction Id"
+          },
+          "booking_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Id"
+          },
+          "end": {
+            "title": "End",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ItemKind"
+          },
+          "lat": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lat"
+          },
+          "link": {
+            "title": "Link",
+            "type": "string"
+          },
+          "lon": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lon"
+          },
+          "map_url": {
+            "title": "Map Url",
+            "type": "string"
+          },
+          "note": {
+            "title": "Note",
+            "type": "string"
+          },
+          "place": {
+            "title": "Place",
+            "type": "string"
+          },
+          "start": {
+            "title": "Start",
+            "type": "string"
+          },
+          "tickets": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TicketStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "kind",
+          "title",
+          "place",
+          "lat",
+          "lon",
+          "link",
+          "map_url",
+          "note",
+          "attraction_id",
+          "tickets",
+          "booking_id"
+        ],
+        "title": "ItineraryItemResponse",
+        "type": "object"
+      },
+      "ItineraryResponse": {
+        "properties": {
+          "days": {
+            "items": {
+              "$ref": "#/components/schemas/ItineraryDayResponse"
+            },
+            "title": "Days",
+            "type": "array"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Generated At"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "generated_at",
+          "stale",
+          "days"
+        ],
+        "title": "ItineraryResponse",
         "type": "object"
       },
       "JoinTripRequest": {
@@ -2841,6 +3207,17 @@
         "title": "SupplierChannel",
         "type": "string"
       },
+      "TicketStatus": {
+        "description": "Where the group's tickets for a planned visit stand, for the itinerary.",
+        "enum": [
+          "to_buy",
+          "buying",
+          "booked",
+          "needs_help"
+        ],
+        "title": "TicketStatus",
+        "type": "string"
+      },
       "TopUpAndPayRequest": {
         "additionalProperties": false,
         "description": "Tops the wallet up by exactly what the share is missing, then pays the share.",
@@ -3386,6 +3763,24 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VoterResponse": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name"
+        ],
+        "title": "VoterResponse",
         "type": "object"
       },
       "WalletResponse": {
@@ -4252,6 +4647,162 @@
         "summary": "Read Room",
         "tags": [
           "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/attractions": {
+      "get": {
+        "description": "Ranked attraction candidates at the destination with their voters (after the package\nvote; the list is fixed at the first request).",
+        "operationId": "attractions-list",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttractionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Attractions",
+        "tags": [
+          "itinerary"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/attractions/{attraction_id}/vote": {
+      "post": {
+        "description": "Toggles the caller's vote on one attraction; answers with the updated list.",
+        "operationId": "attractions-vote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attraction_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Attraction Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttractionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Toggle Attraction Vote",
+        "tags": [
+          "itinerary"
         ]
       }
     },
@@ -5762,6 +6313,152 @@
         "summary": "Read Feed",
         "tags": [
           "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/itinerary": {
+      "get": {
+        "description": "The day-by-day plan (no days until the organizer plans them).",
+        "operationId": "itinerary-get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItineraryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Itinerary",
+        "tags": [
+          "itinerary"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/itinerary/generate": {
+      "post": {
+        "description": "The organizer plans (or re-plans) the days from the votes; bookable visits queue their\ntickets, which re-splits the shares.",
+        "operationId": "itinerary-generate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ItineraryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Itinerary",
+        "tags": [
+          "itinerary"
         ]
       }
     },

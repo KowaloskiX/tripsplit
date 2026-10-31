@@ -11,6 +11,8 @@ import zlib
 from dataclasses import dataclass
 from datetime import time
 
+from app.core.domain.places import resolve_city
+
 
 @dataclass(frozen=True, slots=True)
 class Origin:
@@ -239,3 +241,46 @@ def find_origin(text: str) -> Origin:
         return known
     code = (text.strip()[:3] or "XXX").upper()
     return Origin(text, (text.casefold(),), text, code, code, text)
+
+
+# Price levels of an example stay / evening elsewhere, relative to Budapest.
+_PRICE_LEVEL: dict[str, float] = {
+    **dict.fromkeys(("CH", "NO", "IS", "DK", "SE", "GB", "IE", "LU", "FI", "MC"), 1.7),
+    **dict.fromkeys(("DE", "FR", "NL", "BE", "AT", "IT", "ES", "PT", "MT", "CY", "GR"), 1.25),
+}
+
+
+def example_place(text: str) -> Place | None:
+    """A plausible stand-in for any catalogue city the simulator has no data for — stays and
+    evenings only (no simulated trains, flights or coaches go there)."""
+    city = resolve_city(text)
+    if city is None:
+        return None
+    level = _PRICE_LEVEL.get(city.country_code, 1.0)
+
+    def price(base: int) -> int:
+        return round(base * level / 100) * 100
+
+    return Place(
+        name=city.name,
+        aliases=(city.name.casefold(),),
+        station=city.name,
+        airport=city.iata,
+        bus_stop=city.name,
+        rail_out=None,
+        rail_back=None,
+        flight_pp=0,
+        flight_minutes=0,
+        bus_pp=None,
+        bus_minutes=0,
+        hostel_dorm_night=price(5_000),
+        hostel_night=price(8_000),
+        apartment_night=price(15_000),
+        hotel_night=price(27_000),
+        apartment_area="the centre",
+        hotel_area="the old town",
+        casual_activity=f"Guided walking tour of {city.name}",
+        casual_activity_price=price(9_000),
+        splurge_activity=f"Dinner with a view in {city.name}",
+        splurge_activity_price=price(24_000),
+    )

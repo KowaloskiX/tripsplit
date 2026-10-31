@@ -4,11 +4,11 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusScreen } from "@/components/ui/status-screen";
 import { sessionQueryOptions } from "@/features/auth";
-import { TripBookings } from "@/features/bookings";
+import { LiveMissionControl, TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
-import { DemoPanel } from "@/features/demo";
+import { DemoPanel, DemoStage } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
-import { BookingStage } from "@/features/mission-control";
+import { AttractionsPanel } from "@/features/itinerary";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
@@ -53,10 +53,11 @@ function RoomError({ error, reset }: { error: Error; reset: () => void }): React
 
 function RoomPage(): ReactNode {
   const { tripId } = Route.useParams();
-  const { data: room, isPending, isError } = useRoom(tripId);
+  const { data: room, isPending } = useRoom(tripId);
 
   if (isPending) return <div className="h-96" aria-hidden />;
-  if (isError || !room) {
+  // A failed poll (429, a blip) keeps the last room on screen; only no data at all is a 404.
+  if (!room) {
     return (
       <StatusScreen
         code="404"
@@ -73,6 +74,9 @@ function RoomPage(): ReactNode {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:py-10">
       <RoomHeader room={room} />
+      {import.meta.env.DEV && <DemoStage room={room} />}
+      {/* While the trip is buying, mission control takes the full width above the room. */}
+      {showBookings && <LiveMissionControl tripId={tripId} title={room.trip.title} />}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         {/* On a phone the stage card comes first: it is what needs doing now. */}
         <div className="order-2 lg:sticky lg:top-24 lg:order-1">
@@ -93,11 +97,7 @@ function RoomPage(): ReactNode {
                   Full screen
                 </Link>
               </div>
-              {/* Mission control appears above the bookings once a `mission` prop is passed
-                  (MissionControlData); without one this is the plain booking UI. */}
-              <BookingStage>
-                <TripBookings tripId={tripId} />
-              </BookingStage>
+              <TripBookings tripId={tripId} />
             </section>
           )}
           {/* While the group pays, the shares are the stage card; afterwards the bookings are.
@@ -113,6 +113,8 @@ function RoomPage(): ReactNode {
               />
             </div>
           )}
+          {/* After the package vote — while the group pays, it never blocks the money. */}
+          <AttractionsPanel room={room} />
           {/* Before buying, the packages/vote card is the stage action: the (long) details
               form goes below it, collapsed. */}
           {showBookings && <TravellerDetailsPanel room={room} />}

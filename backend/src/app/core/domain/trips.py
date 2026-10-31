@@ -176,6 +176,8 @@ class EventKind(StrEnum):
     ESCROW_OPENED = "escrow_opened"  # the partner opened the trip escrow; the pay-by deadline
     SUPPLIER_PAID = "supplier_paid"  # the escrow paid a supplier (payout or virtual card)
     FUNDING_EXPIRED = "funding_expired"  # pay-by missed: every paid share went back
+    ATTRACTION_VOTED = "attraction_voted"  # a member wants to see an attraction
+    ITINERARY_READY = "itinerary_ready"  # the day-by-day plan was (re)generated
 
 
 def split_evenly(total_minor: int, members: int) -> list[int]:

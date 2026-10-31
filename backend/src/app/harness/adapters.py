@@ -278,15 +278,19 @@ class ScriptedLauncher:
 
 @dataclass
 class RoutingLauncher:
-    """`--live-agent`: the real subprocess agent for the demo rail supplier, scripted otherwise."""
+    """`--live-agent`: the real subprocess agent for our demo sites (rail, attraction tickets),
+    scripted otherwise."""
 
     live: AgentLauncher
     scripted: ScriptedLauncher
-    live_url_marker: str = "/api/demo-supplier/rail"
+    live_url_markers: tuple[str, ...] = (
+        "/api/demo-supplier/rail",
+        "/api/demo-supplier/tickets",
+    )
     live_runs: list[str] = field(default_factory=list)
 
     async def start(self, spec: LaunchSpec) -> RunHandle:
-        if self.live_url_marker in spec.url:
+        if any(marker in spec.url for marker in self.live_url_markers):
             self.live_runs.append(spec.run_id)
             return await self.live.start(spec)
         return await self.scripted.start(spec)

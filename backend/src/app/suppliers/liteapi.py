@@ -31,6 +31,7 @@ from typing import Any
 
 from pydantic import SecretStr
 
+from app.core.domain.places import resolve_city
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails, has_full_name, split_name
@@ -72,6 +73,8 @@ SPARE_PICKS = 2
 # Equivalent offers tried when the chosen one cannot be prebooked any more.
 PREBOOK_ATTEMPTS = 3
 CENTRAL_KM = 1.5
+# The radius of the hotel search around a city centre when the city name finds nothing.
+NEAR_CENTRE_M = 5_000
 GOOD_RATING = 8.0
 GUEST_NATIONALITY = "PL"
 REFUNDABLE = "RFN"
@@ -102,33 +105,6 @@ class City:
     longitude: float  # the centre, for "km from the centre"
 
 
-_PRAGUE = City("CZ", "Prague", 50.0875, 14.4213)
-_BARCELONA = City("ES", "Barcelona", 41.3870, 2.1700)
-_BERLIN = City("DE", "Berlin", 52.5200, 13.4050)
-_VIENNA = City("AT", "Vienna", 48.2085, 16.3731)
-_BUDAPEST = City("HU", "Budapest", 47.4979, 19.0402)
-_LISBON = City("PT", "Lisbon", 38.7110, -9.1366)
-_ROME = City("IT", "Rome", 41.8986, 12.4769)
-_KRAKOW = City("PL", "Krakow", 50.0617, 19.9373)
-_WARSAW = City("PL", "Warsaw", 52.2297, 21.0122)
-CITIES: dict[str, City] = {
-    "prague": _PRAGUE,
-    "praha": _PRAGUE,
-    "barcelona": _BARCELONA,
-    "berlin": _BERLIN,
-    "vienna": _VIENNA,
-    "wien": _VIENNA,
-    "budapest": _BUDAPEST,
-    "lisbon": _LISBON,
-    "lisboa": _LISBON,
-    "rome": _ROME,
-    "roma": _ROME,
-    "krakow": _KRAKOW,
-    "kraków": _KRAKOW,
-    "warsaw": _WARSAW,
-    "warszawa": _WARSAW,
-}
-
 CONTACT_EMAIL = "trips@tripsplit.example"
 CONTACT_PHONE = "+48500100200"
 
@@ -146,7 +122,12 @@ class LiteApiConfig:
 
 
 def find_city(name: str) -> City | None:
-    return CITIES.get(name.strip().casefold())
+    """The hotel search's view of a catalogue city (`resolve_city`): any city the catalogue
+    knows, in any form people type ("Sztokholmu", "Praha")."""
+    city = resolve_city(name)
+    if city is None:
+        return None
+    return City(city.country_code, city.name, city.latitude, city.longitude)
 
 
 def occupancies_for(party_size: int) -> tuple[int, ...]:
@@ -604,6 +585,12 @@ class LiteApiSupplier:
             self.log.notes.append(f"hotel list: {found.error.describe()}")
             return []
         hotels = parse_hotels(found.value, city)
+        if not hotels:
+            # LiteAPI names some cities differently (München, Malmö): ask around the centre.
+            near = await self.client.hotels_near(
+                city.latitude, city.longitude, NEAR_CENTRE_M, MAX_HOTELS
+            )
+            hotels = parse_hotels(near.value, city) if isinstance(near, Ok) else {}
         if not hotels:
             return []
         checkout = request.return_date or request.depart_date + timedelta(days=1)

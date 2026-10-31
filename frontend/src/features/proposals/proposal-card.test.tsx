@@ -34,6 +34,9 @@ describe("ProposalCard", () => {
       price_minor: 410_400,
       details: "",
       starts_at: null,
+      links: [],
+      images: [],
+      provenance: null,
       segments: [
         {
           carrier: "Ryanair",

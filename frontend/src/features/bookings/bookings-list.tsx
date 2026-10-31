@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel } from "@/components/ui/panel";
 import { KIND_FILL, KindIcon } from "@/features/proposals";
+import { OfferTrust } from "@/features/trust";
 import {
   apiErrorMessage,
   type BookingResponse,
@@ -142,6 +143,14 @@ export function BookingsList({
                 </Button>
               )}
             </div>
+            <OfferTrust
+              links={booking.links}
+              images={booking.images}
+              provenance={booking.provenance}
+              title={booking.title}
+              photos={booking.kind === "stay"}
+              className="px-4 pb-4 sm:px-6"
+            />
             <BookingTicket booking={booking} currency={trip.currency} />
             {canCompleteManually(trip, booking) && (
               <div className="border-t border-line px-4 pt-3">

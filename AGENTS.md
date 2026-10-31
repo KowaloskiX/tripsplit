@@ -182,6 +182,19 @@ funds (safeguarding, AML/KYC are its obligations; it keeps its records after a T
 is deleted). Whether selling packages makes TripSplit a tour operator / linked travel
 arrangement under the EU Package Travel Directive still has to be assessed.
 
+## Attractions and the day plan
+
+After the package vote (while the group pays) `GET /api/trips/{id}/attractions` lists ~8-12 ranked
+ideas from every activity supplier (snapshot at the first request; `supplier_data` read
+defensively), `POST .../attractions/{aid}/vote` toggles a vote, and the organizer's
+`POST .../itinerary/generate` schedules the voted ones deterministically
+(`core/domain/day_plan.py`: transport bounds, opening hours, walking/transit times, lunch +
+dinner, max 4/day, nearest-neighbour clustering). A planned BOOKABLE visit queues a ticket
+`Booking` (re-split of the shares, back to `paying` if needed); `sim_tickets` offers are bought
+by the agent on the demo ticket shop `/api/demo-supplier/tickets` (rules only, 0 LLM calls).
+Offers with `supplier_data.itinerary_only` never enter packages.
+`uv run trip-harness run attraction_tickets [--live-agent]`.
+
 ## API bridge
 
 ```bash
@@ -215,6 +228,13 @@ Both artifacts are committed. Never hand-edit the generated client.
   `sim_stay_site`) still point at real sites — do not start them in a demo.
 - **Bookings stuck after a backend restart heal on the next listing:** a still-alive agent
   (`agent.pid`) is re-attached, a `result.json` is applied, anything else fails the booking.
+
+- **Cities live in ONE catalogue:** `core/domain/places.py` (+ `places_data.py`, ~176 cities:
+  EN/PL/local names, country, centre, IATA, PKP station). `resolve_city("Sztokholmu")` is
+  declension- and diacritics-aware; airports, LiteAPI, PKP and the brief all read it — add a city
+  there, never a table in a supplier. `osm_activities` = real sights near the centre (Wikipedia
+  geo search, cached in `backend/var/places-cache`) as free ideas in the package summary, never
+  bought; `sim_stay` is only used when no real stays supplier found anything (the summary says so).
 
 - **The repo path contains a space.** Always quote paths in shell commands; in Node configs use
   `fileURLToPath(import.meta.url)` rather than `new URL(...).pathname`.

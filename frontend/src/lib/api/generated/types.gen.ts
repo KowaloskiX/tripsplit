@@ -68,6 +68,112 @@ export type ApproveRequest = {
 };
 
 /**
+ * AttractionKind
+ */
+export type AttractionKind = 'museum' | 'landmark' | 'viewpoint' | 'food' | 'experience';
+
+/**
+ * AttractionResponse
+ */
+export type AttractionResponse = {
+    /**
+     * Attraction Id
+     */
+    attraction_id: string;
+    /**
+     * Bookable
+     */
+    bookable: boolean;
+    /**
+     * Closes
+     */
+    closes: string | null;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Duration Minutes
+     */
+    duration_minutes: number;
+    /**
+     * Image Url
+     */
+    image_url: string;
+    kind: AttractionKind;
+    /**
+     * Lat
+     */
+    lat: number | null;
+    /**
+     * Lon
+     */
+    lon: number | null;
+    /**
+     * Opens
+     */
+    opens: string | null;
+    /**
+     * Price Per Person Minor
+     */
+    price_per_person_minor: number | null;
+    /**
+     * Provenance
+     */
+    provenance: string;
+    /**
+     * Rank
+     */
+    rank: number;
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Voted By Me
+     */
+    voted_by_me: boolean;
+    /**
+     * Voters
+     */
+    voters: Array<VoterResponse>;
+    /**
+     * Votes
+     */
+    votes: number;
+    /**
+     * Website
+     */
+    website: string;
+};
+
+/**
+ * AttractionsResponse
+ */
+export type AttractionsResponse = {
+    /**
+     * Attractions
+     */
+    attractions: Array<AttractionResponse>;
+    /**
+     * Destination
+     */
+    destination: string;
+    /**
+     * Majority
+     */
+    majority: number;
+    /**
+     * Members
+     */
+    members: number;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+};
+
+/**
  * BatchItemResponse
  */
 export type BatchItemResponse = {
@@ -524,7 +630,7 @@ export type EventActor = 'agent' | 'member' | 'system';
 /**
  * EventKind
  */
-export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued' | 'hold_placed' | 'hold_expired' | 'traveller_details_missing' | 'escrow_opened' | 'supplier_paid' | 'funding_expired';
+export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued' | 'hold_placed' | 'hold_expired' | 'traveller_details_missing' | 'escrow_opened' | 'supplier_paid' | 'funding_expired' | 'attraction_voted' | 'itinerary_ready';
 
 /**
  * EventResponse
@@ -668,6 +774,103 @@ export type InsufficientFundsResponse = {
      * Shortfall Minor
      */
     shortfall_minor?: number | null;
+};
+
+/**
+ * ItemKind
+ */
+export type ItemKind = 'travel' | 'attraction' | 'meal' | 'free';
+
+/**
+ * ItineraryDayResponse
+ */
+export type ItineraryDayResponse = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Items
+     */
+    items: Array<ItineraryItemResponse>;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * ItineraryItemResponse
+ */
+export type ItineraryItemResponse = {
+    /**
+     * Attraction Id
+     */
+    attraction_id: string | null;
+    /**
+     * Booking Id
+     */
+    booking_id: string | null;
+    /**
+     * End
+     */
+    end: string;
+    kind: ItemKind;
+    /**
+     * Lat
+     */
+    lat: number | null;
+    /**
+     * Link
+     */
+    link: string;
+    /**
+     * Lon
+     */
+    lon: number | null;
+    /**
+     * Map Url
+     */
+    map_url: string;
+    /**
+     * Note
+     */
+    note: string;
+    /**
+     * Place
+     */
+    place: string;
+    /**
+     * Start
+     */
+    start: string;
+    tickets: TicketStatus | null;
+    /**
+     * Title
+     */
+    title: string;
+};
+
+/**
+ * ItineraryResponse
+ */
+export type ItineraryResponse = {
+    /**
+     * Days
+     */
+    days: Array<ItineraryDayResponse>;
+    /**
+     * Generated At
+     */
+    generated_at: string | null;
+    /**
+     * Stale
+     */
+    stale: boolean;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
 };
 
 /**
@@ -1581,6 +1784,13 @@ export type SupplierCallResponse = {
 export type SupplierChannel = 'api' | 'agent' | 'manual';
 
 /**
+ * TicketStatus
+ *
+ * Where the group's tickets for a planned visit stand, for the itinerary.
+ */
+export type TicketStatus = 'to_buy' | 'buying' | 'booked' | 'needs_help';
+
+/**
  * TopUpAndPayRequest
  *
  * Tops the wallet up by exactly what the share is missing, then pays the share.
@@ -1846,6 +2056,20 @@ export type ValidationError = {
      * Error Type
      */
     type: string;
+};
+
+/**
+ * VoterResponse
+ */
+export type VoterResponse = {
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * User Id
+     */
+    user_id: string;
 };
 
 /**
@@ -2361,6 +2585,94 @@ export type TripsRoomResponses = {
 };
 
 export type TripsRoomResponse = TripsRoomResponses[keyof TripsRoomResponses];
+
+export type AttractionsListData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/attractions';
+};
+
+export type AttractionsListErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AttractionsListError = AttractionsListErrors[keyof AttractionsListErrors];
+
+export type AttractionsListResponses = {
+    /**
+     * Successful Response
+     */
+    200: AttractionsResponse;
+};
+
+export type AttractionsListResponse = AttractionsListResponses[keyof AttractionsListResponses];
+
+export type AttractionsVoteData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+        /**
+         * Attraction Id
+         */
+        attraction_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/attractions/{attraction_id}/vote';
+};
+
+export type AttractionsVoteErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AttractionsVoteError = AttractionsVoteErrors[keyof AttractionsVoteErrors];
+
+export type AttractionsVoteResponses = {
+    /**
+     * Successful Response
+     */
+    200: AttractionsResponse;
+};
+
+export type AttractionsVoteResponse = AttractionsVoteResponses[keyof AttractionsVoteResponses];
 
 export type BookingsListData = {
     body?: never;
@@ -3203,6 +3515,90 @@ export type TripsFeedResponses = {
 };
 
 export type TripsFeedResponse = TripsFeedResponses[keyof TripsFeedResponses];
+
+export type ItineraryGetData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/itinerary';
+};
+
+export type ItineraryGetErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ItineraryGetError = ItineraryGetErrors[keyof ItineraryGetErrors];
+
+export type ItineraryGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ItineraryResponse;
+};
+
+export type ItineraryGetResponse = ItineraryGetResponses[keyof ItineraryGetResponses];
+
+export type ItineraryGenerateData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/itinerary/generate';
+};
+
+export type ItineraryGenerateErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ItineraryGenerateError = ItineraryGenerateErrors[keyof ItineraryGenerateErrors];
+
+export type ItineraryGenerateResponses = {
+    /**
+     * Successful Response
+     */
+    200: ItineraryResponse;
+};
+
+export type ItineraryGenerateResponse = ItineraryGenerateResponses[keyof ItineraryGenerateResponses];
 
 export type TripsLeaveData = {
     body?: never;
