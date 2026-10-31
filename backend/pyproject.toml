@@ -35,6 +35,7 @@ dump-openapi = "scripts.dump_openapi:main"
 ensure-indexes = "scripts.ensure_indexes:main"
 strict-queries = "scripts.strict_queries:main"
 agent-run = "app.agent.runner:main"
+agent-login = "app.agent.login:main"
 
 [build-system]
 requires = ["hatchling"]

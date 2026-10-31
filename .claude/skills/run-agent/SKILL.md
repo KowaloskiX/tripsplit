@@ -31,6 +31,7 @@ uv run agent-run --url https://www.saucedemo.com \
 | `--vault <file.json>` | flat JSON with values the agent may type; never committed |
 | `--no-cache` | ignore the trajectory cache and ask the planner every step |
 | `--json` | print a machine-readable result line prefixed with `__AGENT_RESULT__ ` |
+| `--await-approval` | at a stop-before-pay `done`, wait for a human decision (see below) |
 
 ## 2. Read the artifacts
 
@@ -47,6 +48,51 @@ Everything lands in `backend/var/agent/runs/<run-id>/` (override with `AGENT_VAR
 
 Successful runs also save a trajectory under `backend/var/agent/trajectories/`; the next run
 on the same URL replays it and falls back to the planner on the first mismatch.
+
+### The demo supplier
+
+With the backend running on dev (`uv run uvicorn app.main:app --port 8200`), a deterministic
+fake rail site lives at `http://localhost:8200/api/demo-supplier/rail` (search -> results ->
+passengers -> summary -> confirmation; playbook `skills/localhost.md`). It never blocks, so it
+is the target for the live demo and for end-to-end checks:
+
+```bash
+uv run agent-run --url http://localhost:8200/api/demo-supplier/rail \
+  --goal "Book 6 2nd-class tickets Warszawa -> Praha on 2026-11-20 for the passengers in the vault, stop at the summary" \
+  --run-id e2e-rail --vault /tmp/vault.json --max-steps 25
+```
+
+### Approval of the final click (`--await-approval`)
+
+This is how the backend runs the agent (`app.agent.launcher.SubprocessLauncher`). When the
+loop ends with `done` at the summary, the runner writes `status.json` with
+`"outcome": "awaiting_approval"`, keeps the browser open and polls
+`runs/<run-id>/approval.json` every second for `{"approved": true|false}`
+(timeout `AGENT_APPROVAL_TIMEOUT_S`, default 900 s).
+
+- approved, `AGENT_FINAL_CLICK=simulate` (**the default**): no pay click. A final frame is
+  taken and the run ends `done` with reason `simulated confirmation` and a
+  `confirmation_ref` like `SIM-1A2B3C` in `result.json`.
+- approved, `AGENT_FINAL_CLICK=real`: the same browser session continues with the goal
+  "Submit the order / pay now and wait for the confirmation" (up to 10 more steps). Never on a
+  real supplier during a demo. Those pay steps are never saved to the trajectory cache.
+- rejected or timed out: the run ends `handoff`.
+
+To approve a CLI run by hand: `echo '{"approved": true}' > var/agent/runs/<run-id>/approval.json`.
+
+### A logged-in profile (`AGENT_PROFILE_DIR`)
+
+Set `AGENT_PROFILE_DIR` (e.g. `var/agent/profile`, gitignored with the rest of `var/`) and
+Camoufox launches as a persistent context in that directory, so runs reuse cookies and logins.
+Log in once by hand:
+
+```bash
+AGENT_PROFILE_DIR=var/agent/profile uv run agent-login --url https://www.intercity.pl
+```
+
+A visible window opens; log in (PKP Intercity, Booking.com...), accept the cookie banner,
+close the window. The agent never sees the password. Only one process can use a profile at a
+time — do not run two agents on the same `AGENT_PROFILE_DIR` concurrently.
 
 ## 3. Outcomes
 
@@ -102,7 +148,8 @@ into a few bullet points. Keep it under ~4000 characters; the loader truncates b
 
 ## Traps
 
-- `OPENAI_API_KEY` must be set in `.env` at the repo root (the CLI loads `../.env` then `.env`).
+- With `PLANNER=openai`, `OPENAI_API_KEY` must be set in `.env` at the repo root (the CLI
+  loads `../.env` then `.env`). `PLANNER=claude-cli` needs a logged-in `claude` instead.
 - The first run needs the stealth browser: `uv run python -m camoufox fetch` (and
   `uv run playwright install chromium` for `--engine chromium`).
 - `https://www.saucedemo.com` is the safe smoke target. Username `standard_user`, password
