@@ -19,6 +19,7 @@ import os
 import subprocess
 import sys
 import time
+from typing import Any
 
 SYSTEM = """You are the planner for an autonomous booking agent driving a real browser for a group trip.
 Your job: get the requested train / stay / activity to a completed (or ready-to-submit) checkout.
@@ -194,15 +195,23 @@ def _make(kind):
 class BasePlanner:
     enabled = True
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.tokens = {"in": 0, "out": 0, "total": 0}  # cumulative usage
         self.calls = 0
-        self.max_calls = None  # a hard cap on model calls for this run; None = unlimited
+        self.max_calls: int | None = None  # a hard cap on model calls for this run; None = unlimited
 
     def budget_left(self):
         return self.max_calls is None or self.calls < self.max_calls
 
-    def next_plan(self, goal, stop_before_pay, page_render, vault_keys, history, **kwargs):
+    def next_plan(
+        self,
+        goal: str,
+        stop_before_pay: bool,
+        page_render: str,
+        vault_keys: list[str],
+        history: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         """A short plan (list of actions) for the current page — macro mode — or one action.
 
         Never exceeds `max_calls`: past the cap it returns a handoff without calling a model.
@@ -301,7 +310,15 @@ class NullPlanner(BasePlanner):
 
     enabled = False
 
-    def next_plan(self, goal, stop_before_pay, page_render, vault_keys, history, **kwargs):
+    def next_plan(
+        self,
+        goal: str,
+        stop_before_pay: bool,
+        page_render: str,
+        vault_keys: list[str],
+        history: list[dict[str, Any]],
+        **kwargs: Any,
+    ) -> list[dict[str, Any]]:
         hint = kwargs.get("hint") or "no rule matched"
         return [
             {
@@ -318,7 +335,7 @@ class NullPlanner(BasePlanner):
 class OpenAIPlanner(BasePlanner):
     """The OpenAI API — or any OpenAI-compatible endpoint via OPENAI_BASE_URL."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.model = os.getenv("PLANNER_MODEL", "gpt-5.5")
         # reasoning_effort keeps per-step latency sane over a long loop; "low" is plenty for
@@ -384,7 +401,7 @@ class ClaudeCliPlanner(BasePlanner):
     tool allowed). No other tools, no session persistence — one isolated call per step.
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self.binary = os.getenv("CLAUDE_BIN", "claude")
         self.model = os.getenv("PLANNER_MODEL", "sonnet")

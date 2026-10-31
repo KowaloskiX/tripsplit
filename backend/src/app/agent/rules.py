@@ -69,7 +69,8 @@ _PER_PASSENGER = {
     FieldKind.DOCUMENT_EXPIRY: "document_expiry",
 }
 _INDEX_IN_LABEL = re.compile(
-    r"(?:passenger|pasażer|pasazer|travell?er|osoba|guest|person)\s*(?:no\.?\s*)?#?(\d+)", re.I
+    r"(?:passenger|pasażer|pasazer|travell?er|osoba|guest|person)\w*\s*(?:no\.?\s*)?#?(\d+)",
+    re.I,
 )
 _INDEX_IN_NAME = re.compile(r"(?:^|[^a-z])p(?:assenger)?[_-]?(\d+)(?:[_-]|$)|[_-](\d+)[_-]", re.I)
 _TIME = re.compile(r"\b([0-2]\d):([0-5]\d)\b")
