@@ -76,9 +76,7 @@ function RoomPage(): ReactNode {
         <div className="order-2 lg:sticky lg:top-24 lg:order-1">
           <TripFeed tripId={tripId} myUserId={room.my_user_id} currency={room.trip.currency} />
         </div>
-        <div className="order-1 space-y-6 lg:order-2">
-          {/* While the group pays, the shares are the stage card; afterwards the bookings are. */}
-          {paying && showContributions && <ContributionsPanel room={room} />}
+        <div className="order-1 flex flex-col gap-6 lg:order-2">
           {showBookings && (
             <section aria-labelledby="bookings-heading" className="space-y-3">
               <div className="flex items-baseline justify-between gap-3">
@@ -96,7 +94,14 @@ function RoomPage(): ReactNode {
               <TripBookings tripId={tripId} />
             </section>
           )}
-          {!paying && showContributions && <ContributionsPanel room={room} />}
+          {/* While the group pays, the shares are the stage card; afterwards the bookings are.
+              Moved by CSS order, not by a second JSX slot: the panel stays mounted when the
+              last share lands, so its "everyone paid" moment can play. */}
+          {showContributions && (
+            <div className={paying ? "-order-1" : undefined}>
+              <ContributionsPanel room={room} />
+            </div>
+          )}
           <TravellerDetailsPanel room={room} />
           <ProposalsPanel room={room} />
           {import.meta.env.DEV && <DemoPanel room={room} />}
