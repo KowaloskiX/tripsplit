@@ -101,8 +101,10 @@ async def test_a_cached_research_does_not_ask_the_suppliers_again() -> None:
     rail, stay = _sim("sim_rail"), _sim("sim_stay")
     cache = SearchCache(ttl_s=300)
     first = await _researcher(rail, stay, cache=cache).research(BRIEF)
+    # A rail research asks for the return and for two singles (each direction) once each.
+    assert (rail.calls, stay.calls) == (3, 1)
     seen = await _with_progress(_researcher(rail, stay, cache=cache))
-    assert (rail.calls, stay.calls) == (1, 1)
+    assert (rail.calls, stay.calls) == (3, 1)
     assert {progress.outcome for progress in seen} == {SearchOutcome.CACHED}
     assert await _researcher(rail, stay, cache=cache).research(BRIEF) == first
 
