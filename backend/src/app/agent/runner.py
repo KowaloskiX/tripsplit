@@ -277,6 +277,7 @@ def run(req: RunRequest) -> RunResult:
     planner = make_planner(max_calls=req.max_llm_calls) if mode.uses_llm else NullPlanner()
     browser = Browser(headless=req.headless)
     browser.live_frame_path = os.path.join(artifacts, "live.jpg")
+    browser.type_delay_ms = 25 if profile_for(req.url).human_typing else 0
     prefs_text = "; ".join(f"{k}: {v}" for k, v in req.preferences.items() if v)
 
     history: list[dict[str, Any]] = []
@@ -426,7 +427,7 @@ def run(req: RunRequest) -> RunResult:
             try:
                 state = observe(browser.page)
                 for _ in range(_RENDER_PATIENCE):
-                    if state["elements"]:
+                    if state["elements"] or detect_stage(state, rules.profile) != Stage.UNKNOWN:
                         break
                     browser.page.wait_for_timeout(500)
                     state = observe(browser.page)

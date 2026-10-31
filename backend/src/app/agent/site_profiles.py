@@ -63,6 +63,8 @@ class SiteProfile:
     offer_policy: OfferPolicy = OfferPolicy.EARLIEST
     unmatched_offer: OfferFallback = OfferFallback.PLANNER
     max_passengers_per_purchase: int | None = None
+    # Type at a human pace (bot management watches keystroke timing); off for our own sites.
+    human_typing: bool = True
 
     def matches(self, url: str) -> bool:
         parsed = urlparse(url or "")
@@ -87,6 +89,7 @@ class SiteProfile:
             offer_policy=self.offer_policy,
             unmatched_offer=self.unmatched_offer,
             max_passengers_per_purchase=self.max_passengers_per_purchase,
+            human_typing=self.human_typing,
         )
 
 
@@ -163,6 +166,7 @@ DEMORAIL = SiteProfile(
     # train numbers a proposal names, so the nearest departure is the intended substitute.
     unmatched_offer=OfferFallback.CLOSEST_DEPARTURE,
     max_passengers_per_purchase=5,
+    human_typing=False,
 )
 
 INTERCITY = SiteProfile(
