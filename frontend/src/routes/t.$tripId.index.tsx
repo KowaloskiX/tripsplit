@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusScreen } from "@/components/ui/status-screen";
 import { sessionQueryOptions } from "@/features/auth";
-import { LiveBookingStage, TripBookings } from "@/features/bookings";
+import { LiveMissionControl, TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
-import { DemoPanel } from "@/features/demo";
+import { DemoPanel, DemoStage } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
@@ -72,6 +72,9 @@ function RoomPage(): ReactNode {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:py-10">
       <RoomHeader room={room} />
+      {import.meta.env.DEV && <DemoStage room={room} />}
+      {/* While the trip is buying, mission control takes the full width above the room. */}
+      {showBookings && <LiveMissionControl tripId={tripId} title={room.trip.title} />}
       <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
         {/* On a phone the stage card comes first: it is what needs doing now. */}
         <div className="order-2 lg:sticky lg:top-24 lg:order-1">
@@ -92,10 +95,7 @@ function RoomPage(): ReactNode {
                   Full screen
                 </Link>
               </div>
-              {/* Mission control on top while the trip is buying; the plain booking UI below. */}
-              <LiveBookingStage tripId={tripId} title={room.trip.title}>
-                <TripBookings tripId={tripId} />
-              </LiveBookingStage>
+              <TripBookings tripId={tripId} />
             </section>
           )}
           {/* While the group pays, the shares are the stage card; afterwards the bookings are.

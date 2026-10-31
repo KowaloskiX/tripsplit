@@ -55,10 +55,12 @@ export function segmentLine(segment: SegmentResponse): string {
 
 const CAUTION: Record<Provenance["kind"], number> = { live: 0, test: 1, sandbox: 1, example: 2 };
 
-/** The package's pill: its least trustworthy item, so one example item marks the whole card. */
+/** The package's pill: its least trustworthy transport/stay item (activities are extras, so a
+ *  simulated museum ticket does not mark a live train + hotel as an example). */
 export function packageProvenance(proposal: ProposalResponse): Provenance | undefined {
   let worst: Provenance | undefined;
   for (const item of proposal.items) {
+    if (item.kind === "activity") continue;
     const provenance = provenanceFromApi(item.provenance);
     if (provenance && (!worst || CAUTION[provenance.kind] > CAUTION[worst.kind]))
       worst = provenance;

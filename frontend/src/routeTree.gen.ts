@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PlanRouteImport } from './routes/plan'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as WalletRouteImport } from './routes/wallet'
 import { Route as DevAgentGraphRouteImport } from './routes/dev.agent-graph'
@@ -33,6 +34,11 @@ const AppRoute = AppRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/login': typeof LoginRoute
+  '/plan': typeof PlanRoute
   '/register': typeof RegisterRoute
   '/wallet': typeof WalletRoute
   '/dev/agent-graph': typeof DevAgentGraphRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/login': typeof LoginRoute
+  '/plan': typeof PlanRoute
   '/register': typeof RegisterRoute
   '/wallet': typeof WalletRoute
   '/dev/agent-graph': typeof DevAgentGraphRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRoute
   '/login': typeof LoginRoute
+  '/plan': typeof PlanRoute
   '/register': typeof RegisterRoute
   '/wallet': typeof WalletRoute
   '/dev/agent-graph': typeof DevAgentGraphRoute
@@ -114,6 +123,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/plan'
     | '/register'
     | '/wallet'
     | '/dev/agent-graph'
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/plan'
     | '/register'
     | '/wallet'
     | '/dev/agent-graph'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/plan'
     | '/register'
     | '/wallet'
     | '/dev/agent-graph'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRoute
   LoginRoute: typeof LoginRoute
+  PlanRoute: typeof PlanRoute
   RegisterRoute: typeof RegisterRoute
   WalletRoute: typeof WalletRoute
   DevAgentGraphRoute: typeof DevAgentGraphRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -239,6 +259,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRoute,
   LoginRoute: LoginRoute,
+  PlanRoute: PlanRoute,
   RegisterRoute: RegisterRoute,
   WalletRoute: WalletRoute,
   DevAgentGraphRoute: DevAgentGraphRoute,

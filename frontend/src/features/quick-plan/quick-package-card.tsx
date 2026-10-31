@@ -37,7 +37,7 @@ export function QuickPackageCard({
     >
       <PhotoStrip images={pkg.images} layout="cover" example={example} />
       <div className="space-y-2 px-1.5">
-        <ProvenancePill provenance={pkg.provenance} />
+        {pkg.provenance && <ProvenancePill provenance={pkg.provenance} />}
         <h3 className={cn("text-lg leading-snug tracking-[-0.02em]", example && "text-muted")}>
           {pkg.title}
         </h3>
@@ -70,8 +70,9 @@ export function QuickPackageCard({
           <span className="font-sans text-sm text-muted"> / person</span>
         </p>
         {example ? (
-          <Button size="sm" variant="outline" disabled>
-            Example only
+          // Simulated suppliers (the demo fallback) can still be taken — labelled as such.
+          <Button size="sm" variant="outline" onClick={() => onTake?.(pkg.id)}>
+            Take (example)
           </Button>
         ) : (
           <Button size="sm" variant="lime" onClick={() => onTake?.(pkg.id)}>

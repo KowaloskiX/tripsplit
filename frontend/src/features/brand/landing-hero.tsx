@@ -13,7 +13,7 @@ export function StartTripButton({ className }: { className?: string }): ReactNod
   const { user } = useSession();
   return (
     <Button size="lg" asChild className={className}>
-      <Link to={user ? "/app" : "/register"}>
+      <Link to={user ? "/plan" : "/register"}>
         Start a trip
         <ArrowRight className="size-5" aria-hidden />
       </Link>

@@ -16,7 +16,8 @@ export type QuickPackage = {
   images: readonly TrustImage[];
   segments: readonly QuickSegment[];
   perPersonMinor: number;
-  provenance: Provenance;
+  /** Absent = the API sent no provenance; no pill rather than a made-up one. */
+  provenance?: Provenance | undefined;
   links: readonly TrustLink[];
 };
 
