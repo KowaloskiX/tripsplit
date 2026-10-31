@@ -91,9 +91,12 @@ class Pay:
 
 @dataclass(frozen=True, slots=True)
 class StartBookings:
-    """Starts every PENDING / FAILED booking of the target and waits for the agents to settle."""
+    """Starts every PENDING / FAILED booking of the target and waits for the agents to settle.
+    `top_up_on_price_change`: a `price_changed` answer (a live supplier re-priced) is met the
+    way a group would — everyone tops up, and the purchase is started once more."""
 
     target: TargetSelector = "all"
+    top_up_on_price_change: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -321,6 +324,11 @@ class Scenario:
     known_violations: Mapping[str, str] = field(default_factory=dict)
     # The scenario documents a product bug: failing is expected (pytest xfail, strict=False).
     xfail: str | None = None
+    # Talks to the real Duffel TEST API: runs only with `--live-flights`, pending otherwise
+    # (the fast run and pytest never reach the network).
+    live_flights_only: bool = False
+    # PRICE_TOLERANCE_PERCENT for the scenario's trip flow (0 = any re-quote re-splits).
+    price_tolerance_percent: float = 0.0
 
     @property
     def members(self) -> tuple[str, ...]:

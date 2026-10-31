@@ -18,6 +18,7 @@ from beanie import PydanticObjectId
 from app.core.domain.bookings import format_money
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import hold_is_live
+from app.core.domain.travellers import masked_document_number
 from app.core.domain.trips import (
     BookingStatus,
     ContributionStatus,
@@ -65,6 +66,7 @@ from app.harness.world import World
 from app.models.bookings import Booking
 from app.repositories.trips import ProposalRepository
 from app.services.bookings import running_monitors
+from app.suppliers.duffel import DuffelLog
 from app.suppliers.pkp import LiveSearchLog
 from app.suppliers.ports import DisruptionKind
 from app.suppliers.sim import SimDisruption
@@ -125,6 +127,7 @@ class BookingRecord:
     status: str
     hold_expires_at: str
     confirmation_ref: str
+    hold_ref: str = ""  # the supplier's id of the held order (a Duffel order id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,6 +162,9 @@ class ScenarioResult:
     bookings: list[BookingRecord] = field(default_factory=list)
     suppliers: list[str] = field(default_factory=list)
     live_search: LiveSearchLog | None = None
+    duffel: DuffelLog | None = None
+    # Who travelled, as the report may show it: name, fields present, masked document.
+    travellers: list[str] = field(default_factory=list)
     features: dict[str, str] = field(default_factory=dict)
     seconds: float = 0.0
 
@@ -191,6 +197,22 @@ class Driver:
                 for name, info in all_features().items()
             },
         )
+        if self.scenario.live_flights_only and not self.world.options.live_flights:
+            result.steps.append(
+                StepRecord(
+                    0,
+                    "Setup",
+                    "pending",
+                    "pending — needs --live-flights (the real Duffel test API)",
+                    0.0,
+                    "",
+                    [],
+                    [],
+                )
+            )
+            await self.world.close()
+            self._judge(result)
+            return result
         try:
             await self.world.setup()
             before = await self._snapshot()
@@ -209,6 +231,8 @@ class Driver:
             await self._steps(before, result)
             final = await self._snapshot()
             self._summarize(final, result)
+            if self.world.duffel_log is not None:
+                result.travellers = await self._travellers(final)
         except Exception as exc:  # the harness itself must always produce a report
             result.steps.append(
                 StepRecord(len(result.steps), "harness crash", "failed", repr(exc), 0.0, "", [], [])
@@ -217,6 +241,7 @@ class Driver:
             await self._release_agents()
             await self.world.close()
         result.live_search = self.world.live_search_log
+        result.duffel = self.world.duffel_log
         result.seconds = round(time.monotonic() - started, 2)
         self._judge(result)
         return result
@@ -323,7 +348,7 @@ class Driver:
             case Pay():
                 return await self._pay(step)
             case StartBookings():
-                return await self._start(step.target), ("booking_started",)
+                return await self._start_step(step), ("booking_started",)
             case AgentOutcome():
                 self.world.scripted.script(step.target, step.outcome)
                 return f"{step.target}: {step.outcome}", ()
@@ -475,6 +500,20 @@ class Driver:
             titles = ", ".join(f"“{b.title}”" for b in done.replacements)
             lines.append(f"rebooked onto {titles}: {old} -> {new}")
         return "; ".join(lines)
+
+    async def _start_step(self, step: StartBookings) -> str:
+        """A live supplier may re-price at the purchase: with `top_up_on_price_change` the
+        group tops up its re-split shares and the organizer starts once more."""
+        if not step.top_up_on_price_change:
+            return await self._start(step.target)
+        try:
+            return await self._start(step.target)
+        except StepFailed as failure:
+            if failure.code != "price_changed":
+                raise
+        topped_up, _ = await self._pay(Pay())
+        line = await self._start(step.target)
+        return f"re-priced at the start — {topped_up}; then {line}"
 
     async def _start(self, selector: TargetSelector) -> str:
         world = self.world
@@ -777,6 +816,17 @@ class Driver:
 
     # ---- the verdict --------------------------------------------------------------------
 
+    async def _travellers(self, final: Snapshot) -> list[str]:
+        """Who was booked, safe to print: the name, which fields exist, a masked document."""
+        details = await self.world.travellers.details_for(final.members)
+        lines = []
+        for member in final.members:
+            found = details[member.user_id]
+            fields = ", ".join(sorted(f.value for f in found.provided_fields()))
+            masked = masked_document_number(found.document_number) or "-"
+            lines.append(f"{found.full_name}: {fields}; document {masked}")
+        return lines
+
     def _summarize(self, final: Snapshot, result: ScenarioResult) -> None:
         names = self._names()
         members = {m.user_id for m in final.members}
@@ -805,6 +855,7 @@ class Driver:
                 status=b.status.value,
                 hold_expires_at=f"{b.hold_expires_at:%Y-%m-%d %H:%M}" if b.hold_expires_at else "",
                 confirmation_ref=b.confirmation_ref or "",
+                hold_ref=b.hold_ref or "",
             )
             for b in final.bookings
         ]

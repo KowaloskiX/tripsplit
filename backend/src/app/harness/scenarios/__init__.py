@@ -4,6 +4,8 @@ from app.harness.scenario import Scenario
 from app.harness.scenarios import (
     agent_stuck_retry,
     approval_while_paying,
+    barcelona_duffel_live,
+    barcelona_duffel_slow_group,
     barcelona_flight_hold,
     budget_fit,
     budget_guard,
@@ -43,5 +45,7 @@ SCENARIOS: dict[str, Scenario] = {
         rail_party_of_eight,
         mixed_modes,
         cancelled_flight,
+        barcelona_duffel_live,
+        barcelona_duffel_slow_group,
     )
 }

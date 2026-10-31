@@ -3,7 +3,8 @@ plugins, one clock for all of them and a scripted agent.
 
 `--live-search` swaps the simulated rail carrier for the real PKP Intercity adapter (search and
 re-quote through a headless browser); `--live-agent` swaps it for the demo rail site and lets
-the real agent subprocess buy there. Every other supplier stays simulated.
+the real agent subprocess buy there; `--live-flights` plugs in the real `duffel` adapter
+against Duffel's TEST API for scenarios that list it. Every other supplier stays simulated.
 """
 
 import contextlib
@@ -13,13 +14,16 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
 
+import httpx
 from beanie import PydanticObjectId
+from pydantic import SecretStr
 
 from app.agent.launcher import AgentLauncher, SubprocessLauncher
 from app.ai.catalog_research import CatalogResearcher
 from app.core.background import BackgroundRunner
 from app.core.config import Settings
 from app.core.domain.result import Ok
+from app.core.domain.travellers import Gender
 from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.harness.adapters import HarnessClock, RoutingLauncher, ScriptablePrices, ScriptedLauncher
@@ -33,9 +37,13 @@ from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerDetailsUpdate, TravellerService
 from app.services.trips import NewTrip, TripService
 from app.suppliers.demo_rail import DemoRailSupplier
+from app.suppliers.duffel import SUPPLIER_ID as DUFFEL
+from app.suppliers.duffel import DuffelConfig, DuffelLog, DuffelSupplier
+from app.suppliers.duffel_client import DuffelClient
 from app.suppliers.intercity import BrowserTransport
 from app.suppliers.pkp import LiveSearchLog, PkpIntercitySupplier
 from app.suppliers.ports import SupplierAdapter
+from app.suppliers.providers import duffel_config, duffel_supplier
 from app.suppliers.registry import SupplierRegistry
 from app.suppliers.sim import SIM_CAPABILITIES, SimBehaviour, sim_supplier
 
@@ -45,6 +53,8 @@ EMAIL_DOMAIN = "harness.tripsplit.invalid"
 BACKEND_DIR = Path(__file__).resolve().parents[3]
 LIVE_TRAJECTORIES = BACKEND_DIR / "var" / "agent" / "trajectories"
 SIM_RAIL = "sim_rail"
+# A test-mode-shaped key for the offline Duffel transport; it never reaches the network.
+OFFLINE_DUFFEL_KEY = "duffel_test_offline"
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +63,10 @@ class Options:
     live_search: bool = False
     # Base URL of a backend serving /api/demo-supplier/rail; set => live agent for rail.
     live_agent_base_url: str | None = None
+    # The real Duffel TEST API for the `duffel` supplier; without it such scenarios are pending.
+    live_flights: bool = False
+    # Tests only: answers Duffel's API instead of the network (with `live_flights`).
+    duffel_transport: httpx.AsyncBaseTransport | None = None
     poll_s: float = 0.02
     max_steps: int = 40
 
@@ -68,6 +82,8 @@ def fake_details(index: int) -> TravellerDetailsUpdate:
         nationality="PL",
         document_number=f"EH{4_200_000 + index * 7_919:07d}",
         document_expiry=date(2031, 6, 30),
+        # The shared people alternate: Anna, Kuba, Marta, Piotr, Zosia, Tomek, Ola, Bartek.
+        gender=Gender.FEMALE if index % 2 == 0 else Gender.MALE,
     )
 
 
@@ -91,6 +107,7 @@ class World:
     researcher: CatalogResearcher
     launcher: AgentLauncher
     live_search_log: LiveSearchLog | None = None
+    duffel_log: DuffelLog | None = None
     resources: contextlib.AsyncExitStack = field(default_factory=contextlib.AsyncExitStack)
     browser: BrowserTransport | None = None
     users: dict[str, str] = field(default_factory=dict)  # display name -> user id
@@ -119,9 +136,16 @@ class World:
         adapters: list[SupplierAdapter] = []
         browser: BrowserTransport | None = None
         pkp: PkpIntercitySupplier | None = None
+        duffel_log: DuffelLog | None = None
         for spec in scenario.suppliers:
             behaviour = copy.deepcopy(spec.behaviour) if spec.behaviour else SimBehaviour()
-            if spec.id == SIM_RAIL and options.live_agent_base_url:
+            if spec.id == DUFFEL:
+                if not options.live_flights:
+                    continue  # the scenario is reported pending (Scenario.live_flights_only)
+                duffel = cls._duffel(settings, options, clock)
+                duffel_log = duffel.log
+                adapters.append(duffel)
+            elif spec.id == SIM_RAIL and options.live_agent_base_url:
                 adapters.append(DemoRailSupplier(options.live_agent_base_url))
             elif spec.id == SIM_RAIL and options.live_search:
                 browser = BrowserTransport(headless=True)
@@ -161,7 +185,12 @@ class World:
                 researcher,
                 runner,
                 suppliers=suppliers,
-                prices=SupplierPrices(db, suppliers, clock=clock.now),
+                prices=SupplierPrices(
+                    db,
+                    suppliers,
+                    clock=clock.now,
+                    price_tolerance_percent=scenario.price_tolerance_percent,
+                ),
             ),
             contributions=ContributionService(payments),
             bookings=BookingService(
@@ -173,14 +202,27 @@ class World:
                 payments=payments,
                 suppliers=suppliers,
                 clock=clock.now,
+                price_tolerance_percent=scenario.price_tolerance_percent,
             ),
             travellers=TravellerService(),
             scripted=scripted,
             researcher=researcher,
             launcher=launcher,
             live_search_log=pkp.log if pkp is not None else None,
+            duffel_log=duffel_log,
             browser=browser,
         )
+
+    @staticmethod
+    def _duffel(settings: Settings, options: Options, clock: HarnessClock) -> DuffelSupplier:
+        if options.duffel_transport is not None:
+            config = DuffelConfig(api_key=SecretStr(OFFLINE_DUFFEL_KEY))
+            client = DuffelClient(config.api_key, transport=options.duffel_transport, backoff_s=0)
+            return DuffelSupplier(client, config, clock=clock.now)
+        live = duffel_config(settings)
+        if live is None:
+            raise RuntimeError("--live-flights needs a duffel_test_ DUFFEL_API_KEY")
+        return duffel_supplier(live, clock.now)
 
     @staticmethod
     def _simulator(
