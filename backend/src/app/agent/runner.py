@@ -36,6 +36,7 @@ from enum import StrEnum
 from typing import Any
 
 from app.agent import flows
+from app.agent import graph as graph_mod
 from app.agent.act import act
 from app.agent.browser import Browser
 from app.agent.goal import parse_goal
@@ -141,6 +142,8 @@ class RunResult:
     flow_misses: int = 0
     wall_s: float = 0.0
     final_stage: str = ""
+    # The supplier summary as read before `done` (names masked); None if never reached.
+    summary: dict[str, Any] | None = None
 
 
 def approval_timeout_s() -> float:
@@ -287,12 +290,16 @@ def run(req: RunRequest) -> RunResult:
     counts = {source: 0 for source in Source}
     heal_steps = 0
     failed_last = False
+    step_missed = False
+    step_log: list[dict[str, Any]] = []
 
     flow = flows.load(req.url) if (req.use_trajectory and mode.uses_flow) else None
     player = flows.FlowPlayer(flow, goal, profile_for(req.url)) if flow else None
     if flow:
         party = flow.get("recorded_party")
         print(f"[flow] loaded: {len(flow['steps'])} steps (recorded for {party})")
+    plan_graph = graph_mod.flow_graph(flow) if flow else graph_mod.generic_graph()
+    _write_json(os.path.join(artifacts, "flow_graph.json"), plan_graph)
 
     def status(step: int, reason: str) -> None:
         _write_json(
@@ -310,6 +317,7 @@ def run(req: RunRequest) -> RunResult:
                 "flow_steps": counts[Source.FLOW],
                 "rule_steps": counts[Source.RULE],
                 "llm_calls": planner.calls,
+                "steps": step_log,
             },
         )
 
@@ -322,7 +330,8 @@ def run(req: RunRequest) -> RunResult:
         shot: str,
         use_flow: bool,
     ) -> tuple[list[dict[str, Any]], Source]:
-        nonlocal heal_steps
+        nonlocal heal_steps, step_missed
+        step_missed = False
         if pending:
             queued = _revalidate(pending.pop(0), state)
             if queued is not None:
@@ -333,7 +342,7 @@ def run(req: RunRequest) -> RunResult:
             batch = player.next_actions(state["elements"], stage)
             if batch is not None:
                 return batch, Source.FLOW
-            missed = not player.finished()
+            missed = step_missed = not player.finished()
             if missed:
                 print(f"[flow] {player.log[-1] if player.log else 'miss'} -> self-heal")
         decision = rules.decide(state) if mode.uses_rules else None
@@ -435,8 +444,14 @@ def run(req: RunRequest) -> RunResult:
                 last_notes = notes
 
             # DECIDE
+            decided_at = time.monotonic()
             plan, source = decide(goal_text, stop_before_pay, rules, state, stage, shot, use_flow)
             counts[source] += 1
+            flow_nodes = (
+                [f"s{i}" for i in player.last_indices]
+                if source is Source.FLOW and player is not None
+                else []
+            )
             page_render = vault.mask(render_for_planner(state))
             plan = [guard(a, source, rules, state, stage, stop_before_pay) for a in plan]
             safe_plan = [
@@ -497,8 +512,21 @@ def run(req: RunRequest) -> RunResult:
 
             terminal = False
             failed_last = False
-            for action in plan:
+            for position, action in enumerate(plan):
                 kind = action.get("action")
+                entry = {
+                    "index": step,
+                    "node_id": (
+                        flow_nodes[position]
+                        if position < len(flow_nodes)
+                        else graph_mod.node_for(plan_graph, stage.value, action)
+                    ),
+                    "kind": kind,
+                    "status": "running",
+                    "duration_ms": 0,
+                    "source": source.value,
+                }
+                step_log.append(entry)
                 # Regressive-navigation guard.
                 if kind == "goto" and any(m in _ADVANCED_MILESTONES for m in milestones):
                     target = (action.get("url") or "").lower()
@@ -513,12 +541,15 @@ def run(req: RunRequest) -> RunResult:
                             }
                         )
                         pending.clear()
+                        entry["status"] = "failed"
                         browser.settle()
                         break
                 if kind in ("done", "handoff"):
                     browser.screenshot(os.path.join(artifacts, f"{step:02d}-{kind}.png"))
                     result.outcome, result.steps = kind, step
                     result.reason = vault.mask(action.get("reason") or "")
+                    entry["status"] = "done" if kind == "done" else "failed"
+                    entry["duration_ms"] = int((time.monotonic() - decided_at) * 1000)
                     terminal = True
                     break
                 # ACT
@@ -530,7 +561,15 @@ def run(req: RunRequest) -> RunResult:
                     history.append({"note": f"The last action FAILED: {str(exc)[:300]}"})
                     failed_last = True
                     pending.clear()
+                    entry["status"] = "failed"
                     break
+                finally:
+                    entry["duration_ms"] = int((time.monotonic() - decided_at) * 1000)
+                if entry["status"] == "running":
+                    entry["status"] = "healed" if step_missed else "done"
+                status(step, plan[-1].get("reason") or "")
+            if rules.last_summary is not None:
+                result.summary = rules.last_summary.masked()
             if terminal:
                 break
         else:
@@ -542,7 +581,18 @@ def run(req: RunRequest) -> RunResult:
         result.outcome = "awaiting_approval"
         status(result.steps, result.reason)
         print(f"[approval] waiting for {os.path.join(artifacts, APPROVAL_FILE)}")
+        waited_from = time.monotonic()
         decision = wait_for_approval(artifacts, approval_timeout_s())
+        step_log.append(
+            {
+                "index": result.steps,
+                "node_id": "approve",
+                "kind": "approve",
+                "status": "done" if decision else "failed",
+                "duration_ms": int((time.monotonic() - waited_from) * 1000),
+                "source": "human",
+            }
+        )
         if decision is None:
             result.outcome, result.reason = "handoff", "Nobody approved the summary in time."
             return

@@ -26,6 +26,7 @@ from typing import Any
 
 from app.agent.goal import GoalSpec
 from app.agent.site_profiles import SiteProfile, Stage, any_match
+from app.agent.summary import SummaryRecord, extract_summary
 
 Element = dict[str, Any]
 Action = dict[str, Any]
@@ -87,12 +88,20 @@ class FieldRole:
 class SummaryCheck:
     ok: bool
     problems: tuple[str, ...]
-    total: float | None
-    currency: str | None
+    record: SummaryRecord
     price_mismatch: bool = False
 
+    @property
+    def total(self) -> float | None:
+        minor = self.record.total_minor
+        return minor / 100 if minor is not None else None
+
     def reason(self, goal: GoalSpec) -> str:
-        total = f"{self.total:.2f} {self.currency or ''}".strip() if self.total else "unknown"
+        total = (
+            f"{self.total:.2f} {self.record.currency or ''}".strip()
+            if self.total is not None
+            else "unknown"
+        )
         if self.ok:
             date = f", date {goal.date}" if goal.date else ""
             return f"summary verified: {goal.passengers} passenger(s){date}, total {total}"
@@ -271,29 +280,38 @@ def detect_stage(state: dict[str, Any], profile: SiteProfile) -> Stage:
 
 
 def verify_summary(
-    text: str, goal: GoalSpec, names: list[tuple[str, str]], profile: SiteProfile
+    state: dict[str, Any], goal: GoalSpec, names: list[tuple[str, str]], profile: SiteProfile
 ) -> SummaryCheck:
-    """Check the review page against the goal. `names` are vault values: compared, never echoed."""
-    page = _norm(text)
+    """Extract the summary record and check it against the goal.
+
+    `names` are vault values: compared here, never echoed into a reason.
+    """
+    record = extract_summary(state, profile)
+    page = _norm(str(state.get("text") or state.get("text_preview") or ""))
     problems: list[str] = []
-    found = sum(1 for first, last in names if _norm(f"{first} {last}") in page)
-    if found != len(names):
-        problems.append(f"{found} of {len(names)} passenger names shown")
-    count = re.search(r"passengers?\D{0,6}(\d+)", page)
-    if count and int(count.group(1)) != goal.passengers:
-        problems.append(f"passenger count {count.group(1)} != {goal.passengers}")
-    if goal.date:
-        y, mth, d = goal.date.split("-")
-        if not any(f in page for f in (goal.date, f"{d}.{mth}.{y}", f"{d}/{mth}/{y}")):
-            problems.append("travel date not shown")
-    if goal.train and _compact(" ".join(goal.train.split()[:2])) not in _compact(page):
-        problems.append("requested train not shown")
-    total = currency = None
-    if (m := re.search(profile.total, text, re.I)) is not None:
-        total = _number(m.group(1))
-        currency = (m.group(2) or "").upper().replace("ZŁ", "PLN") or None
+    wanted = [_norm(f"{first} {last}") for first, last in names]
+    if record.passengers:
+        shown = [_norm(n) for n in record.passengers]
+        missing = sum(1 for w in wanted if w not in shown)
+        unexpected = sum(1 for n in shown if n not in wanted)
+        if missing:
+            problems.append(f"{missing} of {len(wanted)} passenger names missing")
+        if unexpected:
+            problems.append(f"{unexpected} unexpected passenger(s)")
+    elif sum(1 for w in wanted if w in page) != len(wanted):
+        problems.append("passenger names not all shown")
+    if record.passenger_count is not None and record.passenger_count != goal.passengers:
+        problems.append(f"passenger count {record.passenger_count} != {goal.passengers}")
+    if goal.date and record.date != goal.date:
+        problems.append(f"date {record.date or 'missing'} != {goal.date}")
+    if goal.train:
+        code = _compact(" ".join(goal.train.split()[:2]))
+        shown_service = _compact(record.service or "") if record.service else _compact(page)
+        if code not in shown_service:
+            problems.append("requested train not shown")
     price_mismatch = False
     if goal.budget is not None:
+        total = record.total_minor / 100 if record.total_minor is not None else None
         if total is None:
             problems.append("no total on the summary")
         elif abs(total - goal.budget) > goal.budget * goal.tolerance_percent / 100:
@@ -303,7 +321,7 @@ def verify_summary(
                 f"price changed: supplier total {total:.2f} vs budget {goal.budget:.2f} "
                 f"({delta:+.1f}%, tolerance {goal.tolerance_percent:g}%)"
             )
-    return SummaryCheck(not problems, tuple(problems), total, currency, price_mismatch)
+    return SummaryCheck(not problems, tuple(problems), record, price_mismatch)
 
 
 @dataclass
@@ -318,6 +336,7 @@ class RuleEngine:
     _last_sig: tuple[str, str] | None = None
     _same: int = 0
     last_stage: Stage = Stage.UNKNOWN
+    last_summary: SummaryRecord | None = None
     notes: list[str] = field(default_factory=list)
 
     def names(self) -> list[tuple[str, str]]:
@@ -406,7 +425,9 @@ class RuleEngine:
         )
 
     def summary_check(self, state: dict[str, Any]) -> SummaryCheck:
-        return verify_summary(str(state.get("text") or ""), self.goal, self.names(), self.profile)
+        check = verify_summary(state, self.goal, self.names(), self.profile)
+        self.last_summary = check.record
+        return check
 
     def _review(self, state: dict[str, Any], stage: Stage) -> RuleDecision | None:
         check = self.summary_check(state)

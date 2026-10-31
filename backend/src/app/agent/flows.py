@@ -295,6 +295,7 @@ class FlowPlayer:
     misses: int = 0
     executed: int = 0
     log: list[str] = field(default_factory=list)
+    last_indices: list[int] = field(default_factory=list)
 
     @property
     def steps(self) -> list[Step]:
@@ -342,6 +343,7 @@ class FlowPlayer:
             self.log.append(f"miss step {self.cursor}: target not found")
             return None
         batch = [action]
+        self.last_indices = [self.cursor]
         self.cursor += 1
         while action["action"] in _BATCHABLE and not self.finished():
             step = self.steps[self.cursor]
@@ -351,6 +353,7 @@ class FlowPlayer:
             if nxt is None:
                 break
             batch.append(nxt)
+            self.last_indices.append(self.cursor)
             self.cursor += 1
             action = nxt
         self.executed += len(batch)

@@ -91,7 +91,24 @@ _JS = r"""
     if (out.length >= 120) break;
   }
   const bodyText = ((document.body && document.body.innerText) || '').replace(/\s+/g, ' ');
+  // Labelled rows (table th/td, dl dt/dd): the raw material for summary extraction.
+  const rows = [];
+  for (const tr of document.querySelectorAll('tr')) {
+    const th = tr.querySelector('th'); const td = tr.querySelector('td');
+    if (!th || !td) continue;
+    rows.push({ label: clean(th.innerText, 60), value: clean(td.innerText, 400),
+      items: Array.from(td.querySelectorAll('li')).map((li) => clean(li.innerText, 80)).slice(0, 12) });
+    if (rows.length >= 40) break;
+  }
+  for (const dt of document.querySelectorAll('dt')) {
+    const dd = dt.nextElementSibling;
+    if (!dd || dd.tagName.toLowerCase() !== 'dd') continue;
+    rows.push({ label: clean(dt.innerText, 60), value: clean(dd.innerText, 400),
+      items: Array.from(dd.querySelectorAll('li')).map((li) => clean(li.innerText, 80)).slice(0, 12) });
+    if (rows.length >= 40) break;
+  }
   return {
+    rows: rows,
     url: location.href,
     title: document.title,
     headings: Array.from(document.querySelectorAll('h1,h2')).map((h) => clean(h.innerText, 100)).filter(Boolean).slice(0, 8),
