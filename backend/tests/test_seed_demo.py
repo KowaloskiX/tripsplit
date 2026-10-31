@@ -4,6 +4,8 @@ import pytest
 
 from app.core.config import Settings
 from app.db.client import Database
+from app.db.identifiers import to_object_id
+from app.models.travellers import TravellerProfile
 from app.payments.partner import WalletOwnerKind
 from app.services.demo_account import DEMO_WALLET_MINOR, SeedRefusedError, seed_demo
 from app.services.wallet import WalletService
@@ -32,3 +34,18 @@ async def test_seed_demo_refuses_outside_dev_and_test(
     prod = settings.model_copy(update={"app_env": "prod"})
     with pytest.raises(SeedRefusedError):
         await seed_demo(database, prod)
+
+
+async def test_seed_demo_fills_traveller_details_once(
+    database: Database, settings: Settings
+) -> None:
+    seeded = await seed_demo(database, settings)
+    owner = to_object_id(seeded.user_id)
+    profile = await TravellerProfile.find_one(TravellerProfile.user_id == owner)
+    assert profile is not None and profile.full_name and profile.gender
+    assert profile.document_number and profile.document_expiry and profile.date_of_birth
+
+    await profile.set({"full_name": "Edited Name"})
+    await seed_demo(database, settings)
+    kept = await TravellerProfile.find_one(TravellerProfile.user_id == owner)
+    assert kept is not None and kept.full_name == "Edited Name"

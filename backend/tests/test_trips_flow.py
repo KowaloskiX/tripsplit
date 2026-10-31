@@ -13,6 +13,7 @@ from app.core.config import Settings, get_settings
 from app.core.domain.trips import BookingKind, BookingStatus, EventKind, TransportMode, TripStatus
 from app.core.http_security import CSRF_HEADER_NAME
 from app.db.identifiers import to_object_id
+from app.models.travellers import TravellerProfile
 from app.models.trips import Trip
 from app.repositories.bookings import BookingRepository
 from app.repositories.trips import TripRepository
@@ -237,6 +238,27 @@ async def test_odd_split_sums_to_the_total(app: FastAPI, member_factory: MemberF
     assert len(shares) == 7
     assert sum(shares) == room["trip"]["total_minor"]
     assert max(shares) - min(shares) <= 1
+
+
+async def test_seeded_friends_have_complete_document_details(
+    app: FastAPI, member_factory: MemberFactory
+) -> None:
+    """A flight names every passenger: seeded friends (who can never sign in to enter their
+    details) come with complete made-up ones, so a demo flight trip is not stuck."""
+    organizer = await member_factory("organizer@example.com")
+    trip_id = await _create_trip(organizer)
+    await organizer.post(f"/api/trips/{trip_id}/demo/seed-members", {"count": 3})
+
+    room = await _room(organizer, trip_id)
+    seeded = [m["user_id"] for m in room["members"] if m["role"] != "organizer"]
+    profiles = await TravellerProfile.find_all().to_list()
+    by_user = {str(profile.user_id): profile for profile in profiles}
+    assert len(seeded) == 3
+    for user_id in seeded:
+        profile = by_user[user_id]
+        assert profile.full_name and profile.date_of_birth and profile.gender
+        assert profile.nationality == "PL"
+        assert profile.document_number and profile.document_expiry
 
 
 async def test_packages_are_flagged_over_budget_and_closing_on_one_warns(

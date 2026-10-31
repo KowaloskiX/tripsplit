@@ -7,12 +7,14 @@ reserved `.invalid` email domain (RFC 2606), which can never belong to a real pe
 """
 
 import secrets
+from datetime import date
 
 from beanie import PydanticObjectId
 from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.core.domain.errors import TripError
 from app.core.domain.result import Err, Ok, Result
+from app.core.domain.travellers import Gender
 from app.core.domain.trips import EventActor, EventKind, TripStatus
 from app.core.domain.wallet import WalletTransactionKind, shortfall
 from app.core.security import hash_password
@@ -21,6 +23,7 @@ from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.auth import User
 from app.models.trips import Trip, TripMember
 from app.repositories.auth import UserRepository
+from app.repositories.travellers import TravellerProfileRepository
 from app.repositories.trips import (
     EventRepository,
     MemberRepository,
@@ -49,6 +52,22 @@ DEMO_NAMES = (
     "Ania Kaczmarek",
     "Michal Krawczyk",
 )
+_DEMO_WOMEN = frozenset({"Ola Nowak", "Marta Lis", "Zosia Sikora", "Kasia Dudek", "Ania Kaczmarek"})
+_DEMO_DOCUMENT_EXPIRY = date(2032, 12, 31)
+
+
+def demo_traveller_details(name: str, index: int) -> dict[str, object]:
+    """Made-up but complete document details for a seeded friend: an airline (Duffel) names
+    every passenger on its order, so a flight trip of seeded friends would otherwise wait for
+    details nobody can enter (a seeded account can never sign in)."""
+    return {
+        "full_name": name,
+        "date_of_birth": date(1994, 1 + index % 12, 1 + index % 28),
+        "nationality": "PL",
+        "document_number": f"DEMO{secrets.token_hex(4).upper()}",
+        "document_expiry": _DEMO_DOCUMENT_EXPIRY,
+        "gender": Gender.FEMALE if name in _DEMO_WOMEN else Gender.MALE,
+    }
 
 
 class DemoService:
@@ -67,6 +86,7 @@ class DemoService:
         self.trips = TripRepository()
         self.members = MemberRepository()
         self.users = UserRepository()
+        self.travellers = TravellerProfileRepository()
         self.proposals = ProposalRepository()
         self.votes = VoteRepository()
         self.events = EventRepository()
@@ -91,7 +111,7 @@ class DemoService:
             # Same guard as a real join: no member may slip in after the vote is closed.
             if not await self.trips.touch_if_status(trip_oid, JOINABLE_STATUSES, session):
                 raise NotJoinableError
-            for name in names:
+            for index, name in enumerate(names):
                 user = await self.users.add(
                     User(
                         email=f"{name.lower()}-{secrets.token_hex(4)}@{DEMO_EMAIL_DOMAIN}",
@@ -103,6 +123,9 @@ class DemoService:
                 await self.members.add(
                     TripMember(trip_id=trip_oid, user_id=identifier_of(user), display_name=name),
                     session=session,
+                )
+                await self.travellers.upsert(
+                    identifier_of(user), demo_traveller_details(name, index), session=session
                 )
                 await self.events.add(
                     trip_oid,

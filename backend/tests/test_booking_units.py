@@ -16,6 +16,7 @@ from app.core.domain.bookings import (
     format_delta,
     format_money,
     is_valid_run_id,
+    priced_purchase_url,
     repriced_minor,
     resplit,
 )
@@ -148,3 +149,14 @@ def test_money_formatting() -> None:
     assert format_money(5, "PLN") == "0.05 PLN"
     assert format_delta(1_200, "PLN") == "+12.00 PLN"
     assert format_delta(-1_200, "PLN") == "-12.00 PLN"
+
+
+def test_a_purchase_url_fare_follows_the_binding_amount() -> None:
+    site = "http://localhost:8840/api/demo-supplier/rail"
+    stale = f"{site}?from=Warszawa+Centralna&date=2026-11-20&fare=15565"
+    # 3 passengers, +12 % after a delay: 466.95 -> 522.98 PLN, 174.33 PLN each.
+    assert priced_purchase_url(stale, 52_298, 3) == (
+        f"{site}?from=Warszawa+Centralna&date=2026-11-20&fare=17433"
+    )
+    assert priced_purchase_url(f"{site}?date=2026-11-20", 52_298, 3) == f"{site}?date=2026-11-20"
+    assert priced_purchase_url("https://www.booking.com", 1_000, 0) == "https://www.booking.com"

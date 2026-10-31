@@ -29,6 +29,7 @@ from app.core.domain.bookings import (
     format_delta,
     format_money,
     is_valid_run_id,
+    priced_purchase_url,
     refund_minor,
     repriced_minor,
     run_id_for,
@@ -727,7 +728,7 @@ class BookingService:
             vault.update(card_vault(issued.value.secrets))
         spec = LaunchSpec(
             run_id=run_id,
-            url=booking.supplier_url,
+            url=priced_purchase_url(booking.supplier_url, booking.amount_minor, party),
             goal=self._goal_for(booking, party, trip.currency),
             vault=vault,
             max_steps=self.max_steps,
