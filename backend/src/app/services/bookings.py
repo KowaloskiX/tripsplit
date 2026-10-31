@@ -23,14 +23,13 @@ from app.agent.launcher import AgentLauncher, LaunchSpec, PidHandle, RunHandle, 
 from app.core.domain.bookings import (
     BOOKING_STATUSES_THAT_START,
     TRIP_STATUSES_THAT_BUY,
-    ShareChange,
     all_confirmed,
     booking_status_after,
+    exceeds_tolerance,
     format_delta,
     format_money,
     is_valid_run_id,
     repriced_minor,
-    resplit,
     run_id_for,
 )
 from app.core.domain.errors import BookingError
@@ -40,7 +39,6 @@ from app.core.domain.trips import (
     AgentRunStatus,
     BookingKind,
     BookingStatus,
-    ContributionStatus,
     EventActor,
     EventKind,
     MemberRole,
@@ -59,6 +57,8 @@ from app.repositories.trips import (
     MemberRepository,
     TripRepository,
 )
+from app.services.resplit import MemberShare, Resplit, resplit_payload, resplit_shares
+from app.suppliers.quotes import QuoteProvider, StaticQuotes
 
 logger = logging.getLogger(__name__)
 
@@ -80,6 +80,9 @@ _IN_FLIGHT = frozenset(
 )
 LAUNCH_FAILED_REASON = "The agent could not be started."
 LOST_REASON = "agent process lost (backend restarted)"
+_SETTLED = frozenset({BookingStatus.CANCELLED, BookingStatus.CONFIRMED})
+# A handoff or a failure can be finished by a human on the supplier site.
+COMPLETABLE_BY_HAND = frozenset({BookingStatus.HANDOFF, BookingStatus.FAILED})
 
 
 # The record routes map onto a response — named here so `app.routes` need not import models.
@@ -126,13 +129,6 @@ class RunView:
 class Frame:
     content: bytes
     media_type: str
-
-
-@dataclass(frozen=True, slots=True)
-class MemberShare:
-    user_id: PydanticObjectId
-    display_name: str
-    change: ShareChange
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,6 +202,19 @@ def _split_name(display_name: str) -> tuple[str, str]:
     return first, last.strip()
 
 
+def _passengers_of(booking: Booking, members: list[TripMember]) -> list[TripMember]:
+    """The members travelling on THIS purchase, in vault order. A booking created before
+    passengers were recorded per purchase covers the whole trip."""
+    if not booking.passenger_user_ids:
+        return members
+    by_user = {member.user_id: member for member in members}
+    return [by_user[user_id] for user_id in booking.passenger_user_ids if user_id in by_user]
+
+
+def _party_size(booking: Booking, members: list[TripMember]) -> int:
+    return len(_passengers_of(booking, members)) or len(members)
+
+
 def _what_is_bought(booking: Booking, travellers: int) -> str:
     if booking.kind is BookingKind.TRAIN:
         return f"{travellers} tickets"
@@ -224,9 +233,14 @@ class BookingService:
         max_steps: int = 40,
         headful: bool = False,
         poll_s: float = 1.0,
+        quotes: QuoteProvider | None = None,
+        price_tolerance_percent: float = 0.0,
     ) -> None:
         self.db = db
         self.launcher = launcher
+        # Asked for the current price right before every launch (see `_requote`).
+        self.quotes: QuoteProvider = quotes if quotes is not None else StaticQuotes()
+        self.price_tolerance_percent = price_tolerance_percent
         self.runs_dir = runs_dir.resolve()
         self.max_steps = max_steps
         self.headful = headful
@@ -345,8 +359,12 @@ class BookingService:
             return Err(BookingError.TRIP_NOT_READY)
         if booking.status not in BOOKING_STATUSES_THAT_START:
             return Err(BookingError.BOOKING_NOT_STARTABLE)
+        requoted = await self._requote(trip, booking)
+        if requoted is not None:
+            return Err(requoted)
 
         members = await self.members.for_trip(identifier_of(trip))
+        party = _party_size(booking, members)
         attempt = len(await self.runs.for_booking(identifier_of(booking))) + 1
         run_id = run_id_for(to_text(identifier_of(booking)), attempt)
         # Claimed before the run exists, so a listing meanwhile does not take it for an orphan.
@@ -370,15 +388,15 @@ class BookingService:
         await self._say(
             trip,
             EventKind.BOOKING_STARTED,
-            f"On it — buying {_what_is_bought(booking, len(members))} on {booking.supplier}.",
+            f"On it — buying {_what_is_bought(booking, party)} on {booking.supplier}.",
             booking,
         )
 
         spec = LaunchSpec(
             run_id=run_id,
             url=booking.supplier_url,
-            goal=self._goal_for(booking, len(members)),
-            vault=await self._vault_for(trip, members),
+            goal=self._goal_for(booking, party),
+            vault=await self._vault_for(trip, booking, members),
             max_steps=self.max_steps,
             headful=self.headful,
         )
@@ -401,23 +419,125 @@ class BookingService:
 
     def _goal_for(self, booking: Booking, travellers: int) -> str:
         return (
-            f"{booking.goal} Group size: {travellers} travellers. Fill traveller names and the "
-            "contact email from the vault. Stop at the final summary, before paying."
+            f"{booking.goal} Passengers on this purchase: {travellers}. Fill traveller names "
+            "and the contact email from the vault. Stop at the final summary, before paying."
         )
 
-    async def _vault_for(self, trip: Trip, members: list[TripMember]) -> dict[str, str]:
-        """Values the agent may TYPE — names and contact, never shown to the planner."""
+    async def _vault_for(
+        self, trip: Trip, booking: Booking, members: list[TripMember]
+    ) -> dict[str, str]:
+        """Values the agent may TYPE — names and contact, never shown to the planner.
+
+        Passengers are THIS booking's only, numbered from 1: the second purchase of a split
+        train starts again at `passenger_1`. The contact is always the organizer.
+        """
         organizer = await self.users.get_by_id(trip.organizer_id)
-        vault: dict[str, str] = {"passengers": str(len(members))}
+        passengers = _passengers_of(booking, members)
+        vault: dict[str, str] = {"passengers": str(len(passengers))}
         if organizer is not None:
             vault["email"] = organizer.email
-        for index, member in enumerate(members, start=1):
+        lead = next((member for member in members if member.role is MemberRole.ORGANIZER), None)
+        if lead is not None:
+            vault["first_name"], vault["last_name"] = _split_name(lead.display_name)
+        for index, member in enumerate(passengers, start=1):
             first, last = _split_name(member.display_name)
             vault[f"passenger_{index}_first_name"] = first
             vault[f"passenger_{index}_last_name"] = last
-            if member.role is MemberRole.ORGANIZER:
-                vault["first_name"], vault["last_name"] = first, last
         return {key: value for key, value in vault.items() if value}
+
+    # ---- re-quote -------------------------------------------------------------------------
+
+    async def _requote(self, trip: Trip, booking: Booking) -> BookingError | None:
+        """Asks the supplier for the current price before buying. None = go ahead.
+
+        Sold out -> the booking FAILS (a human may still finish it by hand). A price beyond
+        the tolerance -> the booking takes the new amount and the shares are re-split; a rise
+        that leaves somebody owing sends the trip back to PAYING (Rule #1) and stops here, a
+        drop only marks refunds and the purchase proceeds.
+        """
+        quoted = await self.quotes.quote(booking)
+        if quoted is None:
+            if await self.bookings.update_if_status(
+                booking, BOOKING_STATUSES_THAT_START, {"status": BookingStatus.FAILED}
+            ):
+                await self._say(
+                    trip,
+                    EventKind.BOOKING_FAILED,
+                    f"{booking.supplier} no longer offers {booking.title}. Pick another option "
+                    "or book it by hand.",
+                    booking,
+                )
+            return BookingError.SOLD_OUT
+        previous = booking.amount_minor
+        if not exceeds_tolerance(previous, quoted, self.price_tolerance_percent):
+            return None
+
+        async def write(session: AsyncClientSession) -> Resplit | None:
+            # Conditioned on the amount and status read before the quote: of two concurrent
+            # starts only one applies the new price.
+            moved = await self.bookings.update_if(
+                booking,
+                {"amount_minor": previous, "status": {"$in": list(BOOKING_STATUSES_THAT_START)}},
+                {"amount_minor": quoted},
+                session,
+            )
+            if not moved:
+                return None
+            bookings = await self.bookings.for_trip(identifier_of(trip), session)
+            total = sum(b.amount_minor for b in bookings if b.status is not BookingStatus.CANCELLED)
+            plan = await resplit_shares(trip, total, session, announce=False)
+            if plan.owes:
+                await self.trips.set_status(trip, TripStatus.PAYING, session)
+            await self._say_price_changed(trip, booking, previous, plan, session)
+            return plan
+
+        plan = await self.db.in_transaction(write)
+        if plan is None:
+            return BookingError.BOOKING_NOT_STARTABLE
+        return BookingError.PRICE_CHANGED if plan.owes else None
+
+    async def _say_price_changed(
+        self,
+        trip: Trip,
+        booking: Booking,
+        previous_minor: int,
+        plan: Resplit,
+        session: AsyncClientSession,
+    ) -> None:
+        current = booking.amount_minor
+        money = trip.currency
+        rose = current > previous_minor
+        verb = "raised" if rose else "lowered"
+        message = (
+            f"{booking.supplier} {verb} the price of {booking.title} from "
+            f"{format_money(previous_minor, money).removesuffix(' ' + money)} to "
+            f"{format_money(current, money)}"
+        )
+        if plan.shares:
+            each = max(abs(share.change.delta_minor) for share in plan.shares)
+            message += f" — {format_money(each, money)} {'more' if rose else 'less'} each."
+        else:
+            message += "."
+        if plan.owes:
+            message += " Top up and I will buy it."
+        elif plan.refunds:
+            message += " The difference will be refunded — buying it now."
+        else:
+            message += " Buying it now."
+        payload = {
+            **resplit_payload(plan),
+            "booking_id": to_text(identifier_of(booking)),
+            "previous_amount_minor": previous_minor,
+            "amount_minor": current,
+        }
+        await self.events.add(
+            identifier_of(trip),
+            EventKind.PRICE_CHANGED,
+            EventActor.AGENT,
+            message[:4000],
+            payload=payload,
+            session=session,
+        )
 
     # ---- monitor --------------------------------------------------------------------------
 
@@ -496,7 +616,7 @@ class BookingService:
         if booking is None or trip is None or booking.status is not BookingStatus.RUNNING:
             return
         await self.bookings.update(booking, {"status": BookingStatus.AWAITING_APPROVAL})
-        travellers = len(await self.members.for_trip(run.trip_id))
+        travellers = _party_size(booking, await self.members.for_trip(run.trip_id))
         money = format_money(booking.amount_minor, trip.currency)
         await self._say(
             trip,
@@ -534,7 +654,8 @@ class BookingService:
         )
         booking = await self.bookings.get(run.booking_id)
         trip = await self.trips.get(run.trip_id)
-        if booking is None or trip is None or booking.status is BookingStatus.CANCELLED:
+        # Cancelled (rebooked) or already finished by hand: the run's outcome changes nothing.
+        if booking is None or trip is None or booking.status in _SETTLED:
             return
         status = booking_status_after(outcome)
         confirmation = str((raw or {}).get("confirmation_ref") or "") or None
@@ -642,6 +763,46 @@ class BookingService:
         )
         return Ok(BookingWithRun(booking=booking, run=run))
 
+    # ---- manual completion ----------------------------------------------------------------
+
+    async def complete_manually(
+        self, trip_id: str, user_id: str, booking_id: str, confirmation_ref: str
+    ) -> Result[BookingWithRun, BookingError]:
+        """The organizer finished a handed-off (or failed) purchase on the supplier site."""
+        access = await self._organizer(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        trip, member = access.value
+        booking = await self._booking_of(trip, booking_id)
+        if booking is None:
+            return Err(BookingError.BOOKING_NOT_FOUND)
+        if booking.status not in COMPLETABLE_BY_HAND:
+            return Err(BookingError.NOT_COMPLETABLE)
+        # Rule #1 holds for a human too: nothing is bought while somebody still owes.
+        if trip.status not in TRIP_STATUSES_THAT_BUY:
+            return Err(BookingError.TRIP_NOT_READY)
+        completed = await self.bookings.update_if_status(
+            booking,
+            COMPLETABLE_BY_HAND,
+            {"status": BookingStatus.CONFIRMED, "confirmation_ref": confirmation_ref},
+        )
+        if not completed:
+            return Err(BookingError.NOT_COMPLETABLE)
+        await self.events.add(
+            identifier_of(trip),
+            EventKind.BOOKING_CONFIRMED,
+            EventActor.MEMBER,
+            f"{member.display_name} finished {booking.title} by hand: ref {confirmation_ref}.",
+            payload={
+                "booking_id": to_text(identifier_of(booking)),
+                "confirmation_ref": confirmation_ref,
+                "manual": True,
+            },
+            actor_user_id=member.user_id,
+        )
+        await self._maybe_trip_booked(trip)
+        return Ok(BookingWithRun(booking=booking, run=await self._current_run(booking)))
+
     # ---- disruption -----------------------------------------------------------------------
 
     async def simulate_disruption(
@@ -671,33 +832,9 @@ class BookingService:
             for booking in bookings
             if booking.status is not BookingStatus.CANCELLED and booking.id != target.id
         )
-        contributions = await self.contributions.for_trip(identifier_of(trip))
-        names = {
-            member.user_id: member.display_name
-            for member in await self.members.for_trip(identifier_of(trip))
-        }
-        changes = (
-            resplit(
-                new_total,
-                [contribution.amount_minor for contribution in contributions],
-                [contribution.paid_minor for contribution in contributions],
-            )
-            if contributions
-            else []
-        )
-        owes = any(change.status is ContributionStatus.PENDING for change in changes)
-        final_status = TripStatus.PAYING if owes else TripStatus.REBOOKING
         previous_total = trip.total_minor
-        shares = [
-            MemberShare(
-                user_id=contribution.user_id,
-                display_name=names.get(contribution.user_id, ""),
-                change=change,
-            )
-            for contribution, change in zip(contributions, changes, strict=True)
-        ]
 
-        async def write(session: AsyncClientSession) -> Booking:
+        async def write(session: AsyncClientSession) -> tuple[Booking, Resplit]:
             await self.bookings.update(target, {"status": BookingStatus.CANCELLED}, session)
             replacement = await self.bookings.add(
                 Booking(
@@ -713,6 +850,8 @@ class BookingService:
                     )[:4000],
                     amount_minor=new_amount,
                     replaces_booking_id=identifier_of(target),
+                    passenger_user_ids=target.passenger_user_ids,
+                    proposal_item_index=target.proposal_item_index,
                 ),
                 session,
             )
@@ -729,34 +868,19 @@ class BookingService:
                 session,
                 replaces_booking_id=to_text(identifier_of(target)),
             )
-            await self.trips.update(
-                trip, {"status": final_status, "total_minor": new_total}, session
-            )
-            for contribution, share in zip(contributions, shares, strict=True):
-                await self.contributions.update(
-                    contribution,
-                    {"amount_minor": share.change.share_minor, "status": share.change.status},
-                    session,
-                )
-            if shares:
-                await self.events.add(
-                    identifier_of(trip),
-                    EventKind.RESPLIT,
-                    EventActor.AGENT,
-                    self._resplit_message(shares, trip.currency, owes),
-                    payload=self._resplit_payload(shares, new_total, previous_total),
-                    session=session,
-                )
-            return replacement
+            plan = await resplit_shares(trip, new_total, session)
+            final_status = TripStatus.PAYING if plan.owes else TripStatus.REBOOKING
+            await self.trips.set_status(trip, final_status, session)
+            return replacement, plan
 
-        replacement = await self.db.in_transaction(write)
+        replacement, plan = await self.db.in_transaction(write)
         return Ok(
             Disruption(
                 cancelled=target,
                 replacement=replacement,
                 trip=trip,
                 previous_total_minor=previous_total,
-                shares=shares,
+                shares=plan.shares,
             )
         )
 
@@ -767,37 +891,3 @@ class BookingService:
             wanted = to_object_id(booking_id)
             return next((booking for booking in confirmed if booking.id == wanted), None)
         return next((booking for booking in confirmed if booking.kind is BookingKind.TRAIN), None)
-
-    @staticmethod
-    def _resplit_message(shares: list[MemberShare], currency: str, owes: bool) -> str:
-        first = shares[0].change
-        message = (
-            f"New share: {format_money(first.share_minor, currency)} each "
-            f"({format_delta(first.delta_minor, currency)})."
-        )
-        if owes:
-            message += " Please top up the difference — I rebook once everyone has paid."
-        elif any(share.change.status is ContributionStatus.REFUND_DUE for share in shares):
-            message += " The difference will be refunded."
-        return message
-
-    @staticmethod
-    def _resplit_payload(
-        shares: list[MemberShare], total_minor: int, previous_total_minor: int
-    ) -> dict[str, Any]:
-        return {
-            "total_minor": total_minor,
-            "previous_total_minor": previous_total_minor,
-            "members": [
-                {
-                    "user_id": to_text(share.user_id),
-                    "display_name": share.display_name,
-                    "previous_minor": share.change.previous_minor,
-                    "share_minor": share.change.share_minor,
-                    "delta_minor": share.change.delta_minor,
-                    "paid_minor": share.change.paid_minor,
-                    "status": share.change.status.value,
-                }
-                for share in shares
-            ],
-        }

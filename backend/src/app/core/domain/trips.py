@@ -76,6 +76,7 @@ class EventActor(StrEnum):
 class EventKind(StrEnum):
     TRIP_CREATED = "trip_created"
     MEMBER_JOINED = "member_joined"
+    MEMBER_LEFT = "member_left"
     MESSAGE = "message"  # free text from a member or the agent
     PROPOSALS_READY = "proposals_ready"
     VOTE_CAST = "vote_cast"
@@ -88,6 +89,7 @@ class EventKind(StrEnum):
     BOOKING_FAILED = "booking_failed"
     DISRUPTION = "disruption"
     RESPLIT = "resplit"
+    PRICE_CHANGED = "price_changed"  # the supplier re-quoted a booking before the purchase
 
 
 def split_evenly(total_minor: int, members: int) -> list[int]:

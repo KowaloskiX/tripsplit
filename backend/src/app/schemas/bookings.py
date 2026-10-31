@@ -13,13 +13,20 @@ from app.core.domain.trips import (
     TripStatus,
 )
 from app.schemas.common import StrictRequest
+from app.schemas.trips import VisibleText
 
 OBJECT_ID_LENGTH = 24
 MAX_DELAY_MINUTES = 24 * 60
+CONFIRMATION_REF_MAX_LENGTH = 120
 
 
 class ApproveRequest(StrictRequest):
     approved: bool
+
+
+class CompleteManuallyRequest(StrictRequest):
+    # The supplier's booking number, as the organizer read it after finishing by hand.
+    confirmation_ref: VisibleText = Field(min_length=1, max_length=CONFIRMATION_REF_MAX_LENGTH)
 
 
 class DisruptionRequest(StrictRequest):
@@ -55,6 +62,8 @@ class BookingResponse(BaseModel):
     status: BookingStatus
     confirmation_ref: str | None
     replaces_booking_id: str | None
+    # Who travels on this purchase (empty on bookings made before parties were recorded).
+    passenger_user_ids: list[str]
     run: AgentRunResponse | None
 
 

@@ -29,7 +29,8 @@ from app.repositories.trips import (
 )
 from app.services.contributions import ContributionService
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
-from app.services.trips import JOINABLE_STATUSES, NotJoinableError
+from app.services.trip_views import TripStatusView
+from app.services.trips import JOINABLE_STATUSES, NotJoinableError, TripService
 
 DEMO_EMAIL_DOMAIN = "demo.tripsplit.invalid"
 # Full names: a carrier needs a first AND last name per traveller, and the booking agent types
@@ -49,9 +50,12 @@ DEMO_NAMES = (
 
 
 class DemoService:
-    def __init__(self, db: Database, contributions: ContributionService) -> None:
+    def __init__(
+        self, db: Database, contributions: ContributionService, trips: TripService
+    ) -> None:
         self.db = db
         self.contribution_service = contributions
+        self.trip_service = trips
         self.trips = TripRepository()
         self.members = MemberRepository()
         self.users = UserRepository()
@@ -151,6 +155,21 @@ class DemoService:
             if isinstance(result, Ok):
                 paid += 1
         return Ok(paid)
+
+    async def leave(
+        self, trip_id: str, user_id: str, member_user_id: str
+    ) -> Result[TripStatusView, TripError]:
+        """The organizer makes a SEEDED member drop out — the real `leave`, on their behalf.
+        A real person is never removed this way: they leave themselves."""
+        access = await self._access(trip_id, user_id)
+        if not isinstance(access, Ok):
+            return access
+        if (error := require_organizer(access.value)) is not None:
+            return Err(error)
+        fake = await self._fake_members(identifier_of(access.value.trip))
+        if not any(member.user_id == to_object_id(member_user_id) for member in fake):
+            return Err(TripError.NOT_FOUND)
+        return await self.trip_service.leave(trip_id, member_user_id)
 
     async def _fake_members(self, trip_id: PydanticObjectId) -> list[TripMember]:
         fake: list[TripMember] = []

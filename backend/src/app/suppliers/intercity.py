@@ -16,12 +16,13 @@ API's are; they stop at this module.
 """
 
 import json
-import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Protocol
 from urllib.parse import quote
+
+from app.core.domain.bookings import PKP_INTERCITY_PURCHASE_CAP, split_party
 
 GATEWAY = "https://api-gateway.intercity.pl/server/public/endpoint"
 STATIONS_ORIGIN = "https://www.intercity.pl"
@@ -33,7 +34,7 @@ _DEVICE_NO = 956
 
 # An online international purchase accepts at most this many passengers; a 6-person request
 # answers "No offers fulfil the criteria" (error 254).
-MAX_PASSENGERS_PER_PURCHASE = 5
+MAX_PASSENGERS_PER_PURCHASE = PKP_INTERCITY_PURCHASE_CAP
 NO_OFFERS_ERROR = 254
 
 _TIME_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -110,11 +111,7 @@ class GroupQuote:
 
 def split_group(travellers: int, cap: int = MAX_PASSENGERS_PER_PURCHASE) -> list[int]:
     """As few purchases as possible, as even as possible: 6 -> [3, 3], 11 -> [4, 4, 3]."""
-    if travellers <= 0:
-        raise ValueError("a group needs at least one traveller")
-    purchases = math.ceil(travellers / cap)
-    base, extra = divmod(travellers, purchases)
-    return [base + 1 if index < extra else base for index in range(purchases)]
+    return split_party(travellers, cap)
 
 
 def results_url(departure: date, from_code: int, to_code: int, time: str = "06:00") -> str:

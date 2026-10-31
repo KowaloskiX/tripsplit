@@ -18,6 +18,8 @@ class TripError(StrEnum):
     INVALID_STATE = "invalid_trip_state"
     NO_PROPOSALS = "no_proposals"
     ALREADY_PAID = "already_paid"
+    ORGANIZER_CANNOT_LEAVE = "organizer_cannot_leave"
+    BOOKING_STARTED = "booking_started"  # too late to leave: the agent is already buying
 
 
 class ApiError(StrEnum):
@@ -42,3 +44,6 @@ class BookingError(StrEnum):
     BOOKING_NOT_STARTABLE = "booking_not_startable"
     NOT_AWAITING_APPROVAL = "not_awaiting_approval"
     NOTHING_TO_DISRUPT = "nothing_to_disrupt"
+    SOLD_OUT = "sold_out"  # the supplier no longer offers what the booking describes
+    PRICE_CHANGED = "price_changed"  # re-quoted dearer: the group tops up before the purchase
+    NOT_COMPLETABLE = "booking_not_completable"  # only a handoff / failure is finished by hand

@@ -20,7 +20,13 @@ from app.routes.dependencies import (
 )
 from app.routes.errors import booking_failure, trip_value
 from app.schemas.bookings import DisruptionRequest, DisruptionResponse, ShareChangeResponse
-from app.schemas.trips import CastVoteRequest, DemoResultResponse, SeedMembersRequest
+from app.schemas.trips import (
+    CastVoteRequest,
+    DemoLeaveRequest,
+    DemoResultResponse,
+    SeedMembersRequest,
+    TripStatusResponse,
+)
 from app.services.bookings import BookingWithRun
 
 router = APIRouter(
@@ -49,6 +55,23 @@ async def vote_all(
 @router.post("/pay-all", operation_id="demo-pay-all")
 async def pay_all(trip_id: str, service: DemoServiceDep, user: CurrentUser) -> DemoResultResponse:
     return DemoResultResponse(affected=trip_value(await service.pay_all(trip_id, user.id)))
+
+
+@router.post(
+    "/leave",
+    operation_id="demo-leave",
+    responses={
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+    },
+)
+async def make_member_leave(
+    trip_id: str, payload: DemoLeaveRequest, service: DemoServiceDep, user: CurrentUser
+) -> TripStatusResponse:
+    """A seeded member drops out — the organizer drives it from the demo panel."""
+    result = await service.leave(trip_id, user.id, payload.user_id)
+    return TripStatusResponse.model_validate(trip_value(result))
 
 
 @router.post(

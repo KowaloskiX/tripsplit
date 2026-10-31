@@ -11,6 +11,7 @@ from typing import Any
 
 from beanie import PydanticObjectId
 
+from app.core.domain.bookings import refund_minor
 from app.core.domain.trips import (
     BookingKind,
     ContributionStatus,
@@ -84,6 +85,8 @@ class ContributionView:
     amount_minor: int
     paid_minor: int
     outstanding_minor: int
+    # Paid beyond the current share (REFUND_DUE): what the member gets back.
+    refund_minor: int
     status: ContributionStatus
 
 
@@ -183,6 +186,7 @@ def contribution_view(contribution: Contribution, display_name: str) -> Contribu
         amount_minor=contribution.amount_minor,
         paid_minor=contribution.paid_minor,
         outstanding_minor=max(contribution.amount_minor - contribution.paid_minor, 0),
+        refund_minor=refund_minor(contribution.amount_minor, contribution.paid_minor),
         status=contribution.status,
     )
 

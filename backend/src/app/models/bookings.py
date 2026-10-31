@@ -7,12 +7,27 @@ from typing import ClassVar
 
 import pymongo
 from beanie import Document, PydanticObjectId
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from app.core.domain.trips import AgentOutcome, AgentRunStatus, BookingKind, BookingStatus
 from app.db.documents import TimestampMixin
 
 TEXT_MAX_LENGTH = 4000
+
+
+class TrainQuery(BaseModel):
+    """What it takes to re-quote a PKP Intercity booking (see `app.suppliers.quotes`).
+
+    Optional: set only when the booking was built from a real PKP quote. Without it the
+    booking's stored amount is taken as current.
+    """
+
+    from_code: int  # PKP station codes (`Station.code`)
+    to_code: int
+    departs_at: datetime  # departure of the first leg, local time as PKP reports it
+    train_number: int  # number of the first leg, e.g. 131 for "EC 131"
+    travel_class: int = 2
+    refundable: bool = False
 
 
 class Booking(TimestampMixin, Document):
@@ -29,6 +44,13 @@ class Booking(TimestampMixin, Document):
     confirmation_ref: str | None = None
     # Set when this booking replaces another one after a disruption.
     replaces_booking_id: PydanticObjectId | None = None
+    # Who travels on THIS purchase, in vault order (passenger_1..N). A supplier that caps the
+    # party per purchase (see `purchase_cap`) splits one package item into several bookings.
+    # Empty on documents created before the split existed: then the whole trip travels.
+    passenger_user_ids: list[PydanticObjectId] = Field(default_factory=list)
+    # Index of the chosen proposal's item this booking buys (shared by the parts of a split).
+    proposal_item_index: int | None = None
+    train_query: TrainQuery | None = None
 
     class Settings:
         name: ClassVar[str] = "bookings"

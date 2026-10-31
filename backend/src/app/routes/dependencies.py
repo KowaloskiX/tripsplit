@@ -22,6 +22,7 @@ from app.services.contributions import ContributionService
 from app.services.demo import DemoService
 from app.services.proposals import ProposalService
 from app.services.trips import TripService
+from app.suppliers.quotes import build_quote_provider
 
 # routes/ -> app/ -> src/ -> backend/: the agent subprocess runs from the backend directory.
 _BACKEND_DIR = Path(__file__).resolve().parents[3]
@@ -73,8 +74,8 @@ CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
 OptionalUser = Annotated[AuthenticatedUser | None, Depends(get_optional_user)]
 
 
-def get_trip_service(database: DbDep) -> TripService:
-    return TripService(database)
+def get_trip_service(database: DbDep, settings: SettingsDep) -> TripService:
+    return TripService(database, train_supplier_url=settings.demo_train_supplier_url)
 
 
 def get_proposal_service(
@@ -93,7 +94,9 @@ def get_contribution_service(settings: SettingsDep) -> ContributionService:
 
 
 def get_demo_service(database: DbDep, settings: SettingsDep) -> DemoService:
-    return DemoService(database, get_contribution_service(settings))
+    return DemoService(
+        database, get_contribution_service(settings), get_trip_service(database, settings)
+    )
 
 
 TripServiceDep = Annotated[TripService, Depends(get_trip_service)]
@@ -119,6 +122,8 @@ def get_booking_service(database: DbDep, settings: SettingsDep) -> BookingServic
         var_dir / "runs",
         max_steps=settings.agent_max_steps,
         headful=settings.agent_headful,
+        quotes=build_quote_provider(settings),
+        price_tolerance_percent=settings.price_tolerance_percent,
     )
 
 

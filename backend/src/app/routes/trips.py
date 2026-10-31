@@ -69,6 +69,18 @@ async def read_room(trip_id: str, service: TripServiceDep, user: CurrentUser) ->
     return RoomResponse.model_validate(trip_value(await service.room(trip_id, user.id)))
 
 
+@router.post(
+    "/{trip_id}/leave",
+    operation_id="trips-leave",
+    responses={**NOT_FOUND, status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
+)
+async def leave_trip(
+    trip_id: str, service: TripServiceDep, user: CurrentUser
+) -> TripStatusResponse:
+    """The caller drops out before anything is bought; the rest re-split the total."""
+    return TripStatusResponse.model_validate(trip_value(await service.leave(trip_id, user.id)))
+
+
 @router.get("/{trip_id}/feed", operation_id="trips-feed", responses=NOT_FOUND)
 async def read_feed(
     trip_id: str,

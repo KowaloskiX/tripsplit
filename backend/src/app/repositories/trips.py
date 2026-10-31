@@ -118,6 +118,9 @@ class MemberRepository:
         query = TripMember.find(TripMember.user_id == user_id, session=session)
         return await bounded_to_list(query, what="trips of a user")
 
+    async def delete(self, member: TripMember, session: AsyncClientSession | None = None) -> None:
+        await member.delete(session=session)
+
     async def delete_for_user(
         self, user_id: PydanticObjectId, session: AsyncClientSession | None = None
     ) -> None:
@@ -182,6 +185,16 @@ class VoteRepository:
     ) -> None:
         await Vote.find(Vote.trip_id == trip_id, session=session).delete(session=session)
 
+    async def delete_for_member(
+        self,
+        trip_id: PydanticObjectId,
+        user_id: PydanticObjectId,
+        session: AsyncClientSession | None = None,
+    ) -> None:
+        await Vote.find(Vote.trip_id == trip_id, Vote.user_id == user_id, session=session).delete(
+            session=session
+        )
+
     async def delete_for_user(
         self, user_id: PydanticObjectId, session: AsyncClientSession | None = None
     ) -> None:
@@ -243,6 +256,11 @@ class ContributionRepository:
             },
             session=session,
         )
+
+    async def delete(
+        self, contribution: Contribution, session: AsyncClientSession | None = None
+    ) -> None:
+        await contribution.delete(session=session)
 
     async def delete_for_user(
         self, user_id: PydanticObjectId, session: AsyncClientSession | None = None

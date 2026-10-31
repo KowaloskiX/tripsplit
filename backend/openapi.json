@@ -160,6 +160,13 @@
           "kind": {
             "$ref": "#/components/schemas/BookingKind"
           },
+          "passenger_user_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passenger User Ids",
+            "type": "array"
+          },
           "replaces_booking_id": {
             "anyOf": [
               {
@@ -212,6 +219,7 @@
           "status",
           "confirmation_ref",
           "replaces_booking_id",
+          "passenger_user_ids",
           "run"
         ],
         "title": "BookingResponse",
@@ -247,6 +255,22 @@
         "title": "CastVoteRequest",
         "type": "object"
       },
+      "CompleteManuallyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation_ref": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Confirmation Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation_ref"
+        ],
+        "title": "CompleteManuallyRequest",
+        "type": "object"
+      },
       "ContributionResponse": {
         "properties": {
           "amount_minor": {
@@ -265,6 +289,10 @@
             "title": "Paid Minor",
             "type": "integer"
           },
+          "refund_minor": {
+            "title": "Refund Minor",
+            "type": "integer"
+          },
           "status": {
             "$ref": "#/components/schemas/ContributionStatus"
           },
@@ -279,6 +307,7 @@
           "amount_minor",
           "paid_minor",
           "outstanding_minor",
+          "refund_minor",
           "status"
         ],
         "title": "ContributionResponse",
@@ -384,6 +413,22 @@
           "organizations"
         ],
         "title": "CurrentUserResponse",
+        "type": "object"
+      },
+      "DemoLeaveRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "user_id": {
+            "maxLength": 24,
+            "minLength": 24,
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id"
+        ],
+        "title": "DemoLeaveRequest",
         "type": "object"
       },
       "DemoResultResponse": {
@@ -541,6 +586,7 @@
         "enum": [
           "trip_created",
           "member_joined",
+          "member_left",
           "message",
           "proposals_ready",
           "vote_cast",
@@ -552,7 +598,8 @@
           "booking_confirmed",
           "booking_failed",
           "disruption",
-          "resplit"
+          "resplit",
+          "price_changed"
         ],
         "title": "EventKind",
         "type": "string"
@@ -2116,6 +2163,98 @@
         ]
       }
     },
+    "/api/trips/{trip_id}/bookings/{booking_id}/complete": {
+      "post": {
+        "description": "After a handoff (or a failure) the organizer finished the purchase by hand.",
+        "operationId": "bookings-complete-manually",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "booking_id",
+            "required": true,
+            "schema": {
+              "title": "Booking Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteManuallyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Complete Booking Manually",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
     "/api/trips/{trip_id}/bookings/{booking_id}/start": {
       "post": {
         "operationId": "bookings-start",
@@ -2343,6 +2482,89 @@
         ]
       }
     },
+    "/api/trips/{trip_id}/demo/leave": {
+      "post": {
+        "description": "A seeded member drops out — the organizer drives it from the demo panel.",
+        "operationId": "demo-leave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemoLeaveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Make Member Leave",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
     "/api/trips/{trip_id}/demo/pay-all": {
       "post": {
         "operationId": "demo-pay-all",
@@ -2557,6 +2779,69 @@
           }
         },
         "summary": "Read Feed",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/leave": {
+      "post": {
+        "description": "The caller drops out before anything is bought; the rest re-split the total.",
+        "operationId": "trips-leave",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Leave Trip",
         "tags": [
           "trips"
         ]
