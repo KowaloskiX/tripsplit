@@ -1,18 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { z } from "zod";
 
 import { Panel } from "@/components/ui/panel";
 import { RegisterForm, useSession } from "@/features/auth";
+import { safeRedirectPath } from "@/lib/redirect";
 
 export const Route = createFileRoute("/register")({
   // See the comment in login.tsx: a native submit before hydration would carry the password
   // into the URL.
   ssr: false,
+  // `redirect`: where to return after signing in (an invite link). Vetted before use.
+  validateSearch: z.object({ redirect: z.string().optional() }),
   component: RegisterPage,
 });
 
 function RegisterPage(): ReactNode {
   const { user, isKnown } = useSession();
+  const redirectTo = safeRedirectPath(Route.useSearch().redirect);
 
   return (
     <div className="mx-auto w-full max-w-sm px-6 py-16 lg:py-24">
@@ -33,13 +38,17 @@ function RegisterPage(): ReactNode {
           // otherwise a signed-in user sees the login form flash before the redirect.
           <div className="h-64" aria-hidden />
         ) : (
-          <RegisterForm />
+          <RegisterForm redirectTo={redirectTo} />
         )}
       </Panel>
 
       <p className="mt-5 text-sm text-muted">
         Already have an account?{" "}
-        <Link to="/login" className="text-accent underline underline-offset-2">
+        <Link
+          to="/login"
+          search={redirectTo ? { redirect: redirectTo } : {}}
+          className="text-accent underline underline-offset-2"
+        >
           Sign in
         </Link>
         .

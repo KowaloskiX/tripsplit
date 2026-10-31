@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate, useRouter } from "@tanstack/react-router";
 
 import {
   authLoginMutation,
@@ -39,9 +39,22 @@ function useSessionWriter(): (user: CurrentUserResponse | null) => void {
   };
 }
 
-export function useLogin() {
-  const writeSession = useSessionWriter();
+/**
+ * Where to go after signing in: the page that sent the user here (an invite link), else the
+ * dashboard. `redirectTo` must already be vetted by `safeRedirectPath`.
+ */
+function useAfterSignIn(redirectTo: string | null | undefined): () => Promise<void> {
   const navigate = useNavigate();
+  const router = useRouter();
+  return async () => {
+    if (redirectTo) router.history.push(redirectTo);
+    else await navigate({ to: "/app" });
+  };
+}
+
+export function useLogin(redirectTo?: string | null) {
+  const writeSession = useSessionWriter();
+  const afterSignIn = useAfterSignIn(redirectTo);
   const mutation = useMutation(authLoginMutation());
 
   return {
@@ -50,14 +63,14 @@ export function useLogin() {
       runQuietly(async () => {
         const user = await mutation.mutateAsync({ body: values });
         writeSession(user);
-        await navigate({ to: "/app" });
+        await afterSignIn();
       }),
   };
 }
 
-export function useRegister() {
+export function useRegister(redirectTo?: string | null) {
   const writeSession = useSessionWriter();
-  const navigate = useNavigate();
+  const afterSignIn = useAfterSignIn(redirectTo);
   const mutation = useMutation(authRegisterMutation());
 
   return {
@@ -72,7 +85,7 @@ export function useRegister() {
           },
         });
         writeSession(user);
-        await navigate({ to: "/app" });
+        await afterSignIn();
       }),
   };
 }

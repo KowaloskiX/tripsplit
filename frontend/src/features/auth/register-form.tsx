@@ -11,8 +11,8 @@ import { apiErrorMessage } from "@/lib/api";
 import { useRegister } from "./mutations";
 import { MIN_PASSWORD_LENGTH, type RegisterValues, registerSchema } from "./schema";
 
-export function RegisterForm(): ReactNode {
-  const { register: submitRegistration, isPending, error } = useRegister();
+export function RegisterForm({ redirectTo }: { redirectTo?: string | null } = {}): ReactNode {
+  const { register: submitRegistration, isPending, error } = useRegister(redirectTo);
   const {
     register,
     handleSubmit,

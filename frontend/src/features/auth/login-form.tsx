@@ -11,8 +11,8 @@ import { apiErrorMessage } from "@/lib/api";
 import { useLogin } from "./mutations";
 import { type LoginValues, loginSchema } from "./schema";
 
-export function LoginForm(): ReactNode {
-  const { login, isPending, error } = useLogin();
+export function LoginForm({ redirectTo }: { redirectTo?: string | null } = {}): ReactNode {
+  const { login, isPending, error } = useLogin(redirectTo);
   const {
     register,
     handleSubmit,
