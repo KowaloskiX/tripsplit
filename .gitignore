@@ -19,5 +19,6 @@ __pycache__/
 .DS_Store
 playwright-report/
 test-results/
+frontend/e2e/__screens__/
 # agent artifacts (screenshots, live frames, replay cache)
 backend/var/
