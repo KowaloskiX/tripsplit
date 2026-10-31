@@ -13,9 +13,11 @@ from app.core.config import Settings
 from app.core.domain.errors import AuthError
 from app.core.domain.escrow import KycLevel
 from app.core.domain.result import Err, Ok
+from app.core.domain.travellers import Gender
 from app.core.domain.wallet import WalletTransactionKind
 from app.db.client import Database
 from app.services.auth import AuthService
+from app.services.travellers import TravellerDetailsUpdate, TravellerService
 from app.services.wallet import WalletService
 
 DEMO_EMAIL = "demo@tripsplit.app"
@@ -24,6 +26,16 @@ DEMO_ORGANIZATION = "Łukasz Demo"
 DEMO_WALLET_MINOR = 500_000  # 5 000 zł
 LOCAL_ENVS = frozenset({"dev", "test"})
 DEMO_BIRTH_DATE = date(1990, 5, 4)
+# Fake document details, so a room booked by the demo account is never blocked on "missing: full
+# name" (a one-word trip display name is not a full name) or on an airline's passport fields.
+DEMO_TRAVELLER = TravellerDetailsUpdate(
+    full_name=DEMO_ORGANIZATION,
+    date_of_birth=DEMO_BIRTH_DATE,
+    nationality="PL",
+    document_number="ZZ1234567",
+    document_expiry=date(2034, 5, 4),
+    gender=Gender.MALE,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +71,10 @@ async def seed_demo(database: Database, settings: Settings) -> SeededDemo:
     # The demo account has passed the partner's ID check, so a live top-up never hits KYC.
     if (await wallet.kyc(user_id)).level is KycLevel.NONE:
         await wallet.submit_kyc(user_id, DEMO_ORGANIZATION, DEMO_BIRTH_DATE, None)
+    travellers = TravellerService()
+    mine = await travellers.mine(user_id)
+    if isinstance(mine, Ok) and not mine.value.full_name:
+        await travellers.update_mine(user_id, DEMO_TRAVELLER)
     return SeededDemo(
         user_id=user_id,
         created=created,
