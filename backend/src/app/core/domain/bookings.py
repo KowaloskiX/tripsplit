@@ -89,6 +89,20 @@ def all_confirmed(statuses: list[BookingStatus]) -> bool:
     return bool(live) and all(status is BookingStatus.CONFIRMED for status in live)
 
 
+def resume_status(replacement_statuses: list[BookingStatus]) -> TripStatus:
+    """Where a fully paid trip continues after top-ups: REBOOKING while a replacement of a
+    cancelled (disrupted) booking is still to be bought, BOOKING otherwise.
+
+    `replacement_statuses` are the statuses of the bookings that replace another one.
+    """
+    outstanding = [
+        status
+        for status in replacement_statuses
+        if status not in (BookingStatus.CONFIRMED, BookingStatus.CANCELLED)
+    ]
+    return TripStatus.REBOOKING if outstanding else TripStatus.BOOKING
+
+
 def repriced_minor(amount_minor: int, price_change_percent: float) -> int:
     """`amount * (1 + pct/100)` rounded half-up to whole grosze, never negative."""
     factor = Decimal(1) + Decimal(str(price_change_percent)) / Decimal(100)

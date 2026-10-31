@@ -20,10 +20,12 @@ from app.core.domain.bookings import (
     format_money,
     refund_minor,
     resplit,
+    resume_status,
 )
-from app.core.domain.trips import ContributionStatus, EventActor, EventKind
+from app.core.domain.trips import ContributionStatus, EventActor, EventKind, TripStatus
 from app.db.identifiers import identifier_of, to_text
 from app.models.trips import Trip
+from app.repositories.bookings import BookingRepository
 from app.repositories.trips import (
     ContributionRepository,
     EventRepository,
@@ -109,6 +111,17 @@ async def resplit_shares(
             session=session,
         )
     return plan
+
+
+async def status_once_paid(
+    trip_id: PydanticObjectId, session: AsyncClientSession | None = None
+) -> TripStatus:
+    """Where a PAYING trip goes when the last share is covered: back to REBOOKING when the
+    top-ups paid for a replacement of a disrupted booking, otherwise BOOKING."""
+    bookings = await BookingRepository().for_trip(trip_id, session)
+    return resume_status(
+        [booking.status for booking in bookings if booking.replaces_booking_id is not None]
+    )
 
 
 def resplit_message(plan: Resplit, currency: str) -> str:

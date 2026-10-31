@@ -34,7 +34,7 @@ from app.repositories.trips import (
     VoteRepository,
 )
 from app.services.booking_plans import bookings_for_item
-from app.services.resplit import resplit_shares
+from app.services.resplit import resplit_shares, status_once_paid
 from app.services.trip_access import load_access
 from app.services.trip_views import (
     EventView,
@@ -50,9 +50,10 @@ from app.services.trip_views import (
 
 # Joining after a package won would leave the newcomer without a share in the split.
 JOINABLE_STATUSES = frozenset({TripStatus.COLLECTING, TripStatus.PROPOSING, TripStatus.VOTING})
-# Leaving is possible until the agent starts buying: up to and including the payment stage,
-# and only while every booking is still PENDING (checked separately).
-LEAVABLE_STATUSES = frozenset({*JOINABLE_STATUSES, TripStatus.PAYING})
+# Leaving is possible until the agent starts buying: up to and including BOOKING (everyone has
+# paid but nothing is bought yet), and only while every booking is still PENDING — no agent
+# running, nothing awaiting approval or bought (checked separately, inside the transaction).
+LEAVABLE_STATUSES = frozenset({*JOINABLE_STATUSES, TripStatus.PAYING, TripStatus.BOOKING})
 
 
 class NotJoinableError(Exception):
@@ -245,7 +246,8 @@ class TripService:
 
         Their membership and vote go. Once shares exist, theirs drops to zero (REFUND_DUE when
         they had paid, otherwise it is deleted) and the same total is re-split among the rest;
-        whoever now owes more sends the trip (back) to PAYING. The PENDING bookings of the
+        whoever now owes more sends the trip (back) to PAYING — from BOOKING too, when everyone
+        had already paid; otherwise a BOOKING trip stays BOOKING. The PENDING bookings of the
         chosen package are rebuilt for the new party — the simplest way to keep each purchase
         under its supplier's passenger cap — with every item keeping its current amount.
         """
@@ -292,7 +294,9 @@ class TripService:
             )
             if refund is not None:
                 plan = await resplit_shares(fresh, fresh.total_minor, session)
-                if not plan.owes and plan.shares:
+                if plan.owes and fresh.status is TripStatus.BOOKING:
+                    await self.trips.set_status(fresh, TripStatus.PAYING, session)
+                elif not plan.owes and plan.shares:
                     await self._start_booking_if_fully_paid(fresh, session)
             if bookings:
                 await self._rebuild_bookings(fresh, bookings, chosen, member.user_id, session)
@@ -335,7 +339,9 @@ class TripService:
         )
         if trip.status is not TripStatus.PAYING or not fully_paid:
             return
-        await self.trips.set_status(trip, TripStatus.BOOKING, session)
+        await self.trips.set_status(
+            trip, await status_once_paid(identifier_of(trip), session), session
+        )
         await self.events.add(
             identifier_of(trip),
             EventKind.ALL_PAID,

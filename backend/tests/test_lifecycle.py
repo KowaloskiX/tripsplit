@@ -29,7 +29,7 @@ from app.core.domain.trips import (
 from app.core.http_security import CSRF_HEADER_NAME
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id
-from app.models.bookings import Booking
+from app.models.bookings import AgentRun, Booking
 from app.models.trips import Contribution, Trip, TripEvent, TripMember, Vote
 from app.routes.dependencies import get_booking_service
 from app.services.bookings import BookingService
@@ -504,12 +504,33 @@ async def test_leaving_is_refused_once_a_booking_started(people: list[Person]) -
     assert await TripMember.find(TripMember.trip_id == identifier_of(trip)).count() == 2
 
 
-async def test_leaving_is_refused_while_booking(people: list[Person]) -> None:
+async def test_leaving_while_booking_before_anything_is_bought_goes_back_to_paying(
+    people: list[Person],
+) -> None:
+    """Everyone had paid (BOOKING) but no agent started: the leaver is refunded later and the
+    one who stays owes the leaver's half, so the trip waits for the top-up again."""
     organizer, friend = people
     trip, _, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKING)
     response = await friend.post(f"/api/trips/{trip.id}/leave")
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == TripStatus.PAYING
+    assert await _trip_status(trip) is TripStatus.PAYING
+    by_user = {str(c.user_id): c for c in await _contributions(trip)}
+    assert by_user[friend.id].status is ContributionStatus.REFUND_DUE
+    assert by_user[organizer.id].amount_minor == TRAIN_MINOR + STAY_MINOR
+    assert by_user[organizer.id].status is ContributionStatus.PENDING
+
+
+async def test_leaving_while_booking_is_refused_once_an_agent_runs(
+    people: list[Person],
+) -> None:
+    organizer, friend = people
+    trip, train, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKING)
+    await train.set({"status": BookingStatus.RUNNING})
+    response = await friend.post(f"/api/trips/{trip.id}/leave")
     assert response.status_code == 409
-    assert response.json()["code"] == TripError.INVALID_STATE
+    assert response.json()["code"] == TripError.BOOKING_STARTED
+    assert await _trip_status(trip) is TripStatus.BOOKING
 
 
 async def test_the_organizer_cannot_leave(people: list[Person]) -> None:
@@ -595,3 +616,168 @@ async def test_only_the_organizer_completes_and_only_a_handoff_or_failure(
         {"confirmation_ref": "X1"},
     )
     assert unknown.status_code == 404
+
+
+# ---- disruptions of a split train, top-ups, refunds and approvals -------------------------
+
+
+async def _split_train(train: Booking, organizer: Person, friend: Person) -> list[Booking]:
+    """The seeded train as two purchases of one package item (like a party above the cap)."""
+    first, second = to_object_id(organizer.id), to_object_id(friend.id)
+    assert first is not None and second is not None
+    await train.set(
+        {"passenger_user_ids": [first], "amount_minor": 60_001, "proposal_item_index": 0}
+    )
+    other = await Booking(
+        trip_id=train.trip_id,
+        kind=BookingKind.TRAIN,
+        title="EC 131 (passengers 2-2)",
+        supplier="PKP Intercity",
+        supplier_url=train.supplier_url,
+        goal="Book EC 131.",
+        amount_minor=59_999,
+        status=train.status,
+        passenger_user_ids=[second],
+        proposal_item_index=0,
+    ).insert()
+    return [train, other]
+
+
+async def _disrupt(person: Person, trip: Trip, percent: float) -> dict[str, Any]:
+    response = await person.post(
+        f"/api/trips/{trip.id}/demo/disruption",
+        {"delay_minutes": 140, "price_change_percent": percent},
+    )
+    assert response.status_code == 200, response.text
+    body: dict[str, Any] = response.json()
+    return body
+
+
+async def test_a_disruption_replaces_every_purchase_of_the_train_and_resplits_once(
+    people: list[Person],
+) -> None:
+    organizer, friend = people
+    trip, train, _ = await _seed_trip(
+        organizer, [friend], TripStatus.BOOKED, BookingStatus.CONFIRMED
+    )
+    parts = await _split_train(train, organizer, friend)
+
+    body = await _disrupt(organizer, trip, -10)
+
+    assert body["cancelled_booking_ids"] == [str(part.id) for part in parts]
+    replacements = body["replacements"]
+    # Each part repriced on its own, to whole grosze: 60 001 * 0.9 and 59 999 * 0.9.
+    assert [r["amount_minor"] for r in replacements] == [54_001, 53_999]
+    assert body["total_minor"] == 108_000 + STAY_MINOR
+    assert body["trip_status"] == TripStatus.REBOOKING
+    for part, replacement in zip(parts, replacements, strict=True):
+        stored = await Booking.get(replacement["id"])
+        assert stored is not None
+        assert stored.replaces_booking_id == identifier_of(part)
+        assert stored.passenger_user_ids == part.passenger_user_ids
+        assert stored.status is BookingStatus.PENDING
+        old = await Booking.get(identifier_of(part))
+        assert old is not None and old.status is BookingStatus.CANCELLED
+    assert len(await _events(trip, EventKind.RESPLIT)) == 1
+    (disruption,) = await _events(trip, EventKind.DISRUPTION)
+    assert len(disruption.payload["booking_ids"]) == 2
+
+
+async def test_refunds_are_paid_out_when_the_trip_is_booked_again(
+    people: list[Person],
+) -> None:
+    organizer, friend = people
+    trip, _, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKED, BookingStatus.CONFIRMED)
+    body = await _disrupt(organizer, trip, -10)
+    assert {c.status for c in await _contributions(trip)} == {ContributionStatus.REFUND_DUE}
+    assert not await _events(trip, EventKind.REFUND_ISSUED)
+
+    for replacement in body["replacements"]:
+        stored = await Booking.get(replacement["id"])
+        assert stored is not None
+        await stored.set({"status": BookingStatus.HANDOFF})
+        done = await organizer.post(
+            f"/api/trips/{trip.id}/bookings/{stored.id}/complete", {"confirmation_ref": "PKP-1"}
+        )
+        assert done.status_code == 200, done.text
+
+    assert await _trip_status(trip) is TripStatus.BOOKED
+    contributions = await _contributions(trip)
+    assert [c.amount_minor for c in contributions] == [84_000, 84_000]
+    assert [c.paid_minor for c in contributions] == [84_000, 84_000]
+    assert {c.status for c in contributions} == {ContributionStatus.PAID}
+    refunds = await _events(trip, EventKind.REFUND_ISSUED)
+    assert [event.payload["amount_minor"] for event in refunds] == [6_000, 6_000]
+    assert refunds[0].message == "Refunded 60.00 PLN to Person0 Nowak."
+    assert refunds[0].payload["provider_ref"].startswith("fake_refund_")
+
+
+async def test_top_ups_after_a_dearer_disruption_resume_rebooking(people: list[Person]) -> None:
+    organizer, friend = people
+    trip, _, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKED, BookingStatus.CONFIRMED)
+    body = await _disrupt(organizer, trip, 20)
+    assert body["trip_status"] == TripStatus.PAYING
+
+    await friend.post(f"/api/trips/{trip.id}/contributions/pay")
+    last = await organizer.post(f"/api/trips/{trip.id}/contributions/pay")
+    assert last.status_code == 200, last.text
+    assert last.json()["all_paid"] is True
+    assert last.json()["status"] == TripStatus.REBOOKING
+    assert await _trip_status(trip) is TripStatus.REBOOKING
+
+
+async def _awaiting_approval(trip: Trip, booking: Booking) -> str:
+    run_id = f"b{booking.id}-1"
+    await AgentRun(
+        run_id=run_id, booking_id=identifier_of(booking), trip_id=identifier_of(trip)
+    ).insert()
+    await booking.set({"status": BookingStatus.AWAITING_APPROVAL, "current_run_id": run_id})
+    return run_id
+
+
+@pytest.mark.parametrize(
+    ("trip_status", "paid"),
+    [(TripStatus.PAYING, False), (TripStatus.BOOKING, False), (TripStatus.PAYING, True)],
+)
+async def test_approval_is_refused_unless_the_trip_is_buying_and_fully_paid(
+    people: list[Person], tmp_path: Any, trip_status: TripStatus, paid: bool
+) -> None:
+    organizer, friend = people
+    trip, _, stay = await _seed_trip(organizer, [friend], trip_status, paid=paid)
+    run_id = await _awaiting_approval(trip, stay)
+
+    response = await organizer.post(
+        f"/api/trips/{trip.id}/bookings/{stay.id}/approve", {"approved": True}
+    )
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == BookingError.TRIP_NOT_READY
+    stored = await Booking.get(identifier_of(stay))
+    assert stored is not None and stored.status is BookingStatus.AWAITING_APPROVAL
+    assert not (tmp_path / "runs" / run_id / "approval.json").exists()
+
+
+async def test_a_summary_can_be_rejected_while_paying(people: list[Person]) -> None:
+    organizer, friend = people
+    trip, _, stay = await _seed_trip(organizer, [friend], TripStatus.PAYING, paid=False)
+    await _awaiting_approval(trip, stay)
+    response = await organizer.post(
+        f"/api/trips/{trip.id}/bookings/{stay.id}/approve", {"approved": False}
+    )
+    assert response.status_code == 200, response.text
+    stored = await Booking.get(identifier_of(stay))
+    assert stored is not None and stored.status is BookingStatus.HANDOFF
+
+
+async def test_approval_goes_through_once_buying_and_fully_paid(
+    people: list[Person], tmp_path: Any
+) -> None:
+    organizer, friend = people
+    trip, _, stay = await _seed_trip(organizer, [friend], TripStatus.REBOOKING)
+    run_id = await _awaiting_approval(trip, stay)
+    response = await organizer.post(
+        f"/api/trips/{trip.id}/bookings/{stay.id}/approve", {"approved": True}
+    )
+    assert response.status_code == 200, response.text
+    stored = await Booking.get(identifier_of(stay))
+    assert stored is not None and stored.status is BookingStatus.APPROVED
+    assert (tmp_path / "runs" / run_id / "approval.json").is_file()

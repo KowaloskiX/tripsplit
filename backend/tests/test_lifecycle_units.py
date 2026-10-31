@@ -13,13 +13,22 @@ from app.core.domain.bookings import (
     exceeds_tolerance,
     purchase_cap,
     refund_minor,
+    resume_status,
     split_party,
 )
-from app.core.domain.trips import BookingKind, ContributionStatus, EventKind, MemberRole
+from app.core.domain.trips import (
+    BookingKind,
+    BookingStatus,
+    ContributionStatus,
+    EventKind,
+    MemberRole,
+    TripStatus,
+)
 from app.db.client import Database
 from app.db.identifiers import identifier_of
 from app.models.bookings import Booking, TrainQuery
 from app.models.trips import Contribution, ProposalItem, Trip, TripEvent, TripMember
+from app.payments.fake import FakePayments
 from app.services.booking_plans import bookings_for_item
 from app.services.resplit import resplit_shares
 from app.suppliers.intercity import MAX_PASSENGERS_PER_PURCHASE
@@ -70,6 +79,27 @@ def test_exceeds_tolerance(previous: int, current: int, tolerance: float, expect
 def test_refund_is_what_was_paid_beyond_the_share() -> None:
     assert refund_minor(85_000, 90_000) == 5_000
     assert refund_minor(92_335, 90_000) == 0
+
+
+@pytest.mark.parametrize(
+    ("replacements", "expected"),
+    [
+        ([], TripStatus.BOOKING),
+        ([BookingStatus.CONFIRMED, BookingStatus.CANCELLED], TripStatus.BOOKING),
+        ([BookingStatus.CONFIRMED, BookingStatus.PENDING], TripStatus.REBOOKING),
+        ([BookingStatus.AWAITING_APPROVAL], TripStatus.REBOOKING),
+    ],
+)
+def test_top_ups_resume_rebooking_while_a_replacement_is_unbought(
+    replacements: list[BookingStatus], expected: TripStatus
+) -> None:
+    assert resume_status(replacements) is expected
+
+
+async def test_fake_payments_refund_exactly_what_was_asked() -> None:
+    receipt = await FakePayments().refund("trip", "user", 6_000, "PLN")
+    assert receipt.refunded_minor == 6_000
+    assert receipt.provider_ref.startswith("fake_refund_")
 
 
 async def _trip(member_count: int, paid: list[int], shares: list[int]) -> Trip:
