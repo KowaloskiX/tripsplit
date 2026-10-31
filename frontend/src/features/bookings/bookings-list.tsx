@@ -120,7 +120,7 @@ export function BookingsList({
                     </Badge>
                   )}
                 </div>
-                <p className="ticket-mono mt-0.5 text-xs text-muted">
+                <p className="mt-0.5 text-xs tabular-nums text-muted">
                   {booking.supplier} ·{" "}
                   <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}
                   {formatMoney(booking.amount_minor, trip.currency)}

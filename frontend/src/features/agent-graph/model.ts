@@ -153,6 +153,17 @@ export const SOURCE_LABEL: Record<StepSource, string> = {
   human: "you",
 };
 
+/** Vault keys as words: "passenger_N_first_name" -> "first name"; duplicates dropped. */
+export function fieldLabels(inputs: readonly string[]): string[] {
+  const labels = inputs.map((input) =>
+    input
+      .replace(/^(vault\.|goal\.)/, "")
+      .replace(/^passenger_(N|\{i\}|\d+)_/, "")
+      .replaceAll("_", " "),
+  );
+  return [...new Set(labels)];
+}
+
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)} ms`;
   const seconds = ms / 1000;

@@ -46,7 +46,7 @@ export function QuickPackageCard({
           {pkg.segments.map((segment) => (
             <li
               key={segment.label}
-              className="ticket-mono flex items-center gap-2 text-[11px] text-muted"
+              className="flex items-center gap-2 text-xs tabular-nums text-muted"
             >
               <KindIcon
                 kind="transport"
