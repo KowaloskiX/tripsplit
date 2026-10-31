@@ -89,7 +89,7 @@ export function SystemReadout(): ReactNode {
   return (
     <Panel>
       <PanelHeader>
-        <span>system readout</span>
+        <span>System readout</span>
         <span>
           {rows.filter((row) => row.state === "live").length}/{rows.length} ready
         </span>

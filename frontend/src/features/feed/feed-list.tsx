@@ -77,8 +77,8 @@ function useTyping(fresh: boolean): boolean {
 
 function AgentAvatar(): ReactNode {
   return (
-    <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-line">
-      <Sparkles className="size-4" aria-hidden />
+    <span className="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-line">
+      <Sparkles className="size-3.5" aria-hidden />
     </span>
   );
 }
@@ -104,8 +104,8 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
       <li className={cn("flex justify-center", entrance)}>
         <span
           className={cn(
-            "inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs font-medium",
-            SYSTEM_PILL[event.kind] ?? "bg-surface-sunken text-muted",
+            "inline-flex max-w-full items-center gap-2 rounded-full px-2.5 py-0.5 text-[11px]",
+            SYSTEM_PILL[event.kind] ?? "text-muted",
           )}
         >
           <span className="min-w-0">{event.message}</span>
@@ -122,18 +122,16 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
     return (
       <li className={cn("flex items-start gap-2.5", entrance)}>
         <AgentAvatar />
-        <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-line">
+        <div className="min-w-0 max-w-[88%] rounded-2xl rounded-tl-md bg-agent-bg px-3.5 py-2.5 text-agent-fg ring-1 ring-line">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="font-medium text-agent-tag">tripsplit agent</span>
             <span className="ticket-mono text-agent-fg/60">{time(event.created_at)}</span>
             {tag && <Badge tone={tag.tone}>{tag.label}</Badge>}
             {total !== null && (
-              <Badge tone="sun" className="ticket-mono">
-                {formatMoney(total, currency)}
-              </Badge>
+              <span className="tabular-nums text-agent-fg/60">{formatMoney(total, currency)}</span>
             )}
           </p>
-          <p className="mt-1 text-[15px] leading-relaxed">{event.message}</p>
+          <p className="mt-1 text-sm leading-relaxed">{event.message}</p>
         </div>
       </li>
     );
@@ -145,7 +143,7 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
       {!mine && <Avatar name={name} size="sm" />}
       <div
         className={cn(
-          "min-w-0 max-w-[80%] rounded-3xl px-4 py-2.5",
+          "min-w-0 max-w-[80%] rounded-2xl px-3.5 py-2",
           mine
             ? "rounded-br-md bg-pastel-sea text-pastel-ink"
             : "rounded-bl-md bg-surface-sunken text-ink",
@@ -155,7 +153,7 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
           <span className={cn("font-medium", !mine && "text-ink")}>{mine ? "You" : name}</span> ·{" "}
           <span className="ticket-mono">{time(event.created_at)}</span>
         </p>
-        <p className="mt-0.5 whitespace-pre-wrap break-words text-[15px] leading-relaxed">
+        <p className="mt-0.5 whitespace-pre-wrap break-words text-sm leading-relaxed">
           {event.message}
         </p>
       </div>

@@ -43,7 +43,7 @@ export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNo
   }, [count]);
 
   return (
-    <Panel className="flex h-[min(72dvh,720px)] flex-col overflow-hidden">
+    <Panel className="flex h-[min(70dvh,640px)] flex-col overflow-hidden shadow-none">
       <PanelHeader>
         <span>Group chat</span>
         {agentSays && <AgentVoice messages={agentSays} />}

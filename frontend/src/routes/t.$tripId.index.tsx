@@ -120,7 +120,7 @@ function RoomPage(): ReactNode {
               </FoldedSection>
             )}
             {showBookings && !paying && (
-              <FoldedSection title="Your package">
+              <FoldedSection title="The package">
                 <ProposalsPanel room={room} />
               </FoldedSection>
             )}

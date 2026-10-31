@@ -79,7 +79,7 @@ export function BookingTicket({ booking, currency }: BookingTicketProps): ReactN
           <div className={cn("rounded-xl", KIND_FILL[booking.kind])}>
             <div className="flex items-center justify-between gap-3 px-5 pt-5">
               <span className="ticket-mono text-[11px] uppercase">Ticket · {booking.supplier}</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2.5 py-0.5 text-xs text-sun">
+              <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2.5 py-0.5 text-xs text-bg">
                 <Check className="size-3.5" strokeWidth={3} aria-hidden />
                 booked
               </span>

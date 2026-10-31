@@ -48,7 +48,13 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
   return (
     <Panel>
       <PanelHeader>
-        <span>{status === "voting" ? "Vote for a package" : "Packages"}</span>
+        <span>
+          {status === "voting"
+            ? "Vote for a package"
+            : room.proposals.some((p) => p.chosen)
+              ? "Your package"
+              : "Packages"}
+        </span>
         {status === "voting" && (
           <span>{room.proposals.reduce((sum, p) => sum + p.votes, 0)} votes</span>
         )}

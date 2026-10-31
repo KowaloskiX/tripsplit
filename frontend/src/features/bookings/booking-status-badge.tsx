@@ -21,7 +21,7 @@ export const BOOKING_STATUS_META: Record<BookingStatus, StatusMeta> = {
 
 const TONE_CLASS: Record<BadgeTone, string> = {
   neutral: "bg-surface-sunken text-muted",
-  live: "bg-sun text-sun-ink",
+  live: "bg-pastel-apricot text-pastel-ink",
   attention: "bg-warn-soft text-warn",
   success: "bg-success-soft text-success",
   danger: "bg-danger-soft text-danger",

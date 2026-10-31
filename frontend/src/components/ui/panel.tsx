@@ -19,8 +19,8 @@ export function PanelHeader({ className, ...props }: ComponentProps<"div">): Rea
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 border-b border-line px-6 py-4",
-        "text-base font-medium tracking-tight text-ink [&>*:last-child:not(:first-child)]:font-medium [&>*:last-child:not(:first-child)]:text-muted",
+        "flex items-center justify-between gap-3 border-b border-line px-5 py-3.5",
+        "text-[15px] font-medium text-ink [&>*:last-child:not(:first-child)]:font-medium [&>*:last-child:not(:first-child)]:text-muted",
         className,
       )}
       {...props}

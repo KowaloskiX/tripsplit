@@ -59,11 +59,11 @@ export function MissionControl({
 
       <div className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.85fr)]">
         <BrowserPane browser={browser} live={live} />
-        <div className="flex min-w-0 flex-col gap-3">
+        <div className="hidden min-w-0 flex-col gap-3 lg:flex">
           {calls && <TerminalPane calls={calls} />}
           {stay && <StayPane stay={stay} currency={currency} />}
         </div>
-        <div className="relative flex flex-col justify-center rounded-[var(--radius-panel)] border border-line bg-surface px-4 pt-8 pb-5 lg:col-span-2 xl:col-span-1">
+        <div className="relative hidden flex-col justify-center rounded-[var(--radius-panel)] lg:flex border border-line bg-surface px-4 pt-8 pb-5 lg:col-span-2 xl:col-span-1">
           <p className="eyebrow absolute top-4 left-5">Tickets</p>
           <TicketStack tickets={tickets} purchases={purchases} />
           {celebrate && (

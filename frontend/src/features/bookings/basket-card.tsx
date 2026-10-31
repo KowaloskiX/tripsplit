@@ -20,9 +20,9 @@ export function BasketCard({ trip }: { trip: TripBookingsResponse }): ReactNode 
   if (!trip.is_organizer || (waiting.length === 0 && !approval.data)) return null;
   const total = waiting.reduce((sum, booking) => sum + booking.amount_minor, 0);
   return (
-    <Panel className="border-accent/60" role="region" aria-label="Approve the basket">
+    <Panel className="shadow-none" role="region" aria-label="Approve the basket">
       <PanelHeader>
-        <span className="text-accent">basket</span>
+        <span>Basket</span>
         <span>
           {waiting.length} purchase{waiting.length === 1 ? "" : "s"} awaiting approval
         </span>

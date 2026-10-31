@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { type ApiCall, type CallTone, callTone, formatCall } from "./model";
 
 const TONE: Record<CallTone, string> = {
-  ok: "text-sun",
+  ok: "text-success",
   redirect: "text-pastel-sea",
   client: "text-[#ffc56e]",
   server: "text-[#ff9b94]",
