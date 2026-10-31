@@ -44,12 +44,22 @@ async def _quote_drift(
     return round(sum(drifts) / len(drifts), 2) if drifts else None
 
 
+def _recorded_seconds(suppliers: SupplierRegistry) -> dict[str, float]:
+    """What the live suppliers took for the calls so far (as recorded), per supplier."""
+    return {
+        adapter.id: adapter.stats.recorded_seconds
+        for adapter in suppliers
+        if isinstance(adapter, RecordingSupplier)
+    }
+
+
 async def run_brief(
     brief: EvalBrief, suppliers: SupplierRegistry, *, quotes: bool = False
 ) -> BriefResult:
     started = time.monotonic()
     notes: list[str] = []
     packages: list[PackagePlan] = []
+    before = _recorded_seconds(suppliers)
     with no_llm() as llm:
         try:
             packages = await CatalogResearcher(suppliers).research(brief.trip_brief())
@@ -57,12 +67,19 @@ async def run_brief(
             return BriefResult(brief.id, error=f"cassette miss: {miss}")
         except ValueError as refused:
             notes.append(f"research gave up: {refused}")
+        after = _recorded_seconds(suppliers)
+        research_seconds = {
+            key: round(after[key] - before.get(key, 0.0), 2)
+            for key in after
+            if after[key] - before.get(key, 0.0) > 0
+        }
         try:
             raw = await collect(brief, suppliers)
         except CassetteMiss as miss:
             return BriefResult(brief.id, error=f"cassette miss (oracle): {miss}")
     result = evaluate(brief, packages, raw, solve(brief, raw))
     result.llm_calls = llm.calls
+    result.research_supplier_seconds = research_seconds
     if quotes and packages:
         result.quote_drift_percent = await _quote_drift(packages, suppliers, brief.party, notes)
     result.notes.extend(notes)

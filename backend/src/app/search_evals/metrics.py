@@ -7,20 +7,26 @@ behind it. Definitions (also in the report):
   stay; an activity is reported (`activity_rate`) but not required.
 - **budget** — with a budget the oracle can meet: 1 when at least one package fits it. With a
   budget nobody can meet: 1 only when the cheapest package is the cheapest possible (within 1%)
-  AND a package says so ("budget" in its summary). No budget: None.
+  AND a package says so ("budget" in its summary), 0.5 for either. When the oracle has nothing
+  in the wished modes to compare with: 1 when a package fits or one says none does. No budget:
+  None.
 - **optimality** — 1 - gap, where gap = (cheapest package's transport + stay) / (the oracle's
-  cheapest schedule-sane transport + stay) - 1, capped to [0, 1].
+  cheapest transport + stay) - 1, capped to [0, 1]. A package passing every schedule check is
+  compared with the cheapest schedule-sane combination, any other with the cheapest of all.
 - **diversity** — distinct stays and distinct transports across the packages, each
   (distinct - 1) / (packages - 1), averaged.
 - **schedule** — the share of schedule checks passed over all packages (`checks.py`).
-- **consistency** — prices positive and in PLN, per-person = ceil(total / party), segment and
-  stay dates inside the trip, the activity inside the trip.
-- **mode** — every package honours the mode wish (rail / flight / fly there, train back).
+- **consistency** — prices positive and in PLN, the price is the offer's, per-person =
+  ceil(total / party), segments depart inside the trip (a night train home may arrive the day
+  after), the stay's dates are the trip's, the activity is inside the trip.
+- **mode** — every package honours the mode wish (rail / flight / fly there, train back). When
+  no supplier has the wished modes at all (the oracle finds no complete combo in them), a
+  package in other modes scores only if its summary says so ("No train ...").
 """
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from app.ai.research import PACKAGES_PER_RESEARCH, PackageItemPlan, PackagePlan
@@ -85,7 +91,19 @@ class BriefResult:
     quote_drift_percent: float | None = None
     llm_calls: int = 0
     seconds: float = 0.0
+    # The live time of the research's own supplier calls, per supplier (as recorded).
+    research_supplier_seconds: dict[str, float] = field(default_factory=dict)
     notes: list[str] = field(default_factory=list)
+
+    @property
+    def live_seconds_sequential(self) -> float:
+        """The research's live latency if every supplier is asked one after the other."""
+        return round(sum(self.research_supplier_seconds.values()), 1)
+
+    @property
+    def live_seconds_parallel(self) -> float:
+        """...and if suppliers are asked at the same time (each one's own calls in a row)."""
+        return round(max(self.research_supplier_seconds.values(), default=0.0), 1)
 
     @property
     def score(self) -> float:
@@ -107,6 +125,9 @@ class BriefResult:
             "quote_drift_percent": self.quote_drift_percent,
             "llm_calls": self.llm_calls,
             "seconds": round(self.seconds, 3),
+            "research_supplier_seconds": self.research_supplier_seconds,
+            "live_seconds_sequential": self.live_seconds_sequential,
+            "live_seconds_parallel": self.live_seconds_parallel,
             "notes": self.notes,
             "packages": [package.json() for package in self.packages],
             "oracle": None
@@ -166,8 +187,10 @@ def consistency_checks(
             for offer, item in zip(known, items, strict=True)
         ),
         "per_person_rounds_up": 0 <= share * brief.party - total < brief.party,
+        # A night train home may arrive the morning after the trip.
         "segment_dates_in_trip": all(
-            _in_trip(s.departs_at.date(), brief) and _in_trip(s.arrives_at.date(), brief)
+            _in_trip(s.departs_at.date(), brief)
+            and brief.date_from <= s.arrives_at.date() <= brief.date_to + timedelta(days=1)
             for s in segments
         ),
         "stay_dates_match": all(
@@ -248,13 +271,35 @@ def _budget_score(
     if oracle.feasible:
         return 1.0 if any(f.within_budget and f.complete for f in facts) else 0.0
     complete = [p for p, f in zip(packages, facts, strict=True) if f.complete]
-    reference = oracle.reference_total
-    if not complete or reference is None:
+    if not complete:
         return 0.0
+    explained = any("budget" in p.summary.casefold() for p in packages)
+    reference = oracle.reference_total
+    if reference is None:
+        # Nothing in the wished modes to compare with: fitting, or saying it does not, counts.
+        fits = any(f.within_budget and f.complete for f in facts)
+        return 1.0 if fits or explained else 0.0
     cheapest = min(_core_total(p) for p in complete)
     is_cheapest = cheapest <= reference * (1 + CHEAPEST_TOLERANCE)
-    explained = any("budget" in p.summary.casefold() for p in packages)
     return (0.5 if is_cheapest else 0.0) + (0.5 if explained else 0.0)
+
+
+def _mode_score(brief: EvalBrief, packages: Sequence[PackagePlan], oracle: Oracle) -> float:
+    """Honouring the wish; when no supplier can (the oracle finds nothing in those modes),
+    a package in another mode is right — if it says why."""
+    if oracle.complete_possible or brief.mode is ModeWish.ANY:
+        return sum(mode_ok(p, brief) for p in packages) / len(packages)
+    return sum(f"no {_WISH_NOUN[brief.mode]}" in p.summary.casefold() for p in packages) / len(
+        packages
+    )
+
+
+_WISH_NOUN: dict[ModeWish, str] = {
+    ModeWish.ANY: "",
+    ModeWish.RAIL: "train",
+    ModeWish.FLIGHT: "flight",
+    ModeWish.FLY_THERE_TRAIN_BACK: "flight",
+}
 
 
 def evaluate(
@@ -273,7 +318,13 @@ def evaluate(
     result.scores["budget"] = _budget_score(brief, packages, facts, oracle)
     reference = oracle.reference_total
     if complete and reference:
-        cheapest = min(_core_total(p) for p in complete)
+        cheapest_package = min(complete, key=_core_total)
+        cheapest = _core_total(cheapest_package)
+        # Measured within its class: a package that breaks a schedule check is compared with
+        # the cheapest combination of any schedule, a sane one with the cheapest sane one.
+        sane = all(facts[packages.index(cheapest_package)].checks.values())
+        if not sane and oracle.cheapest_total:
+            reference = oracle.cheapest_total
         gap = cheapest / reference - 1
         result.gap_percent = round(gap * 100, 2)
         result.scores["optimality"] = max(0.0, min(1.0, 1 - gap))
@@ -289,7 +340,7 @@ def evaluate(
         result.scores["schedule"] = sum(all_checks) / len(all_checks) if all_checks else 0.0
         consistent = [ok for f in facts for ok in f.consistency.values()]
         result.scores["consistency"] = sum(consistent) / len(consistent) if consistent else 0.0
-        result.scores["mode"] = sum(mode_ok(p, brief) for p in packages) / n
+        result.scores["mode"] = _mode_score(brief, packages, oracle)
     else:
         for name in ("diversity", "schedule", "consistency", "mode"):
             result.scores[name] = 0.0
@@ -306,6 +357,8 @@ class Summary:
     llm_calls: int
     seconds: float
     supplier_stats: dict[str, Json]
+    mean_live_seconds_sequential: float = 0.0
+    mean_live_seconds_parallel: float = 0.0
 
     def json(self) -> Json:
         return {
@@ -318,6 +371,8 @@ class Summary:
             "mean_gap_percent": self.mean_gap_percent,
             "llm_calls": self.llm_calls,
             "seconds": round(self.seconds, 2),
+            "mean_live_seconds_sequential": self.mean_live_seconds_sequential,
+            "mean_live_seconds_parallel": self.mean_live_seconds_parallel,
             "supplier_stats": self.supplier_stats,
         }
 
@@ -342,4 +397,10 @@ def summarise(results: Sequence[BriefResult], supplier_stats: dict[str, Json]) -
         llm_calls=sum(r.llm_calls for r in results),
         seconds=sum(r.seconds for r in results),
         supplier_stats=supplier_stats,
+        mean_live_seconds_sequential=_mean([r.live_seconds_sequential for r in results]),
+        mean_live_seconds_parallel=_mean([r.live_seconds_parallel for r in results]),
     )
+
+
+def _mean(values: Sequence[float]) -> float:
+    return round(sum(values) / len(values), 1) if values else 0.0

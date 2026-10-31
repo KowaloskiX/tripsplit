@@ -19,6 +19,8 @@ MIN_FLIGHT_CONNECTION = timedelta(minutes=40)
 MIN_RAIL_CONNECTION = timedelta(minutes=5)
 MAX_CONNECTION = timedelta(hours=8)
 MAX_DIRECTION = timedelta(hours=14)
+# Leaving home (or the hotel) between midnight and this hour is a red-eye nobody asked for.
+NIGHT_ENDS_HOUR = 5
 _IATA = re.compile(r"^[A-Z]{3}$")
 # Polish names of foreign cities that the airport table does not carry.
 _EXONYMS: dict[str, str] = {
@@ -108,6 +110,9 @@ def schedule_checks(segments: Sequence[Segment], trip: Journey) -> dict[str, boo
         and _duration(out) <= MAX_DIRECTION
         and _duration(back) <= MAX_DIRECTION,
     }
+    checks["no_night_departure"] = all(
+        direction[0].departs_at.hour >= NIGHT_ENDS_HOUR for direction in (out, back) if direction
+    )
     if trip.earliest_departure_hour is not None:
         hour = trip.earliest_departure_hour
         checks["no_departure_before_preferred_hour"] = all(

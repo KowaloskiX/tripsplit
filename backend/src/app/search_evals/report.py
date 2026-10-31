@@ -65,7 +65,9 @@ def summary_lines(summary: Summary) -> list[str]:
         f"**Score {summary.score:.1f} / 100** over {summary.briefs} briefs "
         f"({summary.errors} errors), mean optimality gap "
         f"{summary.mean_gap_percent if summary.mean_gap_percent is not None else '—'} %, "
-        f"LLM calls {summary.llm_calls}.",
+        f"LLM calls {summary.llm_calls}. Research live latency per brief (recorded supplier "
+        f"time): {summary.mean_live_seconds_sequential} s asked one after another, "
+        f"{summary.mean_live_seconds_parallel} s with suppliers in parallel.",
         "",
         metrics,
     ]
@@ -167,6 +169,11 @@ def compare(before_dir: Path, after_dir: Path) -> str:
         f"- mean gap %: {b_sum['mean_gap_percent']} -> {a_sum['mean_gap_percent']}",
         f"- errors: {b_sum['errors']} -> {a_sum['errors']}",
         f"- LLM calls: {b_sum['llm_calls']} -> {a_sum['llm_calls']}",
+        f"- live latency s (sequential / parallel): "
+        f"{b_sum.get('mean_live_seconds_sequential')} / "
+        f"{b_sum.get('mean_live_seconds_parallel')} -> "
+        f"{a_sum.get('mean_live_seconds_sequential')} / "
+        f"{a_sum.get('mean_live_seconds_parallel')}",
         "",
         "| metric | before -> after |",
         "|---|---|",

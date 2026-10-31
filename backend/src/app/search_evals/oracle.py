@@ -8,7 +8,7 @@ the cheapest one that also passes every schedule check is preferred when there i
 """
 
 import itertools
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from app.core.domain.packages import per_person
 from app.core.domain.trips import BookingKind, TransportMode
@@ -86,7 +86,9 @@ def journey_of(brief: EvalBrief) -> Journey:
 
 
 async def collect(brief: EvalBrief, suppliers: SupplierRegistry) -> RawOffers:
-    out_mode, back_mode = ALLOWED_MODES[brief.mode]
+    """Everything every supplier has for the brief — every transport mode, whatever the wish
+    (so a research that falls back to another mode replays from the same recordings); the
+    wish filters the combinations in `transport_options`."""
     raw = RawOffers()
     base = SearchRequest(
         origin=brief.origin,
@@ -96,31 +98,16 @@ async def collect(brief: EvalBrief, suppliers: SupplierRegistry) -> RawOffers:
         party_size=brief.party,
         budget_per_person_minor=brief.budget_per_person_minor,
     )
+    there = replace(base, return_date=None)
+    home = replace(
+        base, origin=brief.destination, destination=brief.origin, depart_date=brief.date_to
+    )
+    home = replace(home, return_date=None)
     for adapter in suppliers.of_kind(BookingKind.TRANSPORT):
         mode = adapter.capabilities.mode
-        allowed_out, allowed_back = _allowed(mode, out_mode), _allowed(mode, back_mode)
-        if allowed_out and allowed_back:
-            raw.returns.extend(Priced(o, mode) for o in await adapter.search(base))
-        if allowed_out:
-            one_way = SearchRequest(
-                origin=brief.origin,
-                destination=brief.destination,
-                depart_date=brief.date_from,
-                return_date=None,
-                party_size=brief.party,
-                mode=mode,
-            )
-            raw.outs.extend(Priced(o, mode) for o in await adapter.search(one_way))
-        if allowed_back:
-            home = SearchRequest(
-                origin=brief.destination,
-                destination=brief.origin,
-                depart_date=brief.date_to,
-                return_date=None,
-                party_size=brief.party,
-                mode=mode,
-            )
-            raw.backs.extend(Priced(o, mode) for o in await adapter.search(home))
+        raw.returns.extend(Priced(o, mode) for o in await adapter.search(base))
+        raw.outs.extend(Priced(o, mode) for o in await adapter.search(replace(there, mode=mode)))
+        raw.backs.extend(Priced(o, mode) for o in await adapter.search(replace(home, mode=mode)))
     for adapter in suppliers.of_kind(BookingKind.STAY):
         raw.stays.extend(await adapter.search(base))
     for adapter in suppliers.of_kind(BookingKind.ACTIVITY):
@@ -128,16 +115,26 @@ async def collect(brief: EvalBrief, suppliers: SupplierRegistry) -> RawOffers:
     return raw
 
 
-def transport_options(raw: RawOffers) -> list[TransportOption]:
-    options = [TransportOption((leg,)) for leg in raw.returns]
-    outs = sorted(raw.outs, key=lambda p: p.offer.price_minor)[:MAX_ONE_WAYS]
-    backs = sorted(raw.backs, key=lambda p: p.offer.price_minor)[:MAX_ONE_WAYS]
+def transport_options(brief: EvalBrief, raw: RawOffers) -> list[TransportOption]:
+    """Return journeys and one-way pairs in the modes the brief wishes."""
+    out_mode, back_mode = ALLOWED_MODES[brief.mode]
+    options = [
+        TransportOption((leg,))
+        for leg in raw.returns
+        if _allowed(leg.mode, out_mode) and _allowed(leg.mode, back_mode)
+    ]
+    outs = sorted(
+        (p for p in raw.outs if _allowed(p.mode, out_mode)), key=lambda p: p.offer.price_minor
+    )[:MAX_ONE_WAYS]
+    backs = sorted(
+        (p for p in raw.backs if _allowed(p.mode, back_mode)), key=lambda p: p.offer.price_minor
+    )[:MAX_ONE_WAYS]
     options.extend(TransportOption((out, back)) for out, back in itertools.product(outs, backs))
     return sorted(options, key=lambda option: (option.total, option.describe()))
 
 
 def solve(brief: EvalBrief, raw: RawOffers) -> Oracle:
-    options = transport_options(raw)
+    options = transport_options(brief, raw)
     journey = journey_of(brief)
     cheapest_stay = min((stay.price_minor for stay in raw.stays), default=None)
     sane = [option for option in options if schedule_ok(option.segments, journey)]
