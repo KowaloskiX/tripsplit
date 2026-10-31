@@ -25,6 +25,8 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ValidationError
 
 from app.schemas import auth as auth_schemas
+from app.schemas import bookings as booking_schemas
+from app.schemas import travellers as traveller_schemas
 from app.schemas import trips as trip_schemas
 from app.schemas.common import StrictRequest
 
@@ -47,7 +49,7 @@ def _request_models() -> list[type[BaseModel]]:
     # Every schema module that defines input. A new module with `*Request` models goes here.
     return [
         member
-        for module in (auth_schemas, trip_schemas)
+        for module in (auth_schemas, trip_schemas, booking_schemas, traveller_schemas)
         for _, member in inspect.getmembers(module, inspect.isclass)
         if issubclass(member, BaseModel)
         and member.__name__.endswith("Request")
