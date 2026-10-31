@@ -30,6 +30,8 @@ class TripBrief:
     destination: str = ""
     # The trip's mode preference; None = any (the brief may still say "fly there, train back").
     transport_mode: TransportMode | None = None
+    # No departure (out or back) before this local hour; None = no preference.
+    earliest_departure_hour: int | None = None
 
     @property
     def nights(self) -> int:
