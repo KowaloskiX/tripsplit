@@ -10,6 +10,7 @@ organizer profile) or, for the CLI, from the `AGENT_VAULT_JSON` environment vari
 import json
 import os
 from typing import Any
+from urllib.parse import quote, quote_plus
 
 
 class Vault:
@@ -26,6 +27,22 @@ class Vault:
     def planner_keys(self) -> list[str]:
         """Key NAMES (never values) to advertise to the planner."""
         return sorted(self._flat.keys())
+
+    def lookup(self) -> dict[str, str]:
+        """value -> key, to turn a literal the planner typed back into its placeholder."""
+        return {str(v): k for k, v in self._flat.items() if len(str(v)) >= 2}
+
+    def mask(self, text: str) -> str:
+        """`text` with every vault value replaced by `•••` (traces, logs, reports)."""
+        if not text:
+            return text
+        out = text
+        for value in sorted((str(v) for v in self._flat.values()), key=len, reverse=True):
+            if len(value) < 2 or (value.isdigit() and len(value) < 5):
+                continue  # a party size like "3" is not a secret, and masking it garbles text
+            out = out.replace(value, "•••")
+            out = out.replace(quote_plus(value), "•••").replace(quote(value), "•••")
+        return out
 
 
 def _from_env() -> dict[str, Any]:
