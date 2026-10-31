@@ -57,6 +57,14 @@ TODAY = date(2026, 10, 31)  # a Saturday
             "trip to Rome 2026-12-04/2026-12-07, we are 5, under 900 zł per person",
             ("Warszawa", "Rome", date(2026, 12, 4), date(2026, 12, 7), 5, 90_000, None),
         ),
+        (
+            "z Poznania do Sztokholmu 27-29.11 dla 4, samolotem",
+            ("Poznań", "Stockholm", date(2026, 11, 27), date(2026, 11, 29), 4, None, "flight"),
+        ),
+        (
+            "split the bill: Tallinn 20-22.11 for 2",
+            ("Warszawa", "Tallinn", date(2026, 11, 20), date(2026, 11, 22), 2, None, None),
+        ),
     ],
 )
 def test_the_parser_reads_polish_and_english_briefs(

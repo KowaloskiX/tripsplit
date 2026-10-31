@@ -14,6 +14,7 @@ from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from enum import StrEnum
 
+from app.core.domain.places import city_named
 from app.core.domain.trips import TransportMode
 
 DEFAULT_ORIGIN = "Warszawa"
@@ -117,6 +118,8 @@ PLACES: dict[str, tuple[str, ...]] = {
     "Zakopane": ("zakopane", "zakopanego", "zakopanem"),
 }
 _ALIAS_TO_PLACE = {alias: name for name, aliases in PLACES.items() for alias in aliases}
+# Catalogue cities whose names are also everyday words: only the brief's own aliases count.
+_EVERYDAY_WORDS = frozenset({"nice", "split", "pula", "cork", "palma", "kolonia", "hel", "bar"})
 _FROM_WORDS = frozenset({"z", "ze", "from"})
 _TO_WORDS = frozenset({"do", "to", "w", "we", "in", "into"})
 _WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
@@ -126,9 +129,19 @@ def _fold(text: str) -> str:
     return unicodedata.normalize("NFC", text).casefold()
 
 
+def _known_place(word: str) -> str | None:
+    """A word as a place: the brief's own aliases first, then the city catalogue
+    ("sztokholmu" -> "Stockholm") — except names that are everyday words in lower case."""
+    found = _ALIAS_TO_PLACE.get(word)
+    if found is not None or word in _EVERYDAY_WORDS:
+        return found
+    city = city_named(word)
+    return city.name if city is not None else None
+
+
 def place_of(text: str) -> str | None:
     """The canonical name of a place typed by a person ("Pradze" -> "Prague"), else None."""
-    return _ALIAS_TO_PLACE.get(_fold(text).strip())
+    return _known_place(_fold(text).strip())
 
 
 def _places(folded: str) -> tuple[str | None, str | None]:
@@ -141,7 +154,7 @@ def _places(folded: str) -> tuple[str | None, str | None]:
     previous = ""
     for match in _WORD.finditer(folded):
         word = match.group(0)
-        place = _ALIAS_TO_PLACE.get(word)
+        place = _known_place(word)
         if place is not None:
             if previous in _FROM_WORDS:
                 marked_from.append(place)
