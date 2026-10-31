@@ -26,6 +26,7 @@ LATE = (FRIENDS[2], FRIENDS[4])
 
 SCENARIO = Scenario(
     name="barcelona_duffel_slow_group",
+    holds=True,
     title="A slow group on REAL airline offers: the Duffel offer expires, the flights are re-found",
     description=(
         "Same Barcelona weekend on Duffel's test API, but the group takes over an hour to vote "

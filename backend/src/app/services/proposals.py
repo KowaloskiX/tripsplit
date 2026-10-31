@@ -16,7 +16,13 @@ from app.core.domain.errors import TripError
 from app.core.domain.packages import format_money, is_over_budget, per_person, pick_winner
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import SupplierCapabilities
-from app.core.domain.trips import EventActor, EventKind, TripStatus, split_evenly
+from app.core.domain.trips import (
+    EventActor,
+    EventKind,
+    TravelPreferences,
+    TripStatus,
+    split_evenly,
+)
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.trips import Contribution, Proposal, ProposalItem, TransportSegment, Trip
@@ -100,6 +106,10 @@ class ProposalService:
             currency=trip.currency,
             destination=trip.destination,
             transport_mode=trip.transport_mode,
+            preferences=TravelPreferences(
+                earliest_departure_hour=trip.earliest_departure_hour,
+                max_transfers=trip.max_transfers,
+            ),
         )
         await self.events.add(
             trip_oid,

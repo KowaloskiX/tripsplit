@@ -15,14 +15,18 @@ Verified on 2026-10-31 (Warszawa Centralna -> Praha hl.n.). Field names are Poli
 API's are; they stop at this module.
 """
 
+import asyncio
 import json
-from collections.abc import Sequence
+import logging
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Protocol
 from urllib.parse import quote
 
 from app.core.domain.bookings import split_party
+
+logger = logging.getLogger(__name__)
 
 GATEWAY = "https://api-gateway.intercity.pl/server/public/endpoint"
 STATIONS_ORIGIN = "https://www.intercity.pl"
@@ -368,6 +372,61 @@ class BrowserTransport:
 
     async def post_json(self, url: str, body: dict[str, Any]) -> Any:
         return await self._fetch(url, "POST", _api_headers(), json.dumps(body))
+
+
+class SharedBrowserTransport:
+    """One `BrowserTransport` for a whole long-lived process (the API server).
+
+    The browser starts lazily on the first call (a ~5 s warm-up nobody pays at boot), is
+    reused by every later call, and calls are serialised by a lock — one Camoufox page per
+    origin is not safe for concurrent `fetch()`es. A failed call closes the browser and is
+    retried once on a fresh one (a crashed page, an expired Akamai session); a second failure
+    propagates to the adapter, which treats it as "could not ask". `close()` belongs in the
+    server's shutdown.
+    """
+
+    def __init__(self, factory: Callable[[], BrowserTransport] | None = None) -> None:
+        self._factory = factory or (lambda: BrowserTransport(headless=True))
+        self._browser: BrowserTransport | None = None
+        self._lock = asyncio.Lock()
+
+    @property
+    def started(self) -> bool:
+        return self._browser is not None
+
+    async def _open(self) -> BrowserTransport:
+        if self._browser is None:
+            browser = self._factory()
+            await browser.__aenter__()
+            self._browser = browser
+        return self._browser
+
+    async def _discard(self) -> None:
+        browser, self._browser = self._browser, None
+        if browser is not None:
+            try:
+                await browser.__aexit__(None, None, None)
+            except Exception:
+                logger.warning("closing the PKP browser failed", exc_info=True)
+
+    async def _call(self, operation: Callable[[BrowserTransport], Awaitable[Any]]) -> Any:
+        async with self._lock:
+            try:
+                return await operation(await self._open())
+            except Exception:
+                logger.warning("PKP browser call failed — restarting the browser once")
+                await self._discard()
+            return await operation(await self._open())
+
+    async def get_json(self, url: str) -> Any:
+        return await self._call(lambda browser: browser.get_json(url))
+
+    async def post_json(self, url: str, body: dict[str, Any]) -> Any:
+        return await self._call(lambda browser: browser.post_json(url, body))
+
+    async def close(self) -> None:
+        async with self._lock:
+            await self._discard()
 
 
 def summarize(quotes: Sequence[GroupQuote]) -> list[str]:

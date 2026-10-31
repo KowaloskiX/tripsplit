@@ -25,6 +25,8 @@ _MIN_AUTH_SECRET_LENGTH = 32
 
 type ResearcherKind = Literal["catalog", "claude-cli"]
 type PaymentsKind = Literal["fake"]
+type PkpTransportKind = Literal["browser", "http"]
+type HoldsMode = Literal["off", "on"]
 
 
 class Settings(BaseSettings):
@@ -107,6 +109,14 @@ class Settings(BaseSettings):
     # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `duffel`
     # (real flights through the Duffel API — needs `duffel_api_key`).
     suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
+    # How `pkp_intercity` reaches PKP's gateway: `browser` = one shared headless Camoufox
+    # for the process (PKP sits behind Akamai, which resets plain HTTP); `http` = httpx.
+    pkp_transport: PkpTransportKind = "browser"
+    # Supplier holds at voting close. `off` (default): nothing is held, every purchase
+    # re-quotes right before it starts (a moved price takes the PRICE_CHANGED path) and an
+    # API supplier books at the approval. `on`: suppliers that support holds lock the price
+    # while the group pays.
+    holds: HoldsMode = "off"
     # How far (in percent of the stored amount) a re-quote may move before the group's shares
     # are re-split. 0 = any change re-splits.
     price_tolerance_percent: float = Field(default=0.0, ge=0.0, le=100.0)
@@ -200,6 +210,10 @@ class Settings(BaseSettings):
         if not self.demo_supplier_url or not self.demo_routes_enabled:
             return None
         return self.demo_supplier_url.rstrip("/")
+
+    @property
+    def holds_enabled(self) -> bool:
+        return self.holds == "on"
 
     @property
     def supplier_ids(self) -> list[str]:

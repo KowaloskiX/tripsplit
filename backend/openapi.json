@@ -399,11 +399,37 @@
             "title": "Display Name",
             "type": "string"
           },
+          "earliest_departure_hour": {
+            "anyOf": [
+              {
+                "maximum": 23.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Departure Hour"
+          },
           "group_size": {
             "maximum": 20.0,
             "minimum": 1.0,
             "title": "Group Size",
             "type": "integer"
+          },
+          "max_transfers": {
+            "anyOf": [
+              {
+                "maximum": 3.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Transfers"
           },
           "origin": {
             "maxLength": 120,
@@ -1688,6 +1714,17 @@
             "title": "Destination",
             "type": "string"
           },
+          "earliest_departure_hour": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earliest Departure Hour"
+          },
           "group_size": {
             "title": "Group Size",
             "type": "integer"
@@ -1695,6 +1732,17 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "max_transfers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Transfers"
           },
           "organizer_id": {
             "title": "Organizer Id",
@@ -1738,6 +1786,8 @@
           "currency",
           "destination",
           "transport_mode",
+          "earliest_departure_hour",
+          "max_transfers",
           "status",
           "organizer_id",
           "chosen_proposal_id",

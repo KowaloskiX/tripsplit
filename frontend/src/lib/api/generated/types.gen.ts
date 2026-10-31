@@ -220,9 +220,17 @@ export type CreateTripRequest = {
      */
     display_name: string;
     /**
+     * Earliest Departure Hour
+     */
+    earliest_departure_hour?: number | null;
+    /**
      * Group Size
      */
     group_size: number;
+    /**
+     * Max Transfers
+     */
+    max_transfers?: number | null;
     /**
      * Origin
      */
@@ -967,6 +975,10 @@ export type TripResponse = {
      */
     destination: string;
     /**
+     * Earliest Departure Hour
+     */
+    earliest_departure_hour: number | null;
+    /**
      * Group Size
      */
     group_size: number;
@@ -974,6 +986,10 @@ export type TripResponse = {
      * Id
      */
     id: string;
+    /**
+     * Max Transfers
+     */
+    max_transfers: number | null;
     /**
      * Organizer Id
      */

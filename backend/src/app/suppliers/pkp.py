@@ -22,7 +22,13 @@ from zoneinfo import ZoneInfo
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
-from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trips import (
+    NO_PREFERENCES,
+    BookingKind,
+    SupplierChannel,
+    TransportMode,
+    TravelPreferences,
+)
 from app.suppliers.intercity import (
     MAX_PASSENGERS_PER_PURCHASE,
     Connection,
@@ -108,9 +114,16 @@ class LiveSearchLog:
     notes: list[str] = field(default_factory=list)
 
 
-def _in_window(connections: Sequence[Connection], hours: range) -> list[Connection]:
-    preferred = [c for c in connections if c.departs_at.hour in hours]
-    return (preferred or list(connections))[:MAX_CONNECTIONS]
+def _in_window(
+    connections: Sequence[Connection],
+    hours: range,
+    preferences: TravelPreferences = NO_PREFERENCES,
+) -> list[Connection]:
+    """The connections the group accepts (earliest departure, transfers), preferring the
+    weekend window; none when the preferences rule every connection out."""
+    allowed = [c for c in connections if preferences.accepts(c.departs_at.hour, len(c.legs) - 1)]
+    preferred = [c for c in allowed if c.departs_at.hour in hours]
+    return (preferred or allowed)[:MAX_CONNECTIONS]
 
 
 def _cheapest(fares: Sequence[FareQuote], travel_class: int) -> FareQuote | None:
@@ -160,10 +173,15 @@ class PkpIntercitySupplier:
             return []
         self.log.origin, self.log.destination = origin.name, destination.name
         party = request.party_size
-        there = await self._best((origin, destination), request.depart_date, party, OUTBOUND_HOURS)
+        wants = request.preferences
+        there = await self._best(
+            (origin, destination), request.depart_date, party, OUTBOUND_HOURS, wants
+        )
         back: dict[int, LegQuote] = {}
         if request.return_date is not None:
-            back = await self._best((destination, origin), request.return_date, party, RETURN_HOURS)
+            back = await self._best(
+                (destination, origin), request.return_date, party, RETURN_HOURS, wants
+            )
         offers = []
         for travel_class in (2, 1):
             legs = [there.get(travel_class)]
@@ -178,13 +196,18 @@ class PkpIntercitySupplier:
         return offers
 
     async def _best(
-        self, route: tuple[Station, Station], day: date, travellers: int, hours: range
+        self,
+        route: tuple[Station, Station],
+        day: date,
+        travellers: int,
+        hours: range,
+        preferences: TravelPreferences = NO_PREFERENCES,
     ) -> dict[int, LegQuote]:
         """The cheapest whole-party fare per class over the connections in the window."""
         origin, to = route
         connections = await self.client.connections(origin.code, to.code, day)
         best: dict[int, LegQuote] = {}
-        for connection in _in_window(connections, hours):
+        for connection in _in_window(connections, hours, preferences):
             per_size = [
                 await self.client.fares(connection, origin.code, to.code, size)
                 for size in split_group(travellers)

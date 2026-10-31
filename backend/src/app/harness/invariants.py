@@ -122,6 +122,8 @@ class InvariantContext:
     # The scenario's supplier plugins and the clock's "now" right after the step.
     suppliers: SupplierRegistry = field(default_factory=SupplierRegistry)
     now: datetime | None = None
+    # HOLDS=on for the scenario: only then must a holding supplier's purchase run on a hold.
+    holds: bool = True
 
     def capabilities(self, booking: Booking) -> SupplierCapabilities | None:
         adapter = self.suppliers.get(booking.supplier_id) if booking.supplier_id else None
@@ -300,8 +302,9 @@ def _traveller_details_before_purchase(ctx: InvariantContext) -> list[str]:
 
 
 def _hold_live_at_purchase(ctx: InvariantContext) -> list[str]:
-    """A supplier that holds prices never sees a purchase step on a lapsed hold."""
-    if ctx.now is None:
+    """With holds on, a supplier that holds prices never sees a purchase step on a lapsed
+    hold. With holds off nothing is held; `price_fresh_at_purchase` guards the re-quote."""
+    if ctx.now is None or not ctx.holds:
         return []
     problems = []
     for booking, old in ctx.started_buying():

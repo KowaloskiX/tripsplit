@@ -24,6 +24,7 @@ from app.db.client import Database
 from app.db.indexes import verify_indexes
 from app.documents import DOCUMENT_MODELS
 from app.routes.api import api_router
+from app.suppliers.providers import close_shared_transports
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -52,6 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             yield
         finally:
             await app.state.background.cancel_all()
+            await close_shared_transports()
             await database.dispose()
 
     app = FastAPI(

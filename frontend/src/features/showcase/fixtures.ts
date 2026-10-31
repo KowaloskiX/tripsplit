@@ -149,6 +149,8 @@ export function room(status: TripStatus, proposals: ProposalResponse[], paid = 0
       chosen_proposal_id: proposals.find((p) => p.chosen)?.id ?? null,
       total_minor: PROPOSALS[0]?.total_minor ?? 0,
       transport_mode: "rail",
+      earliest_departure_hour: null,
+      max_transfers: null,
     },
     members: MEMBERS.map((member) => ({
       user_id: member.id,

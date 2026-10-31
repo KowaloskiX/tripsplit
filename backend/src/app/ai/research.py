@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Protocol
 
-from app.core.domain.trips import BookingKind, TransportMode
+from app.core.domain.trips import NO_PREFERENCES, BookingKind, TransportMode, TravelPreferences
 from app.suppliers.ports import Segment
 
 PACKAGES_PER_RESEARCH = 3
@@ -30,6 +30,7 @@ class TripBrief:
     destination: str = ""
     # The trip's mode preference; None = any (the brief may still say "fly there, train back").
     transport_mode: TransportMode | None = None
+    preferences: TravelPreferences = NO_PREFERENCES
 
     @property
     def nights(self) -> int:

@@ -95,6 +95,7 @@ class CatalogResearcher:
             party_size=brief.travellers,
             budget_per_person_minor=brief.budget_per_person_minor,
             currency=brief.currency,
+            preferences=brief.preferences,
         )
 
     async def _offers(
