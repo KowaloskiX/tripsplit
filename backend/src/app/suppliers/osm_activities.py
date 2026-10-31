@@ -31,6 +31,13 @@ from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import BookingKind, SupplierChannel
+from app.core.domain.trust import (
+    LinkKind,
+    OfferLink,
+    Provenance,
+    ProvenanceSource,
+    maps_search_url,
+)
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -170,8 +177,9 @@ def parse_sights(payload: Any, city: City) -> list[Sight]:
     return sorted(sights, key=lambda sight: sight.rank)[:MAX_IDEAS]
 
 
-def offer_of(sight: Sight, request: SearchRequest, city: City) -> Offer:
+def offer_of(sight: Sight, request: SearchRequest, city: City, now: datetime) -> Offer:
     kind = sight.kind
+    where = f"{sight.latitude:.5f},{sight.longitude:.5f}"
     return Offer(
         supplier_id=SUPPLIER_ID,
         offer_ref=f"idea:{sight.wikidata or sight.title}",
@@ -182,6 +190,16 @@ def offer_of(sight: Sight, request: SearchRequest, city: City) -> Offer:
         purchase_url=sight.url,
         details=f"{sight.description}. An idea in {city.name}: free or pay on site — "
         "TripSplit buys nothing for it.",
+        links=(
+            OfferLink(label=f"{sight.title} on Wikipedia", url=sight.url, kind=LinkKind.VERIFY),
+            OfferLink(
+                label=f"{sight.title} on Google Maps",
+                url=maps_search_url(where),
+                kind=LinkKind.MAP,
+            ),
+        ),
+        images=(sight.image_url,) if sight.image_url else (),
+        provenance=Provenance(ProvenanceSource.LIVE, SELLER, now),
         supplier_data={
             "lat": sight.latitude,
             "lon": sight.longitude,
@@ -223,7 +241,8 @@ class OsmActivitiesSupplier:
         if city is None:
             return []
         sights = await self.sights(city)
-        return [offer_of(sight, request, city) for sight in sights]
+        now = self.clock()
+        return [offer_of(sight, request, city, now) for sight in sights]
 
     async def sights(self, city: City) -> list[Sight]:
         if city.name in self._memory:
