@@ -11,6 +11,7 @@ import { TripFeed } from "@/features/feed";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
+import { TripPotCard } from "@/features/wallet";
 import type { TripStatus } from "@/lib/api";
 
 // Once the group has decided, buying is what the room is about: bookings move to the top.
@@ -79,6 +80,9 @@ function RoomPage(): ReactNode {
         <div className="order-1 space-y-6 lg:order-2">
           {/* While the group pays, the shares are the stage card; afterwards the bookings are. */}
           {paying && showContributions && <ContributionsPanel room={room} />}
+          {paying && showContributions && (
+            <TripPotCard pot={room.pot} currency={room.trip.currency} />
+          )}
           {showBookings && (
             <section aria-labelledby="bookings-heading" className="space-y-3">
               <div className="flex items-baseline justify-between gap-3">
@@ -97,6 +101,9 @@ function RoomPage(): ReactNode {
             </section>
           )}
           {!paying && showContributions && <ContributionsPanel room={room} />}
+          {!paying && showContributions && (
+            <TripPotCard pot={room.pot} currency={room.trip.currency} />
+          )}
           <TravellerDetailsPanel room={room} />
           <ProposalsPanel room={room} />
           {import.meta.env.DEV && <DemoPanel room={room} />}

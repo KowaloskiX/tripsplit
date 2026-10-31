@@ -29,6 +29,7 @@ export {
   bookingsListQueryKey,
   bookingsStartMutation,
   contributionsPayMutation,
+  contributionsTopUpAndPayMutation,
   demoDisruptionMutation,
   demoLeaveMutation,
   demoPayAllMutation,
@@ -51,6 +52,10 @@ export {
   tripsPostMessageMutation,
   tripsRoomOptions,
   tripsRoomQueryKey,
+  walletReadOptions,
+  walletReadQueryKey,
+  walletTopUpMutation,
+  walletTopUpStatusOptions,
 } from "./generated/@tanstack/react-query.gen";
 export type {
   AgentOutcome,
@@ -58,6 +63,7 @@ export type {
   BookingKind,
   BookingResponse,
   BookingStatus,
+  CheckoutResponse,
   ContributionResponse,
   ContributionStatus,
   CreateTripRequest,
@@ -69,11 +75,14 @@ export type {
   EventResponse,
   Gender,
   HealthStatus,
+  InsufficientFundsResponse,
   LiveStatusResponse,
   LoginRequest,
   MemberResponse,
   MemberRole,
   OrganizationSummary,
+  PaymentMethod,
+  PotResponse,
   ProposalItemResponse,
   ProposalResponse,
   RegisterRequest,
@@ -92,6 +101,10 @@ export type {
   TripResponse,
   TripStatus,
   TripSummaryResponse,
+  WalletResponse,
+  WalletTransactionKind,
+  WalletTransactionResponse,
+  WalletTransactionStatus,
 } from "./generated/types.gen";
 
 /**

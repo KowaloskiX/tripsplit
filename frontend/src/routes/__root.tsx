@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { SessionNav } from "@/features/auth";
 import { LandingFooter, Wordmark } from "@/features/brand";
 import { THEME_INIT_SCRIPT, ThemeToggle } from "@/features/theme";
+import { HeaderWalletChip } from "@/features/wallet";
 import appCss from "@/styles/app.css?url";
 
 const MAIN_REGION_ID = "main-content";
@@ -102,6 +103,7 @@ function SiteHeader(): ReactNode {
 
         <nav aria-label="Account" className="flex items-center gap-1">
           <ThemeToggle />
+          <HeaderWalletChip />
           <SessionNav />
         </nav>
       </div>
