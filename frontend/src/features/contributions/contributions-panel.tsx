@@ -34,7 +34,13 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
               : `Pay my share · ${formatMoney(mine.outstanding_minor, trip.currency)}`}
           </Button>
         )}
-        {trip.status === "paying" && !canPay && (
+        {mine !== null && mine.refund_minor > 0 && (
+          <p className="text-sm text-live">
+            You get {formatMoney(mine.refund_minor, trip.currency)} back — you paid more than your
+            current share.
+          </p>
+        )}
+        {trip.status === "paying" && !canPay && (mine === null || mine.refund_minor === 0) && (
           <p className="text-sm text-muted">
             Your share is paid. The agent books as soon as everyone else has paid too.
           </p>

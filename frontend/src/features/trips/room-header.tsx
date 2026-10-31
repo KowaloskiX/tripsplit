@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { RoomResponse } from "@/lib/api";
 
 import { InviteLink } from "./invite-link";
+import { LeaveTripButton } from "./leave-trip-button";
 import { StatusStepper } from "./status-stepper";
 
 function formatDates(from: string, to: string): string {
@@ -22,7 +23,10 @@ export function RoomHeader({ room }: { room: RoomResponse }): ReactNode {
           </p>
           <h1 className="mt-2 truncate font-mono text-2xl tracking-tight text-ink">{trip.title}</h1>
         </div>
-        <InviteLink inviteCode={room.invite_code} />
+        <div className="flex flex-wrap items-center gap-2">
+          <LeaveTripButton room={room} />
+          <InviteLink inviteCode={room.invite_code} />
+        </div>
       </div>
       <StatusStepper status={trip.status} />
     </header>

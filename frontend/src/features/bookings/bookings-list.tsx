@@ -15,6 +15,7 @@ import {
 
 import { BookingStatusBadge } from "./booking-status-badge";
 import { LiveAgentPanel } from "./live-agent-panel";
+import { ManualCompletionForm } from "./manual-completion-form";
 import { formatMoney } from "./money";
 import { useStartBooking } from "./mutations";
 
@@ -27,6 +28,7 @@ const KIND_ICON: Record<BookingKind, typeof TrainFront> = {
 // Mirrors the backend's rule; the server enforces it regardless of what the UI shows.
 const TRIP_STATUSES_THAT_BUY: ReadonlySet<TripStatus> = new Set(["booking", "rebooking"]);
 const STARTABLE: ReadonlySet<BookingStatus> = new Set(["pending", "failed", "handoff"]);
+const COMPLETABLE_BY_HAND: ReadonlySet<BookingStatus> = new Set(["failed", "handoff"]);
 
 export function canStart(trip: TripBookingsResponse, booking: BookingResponse): boolean {
   return (
@@ -34,6 +36,19 @@ export function canStart(trip: TripBookingsResponse, booking: BookingResponse): 
     TRIP_STATUSES_THAT_BUY.has(trip.trip_status) &&
     STARTABLE.has(booking.status)
   );
+}
+
+export function canCompleteManually(trip: TripBookingsResponse, booking: BookingResponse): boolean {
+  return (
+    trip.is_organizer &&
+    TRIP_STATUSES_THAT_BUY.has(trip.trip_status) &&
+    COMPLETABLE_BY_HAND.has(booking.status)
+  );
+}
+
+function passengersLabel(booking: BookingResponse): string {
+  const count = booking.passenger_user_ids.length;
+  return count > 0 ? ` · ${count} passenger${count === 1 ? "" : "s"}` : "";
 }
 
 export function BookingsList({
@@ -61,6 +76,7 @@ export function BookingsList({
                 <p className="truncate text-sm text-ink">{booking.title}</p>
                 <p className="font-mono text-xs text-muted">
                   {booking.supplier} · {formatMoney(booking.amount_minor, trip.currency)}
+                  {passengersLabel(booking)}
                 </p>
               </div>
               <BookingStatusBadge status={booking.status} />
@@ -74,6 +90,11 @@ export function BookingsList({
                 </Button>
               )}
             </div>
+            {canCompleteManually(trip, booking) && (
+              <div className="border-t border-line px-4 pt-3">
+                <ManualCompletionForm tripId={trip.trip_id} bookingId={booking.id} />
+              </div>
+            )}
             {showRun && (
               <div className="border-t border-line p-3">
                 <LiveAgentPanel

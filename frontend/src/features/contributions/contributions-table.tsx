@@ -17,8 +17,10 @@ export function ContributionsTable({
   currency,
   myUserId,
 }: ContributionsTableProps): ReactNode {
-  const paid = contributions.filter((c) => c.outstanding_minor === 0).length;
-  const total = contributions.length;
+  // A former member's settled share (0, maybe a refund) is not part of the group's progress.
+  const shares = contributions.filter((c) => c.amount_minor > 0);
+  const paid = shares.filter((c) => c.outstanding_minor === 0).length;
+  const total = shares.length;
 
   return (
     <div className="space-y-3">
@@ -52,6 +54,7 @@ export function ContributionsTable({
         <tbody className="divide-y divide-line">
           {contributions.map((contribution) => {
             const done = contribution.outstanding_minor === 0;
+            const refund = contribution.refund_minor > 0;
             return (
               <tr key={contribution.user_id}>
                 <td className="py-2 text-ink">
@@ -71,7 +74,11 @@ export function ContributionsTable({
                       done ? "bg-live/15 text-live" : "bg-surface-sunken text-muted",
                     )}
                   >
-                    {done ? "paid" : "pending"}
+                    {refund
+                      ? `refund ${formatMoney(contribution.refund_minor, currency)}`
+                      : done
+                        ? "paid"
+                        : "pending"}
                   </span>
                 </td>
               </tr>

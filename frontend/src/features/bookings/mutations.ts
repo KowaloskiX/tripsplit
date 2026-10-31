@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   bookingsApproveMutation,
+  bookingsCompleteManuallyMutation,
   bookingsListQueryKey,
   bookingsStartMutation,
   demoDisruptionMutation,
@@ -42,6 +43,19 @@ export function useApproveBooking(tripId: string) {
     ...mutation,
     decide: (bookingId: string, approved: boolean): void =>
       mutation.mutate({ path: { trip_id: tripId, booking_id: bookingId }, body: { approved } }),
+  };
+}
+
+export function useCompleteManually(tripId: string) {
+  const invalidate = useInvalidateBookings(tripId);
+  const mutation = useMutation({ ...bookingsCompleteManuallyMutation(), onSuccess: invalidate });
+  return {
+    ...mutation,
+    complete: (bookingId: string, confirmationRef: string): void =>
+      mutation.mutate({
+        path: { trip_id: tripId, booking_id: bookingId },
+        body: { confirmation_ref: confirmationRef },
+      }),
   };
 }
 

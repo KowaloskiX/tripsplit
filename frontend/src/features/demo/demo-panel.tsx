@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { apiErrorMessage, type RoomResponse } from "@/lib/api";
 
-import { usePayAll, useSeedMembers, useVoteAll } from "./mutations";
+import { useMemberLeaves, usePayAll, useSeedMembers, useVoteAll } from "./mutations";
+
+const LEAVABLE = ["collecting", "proposing", "voting", "paying"];
 
 /**
  * Dev-only shortcuts for a six-person demo from one browser. The backend refuses these routes
@@ -16,7 +18,12 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
   const seed = useSeedMembers(trip.id);
   const voteAll = useVoteAll(trip.id);
   const payAll = usePayAll(trip.id);
-  const error = seed.error ?? voteAll.error ?? payAll.error;
+  const memberLeaves = useMemberLeaves(trip.id);
+  const error = seed.error ?? voteAll.error ?? payAll.error ?? memberLeaves.error;
+  // Seeded members join after the real ones, so the newest non-organizer is the one to drop.
+  const leaver = [...room.members]
+    .reverse()
+    .find((member) => member.role !== "organizer" && member.user_id !== room.my_user_id);
   const missing = trip.group_size - room.members.length;
   const joinable = ["collecting", "proposing", "voting"].includes(trip.status);
   const favourite = room.my_vote_proposal_id ?? room.proposals[0]?.id;
@@ -52,6 +59,16 @@ export function DemoPanel({ room }: { room: RoomResponse }): ReactNode {
             onClick={() => payAll.mutate({ path })}
           >
             Everyone else pays
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={memberLeaves.isPending || !leaver || !LEAVABLE.includes(trip.status)}
+            onClick={() =>
+              leaver && memberLeaves.mutate({ path, body: { user_id: leaver.user_id } })
+            }
+          >
+            {leaver ? `${leaver.display_name} drops out` : "Nobody to drop out"}
           </Button>
         </div>
       </div>

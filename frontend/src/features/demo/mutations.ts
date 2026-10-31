@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
+  demoLeaveMutation,
   demoPayAllMutation,
   demoSeedMembersMutation,
   demoVoteAllMutation,
@@ -29,4 +30,8 @@ export function useVoteAll(tripId: string) {
 
 export function usePayAll(tripId: string) {
   return useMutation({ ...demoPayAllMutation(), onSuccess: useRefresh(tripId) });
+}
+
+export function useMemberLeaves(tripId: string) {
+  return useMutation({ ...demoLeaveMutation(), onSuccess: useRefresh(tripId) });
 }
