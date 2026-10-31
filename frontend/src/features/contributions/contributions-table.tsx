@@ -59,8 +59,7 @@ export function ContributionsTable({
           </span>
         )}
         <p className="ticket-mono text-xs text-muted">
-          <CountUp value={paidMinor} format={format} />{" "}
-          of{" "}
+          <CountUp value={paidMinor} format={format} /> of{" "}
           {formatMoney(
             contributions.reduce((sum, c) => sum + c.amount_minor, 0),
             currency,
