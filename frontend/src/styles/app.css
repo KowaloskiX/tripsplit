@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/dm-sans";
+@import "@fontsource-variable/cormorant-garamond";
 @import "@fontsource-variable/geist-mono";
 @import "./motion.css";
 
@@ -10,71 +11,78 @@
 /*
  * One place to reskin the whole app: change these values, not the components.
  *
- * Travel-search clean: a white page, near-black ink, light grey for quiet fills, and one coral
- * accent for the action that matters (always with white text). Photos carry the colour; the
- * pastels are only icon chips. Money keeps three states of its own: paid, owes, refund.
+ * Calm and warm: a white page, warm stone ink, sand for quiet fills, and one deep-brown primary
+ * for the action that matters (always with cream text). Kinds get muted sage / sand / clay
+ * chips. Money keeps three states of its own: paid, owes, refund.
  */
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-sunken: #f7f7f7;
-  --ink: #222222;
-  --muted: #6a6a6a;
-  --line: #ebebeb;
-  --accent: #222222;
-  --accent-ink: #ffffff;
-  --live: #222222;
+  --surface-sunken: #f9f6f1;
+  --ink: #453b35;
+  --muted: #6e665b;
+  --line: #ece5da;
+  --accent: #4e3b31;
+  --accent-ink: #f5efe4;
+  --live: #4e3b31;
 
-  --sun: #ff385c;
-  --sun-ink: #ffffff;
-  --pastel-sea: #e3f5f2;
-  --pastel-apricot: #fff1e2;
-  --pastel-blush: #ffe9ed;
-  --pastel-ink: #222222;
+  --sun: #4e3b31;
+  --sun-ink: #f5efe4;
+  --pastel-sea: #e9ece1;
+  --pastel-apricot: #f4ede1;
+  --pastel-blush: #f3e6dd;
+  --pastel-ink: #453b35;
 
-  --success: #008a05;
-  --success-soft: #e8f6e8;
-  --warn: #b25e00;
-  --warn-soft: #fff4e5;
-  --danger: #c13515;
-  --danger-soft: #fff0ed;
-  --info: #006b75;
-  --info-soft: #e6f6f7;
+  --success: #4c6a3a;
+  --success-soft: #eef1e7;
+  --warn: #8a5a1c;
+  --warn-soft: #f8f0e2;
+  --danger: #a13d2b;
+  --danger-soft: #f9ebe6;
+  --info: #4a6470;
+  --info-soft: #ebf0f1;
 
-  --agent-bg: #f7f7f7;
-  --agent-fg: #222222;
-  --agent-tag: #e00b41;
+  --agent-bg: #fbf9f6;
+  --agent-fg: #453b35;
+  --agent-tag: #7a6344;
 
-  --elev-card: 0 6px 16px rgb(0 0 0 / 0.12);
-  --elev-pop: 0 8px 28px rgb(0 0 0 / 0.28);
+  --elev-card: 0 1px 2px rgb(78 59 49 / 0.04), 0 4px 18px -6px rgb(78 59 49 / 0.06);
+  --elev-pop: 0 12px 40px -12px rgb(78 59 49 / 0.22);
 }
 
 .dark {
-  --bg: #121212;
-  --surface: #1c1c1c;
-  --surface-sunken: #262626;
-  --ink: #f7f7f7;
-  --muted: #a0a0a0;
-  --line: #333333;
-  --accent: #f7f7f7;
-  --accent-ink: #121212;
-  --live: #ff385c;
+  --bg: #1b1816;
+  --surface: #221e1b;
+  --surface-sunken: #2a2521;
+  --ink: #efe8dd;
+  --muted: #aaa195;
+  --line: #3a332d;
+  --accent: #e8dcc9;
+  --accent-ink: #2a211c;
+  --live: #dcc8aa;
 
-  --success: #6fd36f;
-  --success-soft: #142a14;
-  --warn: #ffb35c;
-  --warn-soft: #2e1f0b;
-  --danger: #ff8a73;
-  --danger-soft: #34140d;
-  --info: #6fd3dc;
-  --info-soft: #0c2a2d;
+  --sun: #e8dcc9;
+  --sun-ink: #2a211c;
+  --pastel-sea: #2b2f27;
+  --pastel-apricot: #322b22;
+  --pastel-blush: #33271f;
+  --pastel-ink: #efe8dd;
 
-  --agent-bg: #262626;
-  --agent-fg: #f7f7f7;
-  --agent-tag: #ff6b86;
+  --success: #a9c38f;
+  --success-soft: #232a1d;
+  --warn: #e2b36f;
+  --warn-soft: #30261a;
+  --danger: #e8987f;
+  --danger-soft: #36201a;
+  --info: #9bb8c4;
+  --info-soft: #1e282b;
 
-  --elev-card: 0 0 0 1px #333333;
-  --elev-pop: 0 0 0 1px #3a3a3a, 0 24px 48px -16px rgb(0 0 0 / 0.8);
+  --agent-bg: #2a2521;
+  --agent-fg: #efe8dd;
+  --agent-tag: #dcc8aa;
+
+  --elev-card: 0 0 0 1px #3a332d;
+  --elev-pop: 0 0 0 1px #3a332d, 0 24px 48px -16px rgb(0 0 0 / 0.7);
 }
 
 @theme inline {
@@ -109,13 +117,13 @@
   --color-agent-tag: var(--agent-tag);
 
   --font-sans:
-    "Plus Jakarta Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "DM Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --font-serif: var(--font-sans);
+  --font-serif: "Cormorant Garamond Variable", "Cormorant Garamond", Georgia, "Times New Roman", serif;
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  --radius-control: 8px;
-  --radius-panel: 16px;
+  --radius-control: 0.625rem;
+  --radius-panel: 14px;
   --radius-pill: 9999px;
 
   --shadow-card: var(--elev-card);
@@ -146,7 +154,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-ink);
+    outline: 2px solid var(--color-accent);
     outline-offset: 3px;
   }
 }
@@ -158,10 +166,11 @@
   color: var(--color-muted);
 }
 
-/* Display type: bold and tight, like a search site's big question. */
+/* Display type: the serif, for page and section headlines only. */
 @utility display {
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: var(--font-serif);
+  font-weight: 500;
+  letter-spacing: -0.015em;
   line-height: 1.05;
 }
 

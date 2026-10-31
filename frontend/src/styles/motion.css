@@ -1,5 +1,5 @@
 /*
- * The motion system. Rules: transform and opacity only (60 fps), 150–600 ms, one signature
+ * The motion system. Rules: transform and opacity only (60 fps), 150–480 ms, one signature
  * moment per stage. Every class here has a reduced-motion fallback at the bottom of the file:
  * land on the final state, at most a short opacity fade.
  *
@@ -13,8 +13,8 @@
 @keyframes word-rise {
   from {
     opacity: 0;
-    transform: translateY(0.45em);
-    filter: blur(10px);
+    transform: translateY(0.2em);
+    filter: blur(4px);
   }
   to {
     opacity: 1;
@@ -25,15 +25,15 @@
 
 .word-rise {
   display: inline-block;
-  animation: word-rise 700ms var(--ease-out-expo) both;
-  animation-delay: calc(120ms + var(--i, 0) * 70ms);
+  animation: word-rise 480ms var(--ease-out-expo) both;
+  animation-delay: calc(60ms + var(--i, 0) * 40ms);
 }
 
 /* The generic fade-up for anything appearing on its own. Stagger with --i. */
 @keyframes rise-in {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
@@ -42,22 +42,22 @@
 }
 
 .rise-in {
-  animation: rise-in 520ms var(--ease-out-expo) both;
-  animation-delay: calc(var(--delay, 0ms) + var(--i, 0) * 80ms);
+  animation: rise-in 380ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--delay, 0ms) + var(--i, 0) * 50ms);
 }
 
 /* Section reveals: hidden only when scripts run, so no-JS readers still see everything. */
 .reveal {
   transition:
-    opacity 700ms var(--ease-out-expo),
-    transform 700ms var(--ease-out-expo);
-  transition-delay: calc(var(--i, 0) * 90ms);
+    opacity 480ms var(--ease-out-expo),
+    transform 480ms var(--ease-out-expo);
+  transition-delay: calc(var(--i, 0) * 60ms);
 }
 
 @media (scripting: enabled) {
   .reveal:not([data-visible="true"]) {
     opacity: 0;
-    transform: translateY(28px);
+    transform: translateY(12px);
   }
 
   /* Children that choreograph themselves once their scope is on screen. */
@@ -225,7 +225,7 @@
 @keyframes deal-in {
   from {
     opacity: 0;
-    transform: translate(var(--deal-x, -24px), 72px) rotate(var(--deal-rot, -5deg)) scale(0.96);
+    transform: translateY(14px);
   }
   70% {
     opacity: 1;
@@ -237,8 +237,8 @@
 }
 
 .deal-in {
-  animation: deal-in 640ms var(--ease-out-expo) both;
-  animation-delay: calc(var(--i, 0) * 140ms);
+  animation: deal-in 420ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 60ms);
 }
 
 /* ---------------------------------------------------------------- voting ------------------- */

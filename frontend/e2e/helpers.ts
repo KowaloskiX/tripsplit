@@ -55,6 +55,10 @@ export async function createTrip(page: Page, options: TripOptions = {}): Promise
   const { title = "Weekend in Prague", groupSize = 6, budget = "900" } = options;
   await page.goto("/app");
   await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
+  // The long form is the fallback to the one-sentence plan, folded by default.
+  if (!(await page.getByLabel("Trip name").isVisible())) {
+    await page.getByText("Set every detail yourself").click();
+  }
   await page.getByLabel("Trip name").fill(title);
   await page
     .getByLabel("Brief for the agent")
