@@ -6,6 +6,7 @@ import math
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from app.core.domain.trips import (
     AgentOutcome,
@@ -93,6 +94,25 @@ def repriced_minor(amount_minor: int, price_change_percent: float) -> int:
     factor = Decimal(1) + Decimal(str(price_change_percent)) / Decimal(100)
     value = (Decimal(amount_minor) * factor).quantize(Decimal(1), rounding=ROUND_HALF_UP)
     return max(int(value), 0)
+
+
+PURCHASE_URL_FARE_PARAM = "fare"
+
+
+def priced_purchase_url(url: str, amount_minor: int, travellers: int) -> str:
+    """`url` charging the booking's binding amount. A purchase URL may carry the per-person
+    fare (`fare=`, minor units — how the demo rail site sells a PKP offer at PKP's price); it
+    was set at search time, so after a re-quote or a repriced rebooking it is re-derived from
+    the amount the group paid for. A URL without a fare is returned unchanged."""
+    parts = urlsplit(url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    if not any(key == PURCHASE_URL_FARE_PARAM for key, _ in query):
+        return url
+    fare = round(amount_minor / max(travellers, 1))
+    priced = [
+        (key, str(fare) if key == PURCHASE_URL_FARE_PARAM else value) for key, value in query
+    ]
+    return urlunsplit(parts._replace(query=urlencode(priced)))
 
 
 def refund_minor(share_minor: int, paid_minor: int) -> int:

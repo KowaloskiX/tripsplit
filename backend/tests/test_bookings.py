@@ -477,6 +477,25 @@ async def test_cheaper_rebooking_marks_refunds_and_goes_straight_to_rebooking(
     assert start.status_code == 202, start.text
 
 
+@pytest.mark.usefixtures("drain_monitors")
+async def test_a_repriced_rebooking_sends_the_agent_to_the_new_fare(
+    booking_app: FastAPI, client: AsyncClient, launcher: FakeLauncher
+) -> None:
+    """The demo rail site charges the `fare` in the purchase URL: a replacement bought at the
+    stale search-time fare would never match the expected total, and the agent hands off."""
+    organizer = await _register(client, "org@example.com")
+    trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKED, BookingStatus.CONFIRMED)
+    await train.set({"supplier_url": f"{train.supplier_url}?date=2026-11-20&fare={TRAIN_MINOR}"})
+    body = await _disrupt(client, trip, -10)
+    replacements = body["replacements"]
+    assert isinstance(replacements, list)
+    start = await client.post(
+        f"/api/trips/{trip.id}/bookings/{replacements[0]['id']}/start", headers=_csrf(client)
+    )
+    assert start.status_code == 202, start.text
+    assert launcher.started[-1].url.endswith("?date=2026-11-20&fare=108000")
+
+
 async def test_disruption_needs_a_confirmed_booking(
     booking_app: FastAPI, client: AsyncClient
 ) -> None:
