@@ -61,6 +61,13 @@ Both artifacts are committed. Never hand-edit the generated client.
 
 ## Gotchas
 
+- **Demo bookings go to the fake rail supplier only if `DEMO_SUPPLIER_URL` is set** (dev/test,
+  e.g. `http://localhost:8000`): train bookings created at voting close then point at
+  `/api/demo-supplier/rail`. The stay and activity still point at real suppliers — do not start
+  them in a demo.
+- **Bookings stuck after a backend restart heal on the next listing:** a still-alive agent
+  (`agent.pid`) is re-attached, a `result.json` is applied, anything else fails the booking.
+
 - **The repo path contains a space.** Always quote paths in shell commands; in Node configs use
   `fileURLToPath(import.meta.url)` rather than `new URL(...).pathname`.
 - **Ports 27018 / 6380 are shifted on purpose** so a locally installed `mongod` / `redis-server`
