@@ -75,6 +75,8 @@ SPLURGE_SLACK = timedelta(hours=1)
 # A stay rated at least this (out of 10) and at most this far from the centre is decent.
 DECENT_RATING = 8.0
 DECENT_KM_FROM_CENTRE = 3.0
+# Free attraction ideas named in every package's summary.
+IDEAS_IN_SUMMARY = 5
 
 
 def _item(adapter: SupplierAdapter, offer: Offer) -> PackageItemPlan:
@@ -149,6 +151,18 @@ def _directions(there: TransportMode | None, back: TransportMode | None) -> str:
     return f"{mode_noun(there)} there, {mode_noun(back)} back"
 
 
+def _is_idea(item: PackageItemPlan) -> bool:
+    """A free activity is an idea for the day (a museum, a viewpoint), not a purchase."""
+    return item.price_minor == 0
+
+
+def _ideas_note(activities: Sequence[PackageItemPlan], place: str) -> str:
+    """ "Ideas in Stockholm (free or pay on site): Vasa Museum, Skansen, Gamla stan." — in the
+    supplier's ranking order, the best known first."""
+    ideas = [item.title for item in activities if _is_idea(item)][:IDEAS_IN_SUMMARY]
+    return f"Ideas in {place} (free or pay on site): {', '.join(ideas)}." if ideas else ""
+
+
 def _noted(package: PackagePlan, note: str) -> PackagePlan:
     return replace(package, summary=f"{package.summary} {note}") if note else package
 
@@ -206,9 +220,9 @@ class CatalogResearcher:
         brief = replace(brief, origin=origin_of(brief.origin, text))
         destination = destination_of(brief.destination, text, brief.origin)
         outbound, back = travel_modes(brief.transport_mode, text)
-        transports, stays, activities = await asyncio.gather(
+        transports, (stays, stay_note), activities = await asyncio.gather(
             self._transports(brief, destination, outbound, back),
-            self._offers(BookingKind.STAY, brief, destination),
+            self._stays(brief, destination),
             self._offers(BookingKind.ACTIVITY, brief, destination),
         )
         note = ""
@@ -217,21 +231,55 @@ class CatalogResearcher:
         if not transports:
             raise ValueError(f"no transport offers from {brief.origin} to {destination}")
         transports = [t for t in transports if _fits_calendar(t, brief)] or transports
+        bookable = [item for item in activities if not _is_idea(item)]
         packages = self._compose(
-            brief, destination, transports, _by_price(stays), _by_price(activities)
+            brief, destination, transports, _by_price(stays), _by_price(bookable)
         )
-        return [_noted(package, note) for package in packages]
+        notes = " ".join(
+            part for part in (note, stay_note, _ideas_note(activities, destination)) if part
+        )
+        return [_noted(package, notes) for package in packages]
+
+    async def _answers(
+        self, kind: BookingKind, mode: TransportMode | None, request: SearchRequest
+    ) -> list[tuple[SupplierAdapter, list[Offer]]]:
+        adapters = self.suppliers.of_kind(kind, mode)
+        answers = await asyncio.gather(*(self._ask(adapter, request) for adapter in adapters))
+        return list(zip(adapters, answers, strict=True))
 
     async def _search(
         self, kind: BookingKind, mode: TransportMode | None, request: SearchRequest
     ) -> list[PackageItemPlan]:
-        adapters = self.suppliers.of_kind(kind, mode)
-        answers = await asyncio.gather(*(self._ask(adapter, request) for adapter in adapters))
         return [
             _item(adapter, offer)
-            for adapter, offers in zip(adapters, answers, strict=True)
+            for adapter, offers in await self._answers(kind, mode, request)
             for offer in offers
         ]
+
+    async def _stays(self, brief: TripBrief, destination: str) -> tuple[list[PackageItemPlan], str]:
+        """Real stays whenever a real supplier has any; else the simulators' examples, and a
+        sentence naming the real suppliers that found nothing (a package never lacks a bed,
+        and never passes an example off as a real hotel)."""
+        request = self._request(brief, brief.origin, destination)
+        answers = await self._answers(BookingKind.STAY, None, request)
+        real = [
+            _item(adapter, offer)
+            for adapter, offers in answers
+            if not adapter.capabilities.simulated
+            for offer in offers
+        ]
+        if real:
+            return real, ""
+        examples = [_item(adapter, offer) for adapter, offers in answers for offer in offers]
+        empty = [
+            adapter.display_name for adapter, _ in answers if not adapter.capabilities.simulated
+        ]
+        if not empty:
+            return examples, ""
+        note = f"No hotels found from {' or '.join(empty)} for {destination}" + (
+            ", so the stay shown is an example." if examples else "."
+        )
+        return examples, note
 
     async def _ask(self, adapter: SupplierAdapter, request: SearchRequest) -> list[Offer]:
         """One supplier's offers; [] when it fails or is too slow — never an exception."""

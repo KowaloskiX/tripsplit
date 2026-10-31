@@ -163,6 +163,13 @@ Both artifacts are committed. Never hand-edit the generated client.
 - **Bookings stuck after a backend restart heal on the next listing:** a still-alive agent
   (`agent.pid`) is re-attached, a `result.json` is applied, anything else fails the booking.
 
+- **Cities live in ONE catalogue:** `core/domain/places.py` (+ `places_data.py`, ~176 cities:
+  EN/PL/local names, country, centre, IATA, PKP station). `resolve_city("Sztokholmu")` is
+  declension- and diacritics-aware; airports, LiteAPI, PKP and the brief all read it — add a city
+  there, never a table in a supplier. `osm_activities` = real sights near the centre (Wikipedia
+  geo search, cached in `backend/var/places-cache`) as free ideas in the package summary, never
+  bought; `sim_stay` is only used when no real stays supplier found anything (the summary says so).
+
 - **The repo path contains a space.** Always quote paths in shell commands; in Node configs use
   `fileURLToPath(import.meta.url)` rather than `new URL(...).pathname`.
 - **Ports 27018 / 6380 are shifted on purpose** so a locally installed `mongod` / `redis-server`

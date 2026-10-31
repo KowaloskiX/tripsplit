@@ -11,7 +11,7 @@ trip harness moves that clock forward instead of sleeping for a day.
 """
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, time, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -47,6 +47,7 @@ from app.suppliers.sim_catalogue import (
     Origin,
     Place,
     RailLeg,
+    example_place,
     find_origin,
     find_place,
 )
@@ -228,7 +229,7 @@ class SimSupplier:
         return offers
 
     def _stays(self, request: SearchRequest) -> list[Offer]:
-        place = find_place(request.destination)
+        place = find_place(request.destination) or example_place(request.destination)
         if place is None:
             return []
         nights = max(((request.return_date or request.depart_date) - request.depart_date).days, 1)
@@ -267,7 +268,7 @@ class SimSupplier:
         ]
 
     def _activities(self, request: SearchRequest) -> list[Offer]:
-        place = find_place(request.destination)
+        place = find_place(request.destination) or example_place(request.destination)
         if place is None:
             return []
         starts_at = _at(request.depart_date, time(19))
@@ -550,7 +551,7 @@ def sim_supplier(
     return SimSupplier(
         id=supplier_id,
         display_name=display_name,
-        capabilities=capabilities or standard,
+        capabilities=replace(capabilities or standard, simulated=True),
         clock=clock,
         behaviour=behaviour or SimBehaviour(),
     )
