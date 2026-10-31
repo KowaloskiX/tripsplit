@@ -83,6 +83,16 @@ class CloseVoting:
 
 
 @dataclass(frozen=True, slots=True)
+class SelectOptions:
+    """The chat flow: the organizer picks one transport, a stay and some activities by their
+    index in `GET /trips/{id}/options` (-1 = the last) and the vote closes on that package."""
+
+    transport: int = 0
+    stay: int | None = 0
+    activities: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Pay:
     """`members=None` means everyone who currently owes money (minus `everyone_except`).
     Shares are paid from wallets: `fund_wallets` first tops each payer's wallet up (dummy
@@ -386,6 +396,7 @@ type Action = (
     GeneratePackages
     | CastVotes
     | CloseVoting
+    | SelectOptions
     | Pay
     | TopUp
     | TopUpAndPay

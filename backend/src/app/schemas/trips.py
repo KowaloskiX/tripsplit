@@ -106,6 +106,20 @@ class CastVoteRequest(StrictRequest):
     proposal_id: str = Field(min_length=1, max_length=64)
 
 
+class TripSelectionRequest(StrictRequest):
+    """The chat flow's picks, by `option_id` from `GET /trips/{id}/options`. Activities are a
+    comma-separated list ("a0,a3"; empty = none) — input fields stay scalars (see
+    `tests/test_injection_contract.py`)."""
+
+    transport_option_id: str = Field(pattern=r"^t\d{1,2}$")
+    stay_option_id: str | None = Field(default=None, pattern=r"^s\d{1,2}$")
+    activity_option_ids: str = Field(default="", pattern=r"^(a\d{1,2}(,a\d{1,2}){0,15})?$")
+
+    @property
+    def activities(self) -> list[str]:
+        return [part for part in self.activity_option_ids.split(",") if part]
+
+
 class SeedMembersRequest(StrictRequest):
     count: int = Field(default=5, ge=1, le=MAX_DEMO_MEMBERS)
 
@@ -272,6 +286,30 @@ class EventResponse(_ReadModel):
 
 class SetPayByRequest(StrictRequest):
     pay_by: datetime
+
+
+class OptionResponse(_ReadModel):
+    """One pickable option: a transport (one item, or out + back), a stay or an activity."""
+
+    option_id: str
+    kind: BookingKind
+    label: str
+    items: list[ProposalItemResponse]
+    total_minor: int
+    per_person_minor: int
+    over_budget: bool
+    rating: float | None = None
+    stars: float | None = None
+    km_from_centre: float | None = None
+
+
+class TripOptionsResponse(_ReadModel):
+    """Every option the latest research found (transport cheapest first, stays by price)."""
+
+    travellers: int
+    transport: list[OptionResponse]
+    stays: list[OptionResponse]
+    activities: list[OptionResponse]
 
 
 class TripStatusResponse(_ReadModel):

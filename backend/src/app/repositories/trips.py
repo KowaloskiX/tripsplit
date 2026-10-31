@@ -13,7 +13,15 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.core.domain.trips import ContributionStatus, EventActor, EventKind, TripStatus
 from app.db.documents import utc_now
-from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember, Vote
+from app.models.trips import (
+    Contribution,
+    Proposal,
+    Trip,
+    TripEvent,
+    TripMember,
+    TripOptions,
+    Vote,
+)
 from app.repositories.base import bounded_to_list
 
 # A feed page. The UI polls with `after`, so a page only has to cover a few seconds.
@@ -157,6 +165,22 @@ class ProposalRepository:
         self, trip_id: PydanticObjectId, session: AsyncClientSession | None = None
     ) -> None:
         await Proposal.find(Proposal.trip_id == trip_id, session=session).delete(session=session)
+
+
+class TripOptionsRepository:
+    async def replace(
+        self, options: TripOptions, session: AsyncClientSession | None = None
+    ) -> TripOptions:
+        """The latest research's options replace the previous research's."""
+        await TripOptions.find(TripOptions.trip_id == options.trip_id, session=session).delete(
+            session=session
+        )
+        return await options.insert(session=session)
+
+    async def for_trip(
+        self, trip_id: PydanticObjectId, session: AsyncClientSession | None = None
+    ) -> TripOptions | None:
+        return await TripOptions.find_one(TripOptions.trip_id == trip_id, session=session)
 
 
 class VoteRepository:

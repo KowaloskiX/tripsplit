@@ -141,6 +141,31 @@ class Proposal(TimestampMixin, Document):
         ]
 
 
+class TripOption(BaseModel):
+    """One pickable option of a research: a transport (one item, or out + back), a stay or an
+    activity. `option_id` is stable within one research ("t0", "s2", "a1")."""
+
+    option_id: str = Field(max_length=16)
+    items: list[ProposalItem] = Field(default_factory=list)
+
+
+class TripOptions(TimestampMixin, Document):
+    """Every candidate the latest research considered — the chat flow picks from these one
+    step at a time and builds its own package (`ProposalService.select`). Replaced by each
+    research, next to the proposals."""
+
+    trip_id: PydanticObjectId
+    transport: list[TripOption] = Field(default_factory=list)
+    stays: list[TripOption] = Field(default_factory=list)
+    activities: list[TripOption] = Field(default_factory=list)
+
+    class Settings:
+        name: ClassVar[str] = "trip_options"
+        indexes: ClassVar[list[pymongo.IndexModel]] = [
+            pymongo.IndexModel([("trip_id", 1)], unique=True, name="uq_trip_options_trip_id"),
+        ]
+
+
 class Vote(TimestampMixin, Document):
     trip_id: PydanticObjectId
     proposal_id: PydanticObjectId

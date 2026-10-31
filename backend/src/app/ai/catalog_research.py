@@ -24,6 +24,7 @@ from app.ai.research import (
     SearchOutcome,
     SupplierProgress,
     TripBrief,
+    research_candidates,
     research_progress,
 )
 from app.core.domain.packages import is_over_budget, per_person
@@ -218,6 +219,10 @@ class CatalogResearcher:
             raise ValueError(f"no transport offers from {brief.origin} to {destination}")
         transports = [t for t in transports if _fits_calendar(t, brief)] or transports
         bookable = [item for item in activities if not _is_idea(item)]
+        if (candidates := research_candidates.get()) is not None:
+            candidates.transports = list(transports)
+            candidates.stays = _by_price(stays)
+            candidates.activities = _by_price(bookable)
         packages = self._compose(
             brief, destination, transports, _by_price(stays), _by_price(bookable)
         )
