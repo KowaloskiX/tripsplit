@@ -1,8 +1,9 @@
 import { ArrowUp, Sparkles } from "lucide-react";
-import { type CSSProperties, type FormEvent, type ReactNode, useState } from "react";
+import { type CSSProperties, type FormEvent, type ReactNode, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { TypingIndicator } from "@/components/ui/typing-indicator";
+import { MicButton, SpeakerToggle, useSpeakArrivals } from "@/features/voice";
 
 import { ChoiceSheet } from "./choice-sheet";
 import {
@@ -73,6 +74,13 @@ export function QuickPlan({
     onSubmit?.(value);
     setDraft("");
   };
+  // The agent's answer is read aloud (when unmuted) the moment it appears, never on reload.
+  const answered = (stage === "answered" || stage === "choosing") && prompt !== null;
+  const spoken = useMemo(
+    () => (answered ? [{ id: `${prompt}\u0000${reply}`, text: reply }] : []),
+    [answered, prompt, reply],
+  );
+  const speech = useSpeakArrivals(spoken);
   const onForm = (event: FormEvent): void => {
     event.preventDefault();
     submit(draft);
@@ -162,6 +170,8 @@ export function QuickPlan({
               }
               className="min-w-0 flex-1 bg-transparent text-base text-ink outline-none placeholder:text-muted sm:text-lg"
             />
+            <SpeakerToggle speech={speech} />
+            <MicButton withLang onTranscript={setDraft} onFinal={submit} />
             <Button type="submit" size="icon" aria-label="Plan it" disabled={!draft.trim()}>
               <ArrowUp className="size-5" aria-hidden />
             </Button>
