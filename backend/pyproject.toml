@@ -43,6 +43,7 @@ trip-harness = "app.harness.cli:main"
 agent-eval = "app.agent_evals.cli:main"
 search-bench = "app.suppliers.search_bench:main"
 search-eval = "app.search_evals.cli:main"
+seed-demo = "scripts.seed_demo:main"
 
 [build-system]
 requires = ["hatchling"]
