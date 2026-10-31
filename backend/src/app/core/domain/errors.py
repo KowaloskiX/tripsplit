@@ -20,6 +20,7 @@ class TripError(StrEnum):
     ALREADY_PAID = "already_paid"
     ORGANIZER_CANNOT_LEAVE = "organizer_cannot_leave"
     BOOKING_STARTED = "booking_started"  # too late to leave: the agent is already buying
+    ATTRACTION_NOT_FOUND = "attraction_not_found"
 
 
 class ApiError(StrEnum):
