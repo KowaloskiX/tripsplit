@@ -85,15 +85,18 @@ the detected features (`auto_book`, `wallet`).
 
 | Part | Real | Simulated / demo |
 |---|---|---|
-| Train search + re-quote | PKP Intercity (`pkp_intercity`) | `sim_rail` |
-| Train purchase | the browser agent on intercity.pl (final click simulated: `AGENT_FINAL_CLICK=simulate`) | `demo_rail` — our fake rail site, same agent |
-| Flights | Duffel test API (`duffel`): real offers, real hold orders, test payments | `sim_flight` |
-| Stays | LiteAPI sandbox (`feat/liteapi`) | `sim_stay`, `sim_stay_site` |
-| Activities | — | `sim_activity` |
+| Train search + re-quote | PKP Intercity (`pkp_intercity`): live fares from the e-IC gateway (re-quote at purchase only with `QUOTES=live`; default `static` keeps the searched price) | `sim_rail` |
+| Train purchase | — (with `DEMO_SUPPLIER_URL` set, intercity.pl is never used) | the browser agent on our demo rail site (`/api/demo-supplier/rail`) at PKP's real fare; it stops at "Pay now", the final click is simulated |
+| Flights | Duffel **test** API (`duffel`): real offers, real orders with a booking reference (`HOLDS=off`: an instant order at the approval) | `sim_flight` |
+| Stays | LiteAPI **sandbox** (`liteapi`): real hotels, prebook + book, a real booking id | `sim_stay` (only when LiteAPI finds nothing; the package says it is an example), `sim_stay_site` |
+| Sights / ideas | `osm_activities`: real sights near the centre (Wikipedia geo search), shown as free ideas, never bought | — |
+| Activities / tickets | — | `sim_activity` (do not enable in the real-data demo: its agent purchase URL does not resolve), `sim_tickets` + `sim_sights` (bought by the agent on our demo ticket shop) |
 | Package research | deterministic catalogue over live supplier offers (optionally worded by Claude) | fixture research in the harness |
-| Payments | — | `PAYMENTS=fake` (wallet + top-ups on `feat/wallet`) |
-| Friends | real accounts, real votes / payments through the services | driven by the demo director; seeded users can never sign in |
-| Disruption | Duffel airline-initiated changes | `POST .../demo/disruption` (the director's last scene) |
+| Payments | — | the simulated licensed partner "TripSplit Pay" (`PAYMENTS=wallet`): wallets, BLIK/card top-ups, trip escrow, payouts, single-use virtual cards, KYC light, deadline refunds |
+| Friends | real accounts, real votes / payments through the services | driven by the demo director / demo panel; seeded users can never sign in (they get made-up document details) |
+| Disruption | Duffel airline-initiated changes — only for held orders (`HOLDS=on`); instant orders do not record the order id yet | `POST .../demo/disruption` (the director's last scene) |
+
+Verified runs with numbers and supplier references: [`DEMO-CASES.md`](./DEMO-CASES.md).
 
 ## Reset
 
