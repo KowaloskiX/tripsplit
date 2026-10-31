@@ -518,6 +518,10 @@ class BookingService:
         members = await self.members.for_trip(identifier_of(trip))
         if await self._details_missing(trip, booking, members):
             return Err(BookingError.TRAVELLER_DETAILS_MISSING)
+        refused = await self.prices.refresh_split(trip, await self._parts_of(booking))
+        if refused is not None:
+            return Err(refused)
+        booking = await self.bookings.get(identifier_of(booking)) or booking
         refused = await self.prices.refresh(trip, booking)
         if refused is not None:
             return Err(refused)
@@ -552,6 +556,18 @@ class BookingService:
             else:
                 items.append(BatchItem(fresh, None, started.error))
         return Ok(Batch(trip=await self.trips.get(identifier_of(trip)) or trip, items=items))
+
+    async def _parts_of(self, booking: Booking) -> list[Booking]:
+        """Every purchase of the same package item (several when the supplier caps the party),
+        this one included; just this one for a booking without an item index."""
+        if booking.proposal_item_index is None:
+            return [booking]
+        return [
+            part
+            for part in await self.bookings.for_trip(booking.trip_id)
+            if part.proposal_item_index == booking.proposal_item_index
+            and part.status is not BookingStatus.CANCELLED
+        ]
 
     async def _details_missing(
         self, trip: Trip, booking: Booking, members: list[TripMember]
