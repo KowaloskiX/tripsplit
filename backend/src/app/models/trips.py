@@ -23,6 +23,7 @@ from app.core.domain.trips import (
     upgrade_legacy_kind,
 )
 from app.db.documents import TimestampMixin
+from app.models.trust import TrustLink, TrustProvenance
 
 TITLE_MAX_LENGTH = 120
 TEXT_MAX_LENGTH = 4000
@@ -105,6 +106,10 @@ class ProposalItem(BaseModel):
     refundable: bool = False
     # Adapter-owned (see `Booking.supplier_data`); never shown to or accepted from a client.
     supplier_data: dict[str, Any] = Field(default_factory=dict)
+    # Trust (see `app.core.domain.trust`); empty on items researched before it existed.
+    links: list[TrustLink] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
+    provenance: TrustProvenance | None = None
 
     @model_validator(mode="before")
     @classmethod

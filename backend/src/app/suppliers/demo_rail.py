@@ -14,6 +14,7 @@ from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trust import Provenance, ProvenanceSource
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -105,6 +106,9 @@ class DemoRailSupplier:
                     details=" ".join(segment.describe() + "." for segment in segments),
                     starts_at=segments[0].departs_at,
                     supplier_data={"price_per_person_minor": per_person, "train": train.code},
+                    provenance=Provenance(
+                        ProvenanceSource.EXAMPLE, "Demo rail", datetime.now(LOCAL)
+                    ),
                 )
             )
         return offers

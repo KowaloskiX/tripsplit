@@ -20,6 +20,7 @@ from app.core.domain.trips import (
     TransportMode,
     TripStatus,
 )
+from app.core.domain.trust import LinkKind, ProvenanceSource
 from app.schemas.common import StrictRequest, normalize_text
 
 TITLE_MAX_LENGTH = 120
@@ -162,6 +163,24 @@ class SegmentResponse(_ReadModel):
     arrives_at: datetime
 
 
+class LinkResponse(_ReadModel):
+    """One click to check an offer: `book` at the supplier, `verify` on an independent site,
+    `map`, or live `status` by flight / train number."""
+
+    label: str
+    url: str
+    kind: LinkKind
+
+
+class ProvenanceResponse(_ReadModel):
+    """Where the data came from: `live` (the supplier's real data), `test` / `sandbox` (a
+    supplier's test API) or `example` (a simulator — illustrative, not bookable for real)."""
+
+    source: ProvenanceSource
+    supplier: str
+    checked_at: datetime
+
+
 class ProposalItemResponse(_ReadModel):
     kind: BookingKind
     mode: TransportMode | None
@@ -172,6 +191,9 @@ class ProposalItemResponse(_ReadModel):
     details: str
     starts_at: datetime | None
     segments: list[SegmentResponse]
+    links: list[LinkResponse]
+    images: list[str]
+    provenance: ProvenanceResponse | None
 
 
 class ProposalResponse(_ReadModel):

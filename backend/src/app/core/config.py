@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     search_cache_ttl_s: float = Field(default=300.0, ge=0.0)
     # A feed message per finished supplier search ("PKP Intercity ✓ 2 offers · 2.9 s").
     search_progress_events: bool = True
+    # One GET per supplier link at research time (at most ~1.5 s): 404/410 links are dropped
+    # and items without photos get the page's og:image.
+    link_check: bool = True
     # Who takes the money. `fake` always succeeds; Stripe plugs in behind the same port later.
     payments: PaymentsKind = "fake"
     # The booking agent (see app.agent). Relative paths resolve against `backend/` — the

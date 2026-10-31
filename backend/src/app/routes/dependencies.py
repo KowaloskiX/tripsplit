@@ -8,6 +8,7 @@ from fastapi import Depends, Request
 from starlette import status
 
 from app.agent.launcher import SubprocessLauncher
+from app.ai.link_check import LinkInspector
 from app.ai.researchers import build_researcher
 from app.core.config import PkpTransportKind, Settings
 from app.core.deps import BackgroundRunnerDep, SettingsDep
@@ -133,6 +134,7 @@ def get_proposal_service(
             holds=settings.holds_enabled,
         ),
         progress_events=settings.search_progress_events,
+        verifier=LinkInspector() if settings.link_check else None,
     )
 
 

@@ -18,7 +18,7 @@ from app.core.domain.trips import (
     TripStatus,
 )
 from app.schemas.common import StrictRequest
-from app.schemas.trips import VisibleText
+from app.schemas.trips import LinkResponse, ProvenanceResponse, VisibleText
 
 OBJECT_ID_LENGTH = 24
 MAX_DELAY_MINUTES = 24 * 60
@@ -77,6 +77,10 @@ class BookingResponse(BaseModel):
     # Who travels on this purchase (empty on bookings made before parties were recorded).
     passenger_user_ids: list[str]
     run: AgentRunResponse | None
+    # Trust: where to book / verify / find it, photos, where the data came from.
+    links: list[LinkResponse]
+    images: list[str]
+    provenance: ProvenanceResponse | None
 
 
 class TripBookingsResponse(BaseModel):
@@ -156,6 +160,20 @@ class BatchResponse(BaseModel):
 
     trip_status: TripStatus
     items: list[BatchItemResponse]
+
+
+class SupplierCallResponse(BaseModel):
+    """One API call a supplier adapter made for this trip — for the live terminal. The path
+    has every identifier replaced by `{id}` and no query string; nothing else is kept."""
+
+    supplier_id: str
+    supplier: str
+    method: str
+    path: str
+    # The HTTP status; null = no answer (network error or timeout).
+    status: int | None
+    ms: int
+    at: datetime
 
 
 class RunStatusResponse(BaseModel):

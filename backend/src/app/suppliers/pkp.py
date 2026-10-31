@@ -16,7 +16,7 @@ import logging
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -30,6 +30,7 @@ from app.core.domain.trips import (
     TransportMode,
     TravelPreferences,
 )
+from app.core.domain.trust import LinkKind, OfferLink, Provenance, ProvenanceSource
 from app.suppliers.intercity import (
     MAX_PASSENGERS_PER_PURCHASE,
     Connection,
@@ -130,6 +131,21 @@ def _in_window(
 def _cheapest(fares: Sequence[FareQuote], travel_class: int) -> FareQuote | None:
     matching = [f for f in fares if f.travel_class == travel_class and not f.refundable]
     return min(matching, key=lambda fare: fare.total_minor, default=None)
+
+
+def _links(legs: Sequence[LegQuote]) -> tuple[OfferLink, ...]:
+    """Each leg's results page on e-IC (PKP's own shop): the train, the date, the time."""
+    return tuple(
+        OfferLink(
+            label=f"{leg.connection} on e-IC ({leg.direction}, {leg.departs_at:%d %b %H:%M})",
+            url=results_url(
+                leg.departs_at.date(), leg.from_code, leg.to_code, f"{leg.departs_at:%H:%M}"
+            ),
+            kind=LinkKind.BOOK,
+        )
+        for leg in legs
+        if leg.from_code and leg.to_code
+    )
 
 
 def _local(moment: datetime) -> datetime:
@@ -297,6 +313,8 @@ class PkpIntercitySupplier:
                 f"({CARRIER} sells at most {MAX_PASSENGERS_PER_PURCHASE} per transaction)."
             ),
             starts_at=_local(first.departs_at),
+            links=_links(legs),
+            provenance=Provenance(ProvenanceSource.LIVE, CARRIER, datetime.now(UTC)),
             supplier_data={
                 "travel_class": first.travel_class,
                 "refundable": False,

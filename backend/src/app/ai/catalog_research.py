@@ -67,6 +67,9 @@ def _item(adapter: SupplierAdapter, offer: Offer) -> PackageItemPlan:
         segments=offer.segments,
         refundable=offer.refundable,
         supplier_data=dict(offer.supplier_data),
+        links=offer.links,
+        images=offer.images,
+        provenance=offer.provenance,
     )
 
 
