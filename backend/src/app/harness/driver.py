@@ -25,6 +25,14 @@ from app.core.domain.trips import (
     EventActor,
     TripStatus,
 )
+from app.core.domain.wallet import (
+    PaymentMethod,
+    TopUpFailure,
+    WalletTransactionKind,
+    WalletTransactionStatus,
+    shortfall,
+    top_up_for_shortfall,
+)
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.harness.adapters import matches
 from app.harness.features import Feature, all_features, feature
@@ -47,9 +55,11 @@ from app.harness.scenario import (
     ExpectError,
     ExpectEvent,
     ExpectHold,
+    ExpectPot,
     ExpectPurchases,
     ExpectShares,
     ExpectStatus,
+    ExpectWallet,
     ExpectWinner,
     GeneratePackages,
     Leave,
@@ -60,12 +70,15 @@ from app.harness.scenario import (
     SupplierPriceChange,
     Target,
     TargetSelector,
+    TopUp,
+    TopUpAndPay,
     describe,
 )
 from app.harness.world import World
 from app.models.bookings import Booking
 from app.repositories.trips import ProposalRepository
 from app.services.bookings import running_monitors
+from app.services.wallet import TopUpRequest, WalletEntryView, trip_pot
 from app.suppliers.duffel import DuffelLog
 from app.suppliers.liteapi import LiteApiLog
 from app.suppliers.pkp import LiveSearchLog
@@ -361,6 +374,10 @@ class Driver:
                 return await self._close(), ("proposal_chosen",)
             case Pay():
                 return await self._pay(step)
+            case TopUp():
+                return await self._top_up(step), ()
+            case TopUpAndPay():
+                return await self._top_up_and_pay(step), ("contribution_paid",)
             case StartBookings():
                 return await self._start_step(step), ("booking_started",)
             case AgentOutcome():
@@ -461,6 +478,8 @@ class Driver:
             return "nobody owes anything", ()
         paid, errors = [], []
         for name in payers:
+            if step.fund_wallets:
+                await self._fund(name, owes.get(name, 0))
             result = await world.contributions.pay(world.trip_id, world.users[name])
             if isinstance(result, Err):
                 errors.append((name, _code(result.error)))
@@ -470,6 +489,64 @@ class Driver:
             name, code = errors[0]
             raise StepFailed(f"{name} could not pay: {code}", code)
         return "paid: " + ", ".join(paid), ("contribution_paid",)
+
+    async def _fund(self, name: str, due_minor: int) -> None:
+        """Tops `name`'s wallet up by exactly what it misses for `due_minor` (dummy BLIK)."""
+        user_id = self.world.users[name]
+        missing = shortfall(await self.world.wallet.balance(user_id), due_minor)
+        if missing > 0:
+            self._settled(await self._blik(user_id, top_up_for_shortfall(missing), "123456"), name)
+
+    async def _blik(self, user_id: str, amount_minor: int, code: str) -> WalletEntryView:
+        started = await self.world.wallet.start_top_up(
+            user_id, TopUpRequest(amount_minor, PaymentMethod.BLIK, blik_code=code)
+        )
+        self._raise_on(started)
+        assert isinstance(started, Ok)
+        # The harness bank confirms inline: re-read the settled entry.
+        settled = await self.world.wallet.top_up_status(user_id, started.value.id)
+        self._raise_on(settled)
+        assert isinstance(settled, Ok)
+        return settled.value
+
+    @staticmethod
+    def _settled(entry: WalletEntryView, name: str) -> None:
+        if entry.status is not WalletTransactionStatus.COMPLETED:
+            code = entry.failure_reason or TopUpFailure.DECLINED.value
+            raise StepFailed(f"{name}'s top-up {entry.status}: {code}", code)
+
+    async def _top_up(self, step: TopUp) -> str:
+        user_id = self.world.users[step.member]
+        entry = await self._blik(user_id, step.amount_minor, step.blik_code)
+        self._settled(entry, step.member)
+        balance = await self.world.wallet.balance(user_id)
+        return (
+            f"{step.member} topped up {format_money(step.amount_minor, 'PLN')} "
+            f"(wallet {format_money(balance, 'PLN')})"
+        )
+
+    async def _top_up_and_pay(self, step: TopUpAndPay) -> str:
+        world = self.world
+        lines = []
+        for name in step.members:
+            user_id = world.users[name]
+            result = await world.checkout.top_up_and_pay(
+                world.trip_id,
+                user_id,
+                TopUpRequest(0, PaymentMethod.BLIK, blik_code=step.blik_code),
+            )
+            self._raise_on(result, f"{name}: ")
+            assert isinstance(result, Ok)
+            if result.value.top_up is not None:
+                settled = await world.wallet.top_up_status(user_id, result.value.top_up.id)
+                self._raise_on(settled)
+                assert isinstance(settled, Ok)
+                self._settled(settled.value, name)
+                topped = format_money(settled.value.amount_minor, "PLN")
+                lines.append(f"{name} topped up {topped} and paid")
+            else:
+                lines.append(f"{name} paid from the wallet")
+        return "; ".join(lines)
 
     def _suppliers_of(self, target: Target) -> list[str]:
         """The scenario's scriptable suppliers selling `target` (a kind or a mode)."""
@@ -665,6 +742,16 @@ class Driver:
                 return await self._expect_winner(step, snap)
             case ExpectBudget():
                 return await self._expect_budget(step, snap)
+            case ExpectWallet():
+                return await self._expect_wallet(step)
+            case ExpectPot():
+                pot = await trip_pot(self.world.trip_oid)
+                if pot.held_minor != step.held_minor:
+                    raise StepFailed(f"the pot holds {pot.held_minor}, expected {step.held_minor}")
+                return (
+                    f"pot: collected {pot.collected_minor}, spent {pot.spent_minor}, "
+                    f"refunded {pot.refunded_minor}, held {pot.held_minor}"
+                )
             case ExpectAgentMessage():
                 wanted = step.text.casefold()
                 said = [
@@ -677,6 +764,26 @@ class Driver:
                 return said[-1].message
             case _:
                 raise StepFailed(f"unknown step {step!r}")
+
+    async def _expect_wallet(self, step: ExpectWallet) -> str:
+        view = await self.world.wallet.wallet(self.world.users[step.member])
+        refunds = [
+            t
+            for t in view.transactions
+            if t.kind is WalletTransactionKind.REFUND
+            and t.status is WalletTransactionStatus.COMPLETED
+        ]
+        if step.balance_minor is not None and view.balance_minor != step.balance_minor:
+            raise StepFailed(
+                f"{step.member}'s wallet holds {view.balance_minor}, expected {step.balance_minor}"
+            )
+        if step.refunded is not None and bool(refunds) is not step.refunded:
+            raise StepFailed(f"{step.member}: {len(refunds)} refund(s) in the wallet")
+        refunded = sum(t.amount_minor for t in refunds)
+        return (
+            f"{step.member}'s wallet: {format_money(view.balance_minor, view.currency)}"
+            f" ({format_money(refunded, view.currency)} refunded)"
+        )
 
     def _expect_hold(self, step: ExpectHold, snap: Snapshot) -> str:
         now = self.world.clock.now()

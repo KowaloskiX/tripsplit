@@ -34,6 +34,13 @@ FAST = DirectorTimings(beat_s=(0.0, 0.0), poll_s=0.01, research_wait_s=10.0,
                        payment_wait_s=10.0, booking_wait_s=0.05)  # fmt: skip
 
 
+@pytest.fixture
+def settings(settings: Settings) -> Settings:
+    """The director demos wallet payments: seeded friends are topped up before they pay, and the
+    pot invariant checks every move against the ledger."""
+    return settings.model_copy(update={"payments": "wallet", "wallet_confirm_delay_s": 0})
+
+
 class Member:
     def __init__(self, client: AsyncClient, settings: Settings) -> None:
         self.client = client
@@ -158,7 +165,7 @@ async def test_the_full_script_plays_the_whole_trip_through_the_rules(
 
     started = await _direct(organizer, trip_id, script="full")
     assert started["state"] == "running"
-    assert started["features"] == {"auto_book": False, "wallet": False}
+    assert started["features"] == {"auto_book": False, "wallet": True}
     await _drain(app)
 
     progress = await _progress(organizer, trip_id)
@@ -213,7 +220,10 @@ async def test_the_presenter_makes_the_last_payment(
         await asyncio.sleep(0.01)
     assert await _status(organizer, trip_id) == TripStatus.PAYING, "the last share is still open"
 
-    paid = await organizer.post(f"/api/trips/{trip_id}/contributions/pay")
+    paid = await organizer.post(
+        f"/api/trips/{trip_id}/contributions/top-up-and-pay",
+        {"method": "blik", "blik_code": "123456"},
+    )
     assert paid.status_code == 200, paid.text
     await _drain(app)
 

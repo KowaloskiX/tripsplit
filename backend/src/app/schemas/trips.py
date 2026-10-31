@@ -176,6 +176,16 @@ class ContributionResponse(_ReadModel):
     status: ContributionStatus
 
 
+class PotResponse(_ReadModel):
+    """The trip wallet: paid in from members' wallets, spent on confirmed bookings, paid back,
+    and what it still holds."""
+
+    collected_minor: int
+    spent_minor: int
+    refunded_minor: int
+    held_minor: int
+
+
 class RoomResponse(_ReadModel):
     trip: TripResponse
     invite_code: str
@@ -187,6 +197,7 @@ class RoomResponse(_ReadModel):
     contributions: list[ContributionResponse]
     my_contribution: ContributionResponse | None
     paid_count: int
+    pot: PotResponse
 
 
 class EventResponse(_ReadModel):

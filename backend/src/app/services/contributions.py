@@ -9,6 +9,7 @@ from app.core.domain.errors import TripError
 from app.core.domain.packages import format_money
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.trips import EventActor, EventKind, TripStatus, is_fully_paid
+from app.core.domain.wallet import InsufficientFunds
 from app.db.identifiers import identifier_of, to_text
 from app.models.trips import Trip, TripMember
 from app.payments.ports import PaymentProvider
@@ -38,13 +39,27 @@ class ContributionService:
         self.contributions = ContributionRepository()
         self.events = EventRepository()
 
-    async def pay(self, trip_id: str, user_id: str) -> Result[PaymentView, TripError]:
+    async def pay(
+        self, trip_id: str, user_id: str
+    ) -> Result[PaymentView, TripError | InsufficientFunds]:
         access = await load_access(trip_id, user_id, trips=self.trips, members=self.members)
         if not isinstance(access, Ok):
             return access
         return await self.pay_for(access.value.trip, access.value.member)
 
-    async def pay_for(self, trip: Trip, member: TripMember) -> Result[PaymentView, TripError]:
+    async def outstanding(self, trip: Trip, member: TripMember) -> Result[int, TripError]:
+        """What `member` still owes right now — the amount `pay_for` would charge."""
+        if trip.status is not TripStatus.PAYING:
+            return Err(TripError.INVALID_STATE)
+        contribution = await self.contributions.get(identifier_of(trip), member.user_id)
+        if contribution is None:
+            return Err(TripError.INVALID_STATE)
+        due = contribution.amount_minor - contribution.paid_minor
+        return Ok(due) if due > 0 else Err(TripError.ALREADY_PAID)
+
+    async def pay_for(
+        self, trip: Trip, member: TripMember
+    ) -> Result[PaymentView, TripError | InsufficientFunds]:
         """Charges `member`'s outstanding share. Callers have already checked membership."""
         if trip.status is not TripStatus.PAYING:
             return Err(TripError.INVALID_STATE)
@@ -58,12 +73,21 @@ class ContributionService:
             return Err(TripError.ALREADY_PAID)
 
         # Outside any transaction on purpose: a charge is not replayable.
-        receipt = await self.payments.charge(
+        charged = await self.payments.charge(
             to_text(trip_oid), to_text(member.user_id), outstanding, trip.currency
         )
-        await self.contributions.mark_paid(
+        if isinstance(charged, Err):
+            return charged
+        receipt = charged.value
+        recorded = await self.contributions.mark_paid_if_unchanged(
             contribution, contribution.paid_minor + receipt.paid_minor, receipt.provider_ref
         )
+        if not recorded:
+            # A simultaneous payment (or a re-split) won the race: give this charge back.
+            await self.payments.refund(
+                to_text(trip_oid), to_text(member.user_id), receipt.paid_minor, trip.currency
+            )
+            return Err(TripError.ALREADY_PAID)
         await self.events.add(
             trip_oid,
             EventKind.CONTRIBUTION_PAID,

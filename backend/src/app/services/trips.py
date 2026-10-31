@@ -52,6 +52,7 @@ from app.services.trip_views import (
     proposal_view,
     trip_view,
 )
+from app.services.wallet import trip_pot
 from app.suppliers.registry import SupplierRegistry
 
 # Joining after a package won would leave the newcomer without a share in the split.
@@ -221,6 +222,7 @@ class TripService:
                     for view, contribution in zip(contribution_views, contributions, strict=True)
                     if view.outstanding_minor == 0 and contribution.user_id in names
                 ),
+                pot=await trip_pot(trip_oid),
             )
         )
 

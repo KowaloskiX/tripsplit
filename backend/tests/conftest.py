@@ -60,6 +60,9 @@ def settings(mongodb_url: str) -> Settings:
         # activities, all bought by the agent). Flights, buses and holds have their own tests
         # and harness scenarios.
         suppliers="sim_rail,sim_stay_site,sim_activity",
+        # The HTTP money tests predate the wallet: every charge succeeds. Wallet payments have
+        # their own tests (`tests/test_wallet.py`) and harness scenario.
+        payments="fake",
     )
 
 

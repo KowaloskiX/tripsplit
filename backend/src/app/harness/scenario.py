@@ -83,10 +83,30 @@ class CloseVoting:
 
 @dataclass(frozen=True, slots=True)
 class Pay:
-    """`members=None` means everyone who currently owes money (minus `everyone_except`)."""
+    """`members=None` means everyone who currently owes money (minus `everyone_except`).
+    Shares are paid from wallets: `fund_wallets` first tops each payer's wallet up (dummy
+    BLIK) by exactly what it misses; `False` pays from whatever the wallet holds."""
 
     members: Sequence[str] | None = None
     everyone_except: Sequence[str] = ()
+    fund_wallets: bool = True
+
+
+@dataclass(frozen=True, slots=True)
+class TopUp:
+    """`member` tops their wallet up through the dummy rails (BLIK `000000` is declined)."""
+
+    member: str
+    amount_minor: int
+    blik_code: str = "123456"
+
+
+@dataclass(frozen=True, slots=True)
+class TopUpAndPay:
+    """The "Pay my share" sheet: top up exactly the shortfall by BLIK, then pay the share."""
+
+    members: Sequence[str]
+    blik_code: str = "123456"
 
 
 @dataclass(frozen=True, slots=True)
@@ -255,6 +275,22 @@ class ExpectAgentMessage:
 
 
 @dataclass(frozen=True, slots=True)
+class ExpectWallet:
+    """`member`'s wallet holds `balance_minor`; `refunded` = a trip refund landed in it."""
+
+    member: str
+    balance_minor: int | None = None
+    refunded: bool | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectPot:
+    """The trip pot (collected - spent on confirmed bookings - refunded) holds `held_minor`."""
+
+    held_minor: int
+
+
+@dataclass(frozen=True, slots=True)
 class ExpectError:
     """The NEXT step must fail with this domain error code (e.g. `trip_not_ready`)."""
 
@@ -266,6 +302,8 @@ type Action = (
     | CastVotes
     | CloseVoting
     | Pay
+    | TopUp
+    | TopUpAndPay
     | StartBookings
     | AgentOutcome
     | Approve
@@ -289,6 +327,8 @@ type Expectation = (
     | ExpectWinner
     | ExpectBudget
     | ExpectAgentMessage
+    | ExpectWallet
+    | ExpectPot
     | ExpectError
 )
 type Step = Action | Expectation
@@ -304,6 +344,8 @@ EXPECTATIONS = (
     ExpectWinner,
     ExpectBudget,
     ExpectAgentMessage,
+    ExpectWallet,
+    ExpectPot,
     ExpectError,
 )
 
@@ -346,9 +388,11 @@ def describe(step: Step) -> str:
     parts = []
     for item in fields(step):
         value = getattr(step, item.name)
+        if item.name == "blik_code" and value == "123456":
+            continue
         if value in ((), {}, None) and item.name != "picks":
             continue
-        if item.name == "approved" and value is True:
+        if item.name in ("approved", "fund_wallets") and value is True:
             continue
         shown = value.value if isinstance(value, TripStatus | BookingStatus) else value
         if isinstance(shown, EventKind | ContributionStatus):

@@ -34,6 +34,9 @@ TENANT_EXEMPT_COLLECTIONS = frozenset(
         "agent_runs",
         # Per user, like `users`: a traveller's passport details follow them into any trip.
         "traveller_profiles",
+        # Per user too: a wallet pays shares of trips in any organization.
+        "wallets",
+        "wallet_transactions",
     }
 )
 

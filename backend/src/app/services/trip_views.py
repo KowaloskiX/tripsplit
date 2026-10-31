@@ -24,6 +24,7 @@ from app.core.domain.trips import (
 )
 from app.db.identifiers import identifier_of, to_text
 from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember
+from app.services.wallet import PotView
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,6 +131,8 @@ class RoomView:
     contributions: tuple[ContributionView, ...]
     my_contribution: ContributionView | None
     paid_count: int
+    # The trip wallet: collected from members' wallets, spent on bookings, refunded, held.
+    pot: PotView
 
 
 @dataclass(frozen=True, slots=True)

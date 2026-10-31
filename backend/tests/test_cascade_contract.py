@@ -16,12 +16,14 @@ from beanie import PydanticObjectId
 
 from app.core.config import Settings
 from app.core.domain.result import Ok
+from app.core.domain.wallet import PaymentMethod, WalletTransactionKind, WalletTransactionStatus
 from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.documents import DOCUMENT_MODELS
 from app.models.auth import User
 from app.models.travellers import TravellerProfile
 from app.models.trips import Contribution, Trip, TripMember, Vote
+from app.models.wallet import Wallet, WalletTransaction
 from app.services.auth import AuthService
 
 EMAIL = "cascade@example.com"
@@ -34,8 +36,8 @@ def _models_referencing_user() -> list[type[Any]]:
 
 async def _join_a_trip(user_id: PydanticObjectId | None) -> None:
     """Registration does not create trip participation, so the fixture adds it: one trip
-    joined, one vote cast, one share owed, traveller details kept — every collection that
-    carries user_id."""
+    joined, one vote cast, one share owed, traveller details kept, a topped-up wallet — every
+    collection that carries user_id."""
     assert user_id is not None
     trip = await Trip(
         title="Cascade trip",
@@ -51,6 +53,15 @@ async def _join_a_trip(user_id: PydanticObjectId | None) -> None:
     await Vote(trip_id=trip.id, proposal_id=PydanticObjectId(), user_id=user_id).insert()
     await Contribution(trip_id=trip.id, user_id=user_id, amount_minor=10_000).insert()
     await TravellerProfile(user_id=user_id, document_number="EH1234567").insert()
+    await Wallet(user_id=user_id, balance_minor=5_000).insert()
+    await WalletTransaction(
+        user_id=user_id,
+        kind=WalletTransactionKind.TOP_UP,
+        amount_minor=5_000,
+        balance_after_minor=5_000,
+        method=PaymentMethod.BLIK,
+        status=WalletTransactionStatus.COMPLETED,
+    ).insert()
 
 
 async def test_delete_user_leaves_no_orphans(database: Database, settings: Settings) -> None:
