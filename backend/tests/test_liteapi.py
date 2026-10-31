@@ -420,6 +420,9 @@ async def test_search_returns_whole_party_offers_with_supplier_data() -> None:
     assert "2 night(s) for 6 guests in 3 room(s)" in duo.details
     assert duo.supplier_data["occupancies"] == [2, 2, 2]
     assert duo.supplier_data["offer_id"] == "o1"
+    assert (duo.supplier_data["stars"], duo.supplier_data["rating"]) == (4, 8.6)
+    assert duo.supplier_data["review_count"] == 1000 and duo.supplier_data["why"] == "cheapest"
+    assert duo.supplier_data["km_from_centre"] > 4.0
     assert duo.expires_at == NOW + CAPABILITIES.quote_ttl
     assert (
         await supplier.search(SearchRequest("Warszawa", "Atlantis", date(2026, 11, 20), None, 6))

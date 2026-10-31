@@ -505,6 +505,12 @@ def offer_of(pick: Pick, request: SearchRequest, now: datetime) -> Offer:
             "checkin": str(request.depart_date),
             "checkout": str(checkout),
             "title": title,
+            # For a value score in the research (stable names; None = unknown).
+            "stars": hotel.stars,
+            "rating": hotel.rating,
+            "review_count": hotel.review_count,
+            "km_from_centre": hotel.km_from_centre,
+            "why": pick.why,
         },
     )
 
