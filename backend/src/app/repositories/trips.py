@@ -70,6 +70,11 @@ class TripRepository:
         )
         return result.modified_count == 1
 
+    async def overdue(self, statuses: Iterable[TripStatus], now: datetime) -> list[Trip]:
+        """Trips in `statuses` whose funding deadline (`pay_by`) has passed."""
+        query = Trip.find({"status": {"$in": list(statuses)}, "pay_by": {"$lte": now}})
+        return await bounded_to_list(query, what="overdue trips")
+
     async def touch_if_status(
         self,
         trip_id: PydanticObjectId,

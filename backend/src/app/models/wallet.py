@@ -29,6 +29,8 @@ class Wallet(TimestampMixin, Document):
     # Never negative: every debit is conditioned on `balance_minor >= amount`.
     balance_minor: int = Field(default=0, ge=0)
     currency: str = WALLET_CURRENCY
+    # The member's e-money wallet at the payment partner ("wlt_…"); this document mirrors it.
+    partner_wallet_id: str | None = None
 
     class Settings:
         name: ClassVar[str] = "wallets"
@@ -52,6 +54,8 @@ class WalletTransaction(Document):
     # A pending top-up made to pay a share: once credited, that trip's share is paid.
     pay_trip_on_completion: bool = False
     failure_reason: str | None = None
+    # The partner movement this entry mirrors ("txn_…"); unique, so a replay mirrors once.
+    partner_ref: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime | None = None
 
@@ -63,5 +67,11 @@ class WalletTransaction(Document):
             ),
             pymongo.IndexModel(
                 [("trip_id", 1), ("kind", 1)], name="ix_wallet_transactions_trip_kind"
+            ),
+            pymongo.IndexModel(
+                [("partner_ref", 1)],
+                unique=True,
+                partialFilterExpression={"partner_ref": {"$type": "string"}},
+                name="uq_wallet_transactions_partner_ref",
             ),
         ]

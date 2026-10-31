@@ -14,6 +14,7 @@ from dataclasses import dataclass, field, fields
 from datetime import date
 from typing import Literal
 
+from app.core.domain.escrow import CardStatus, KycStatus, PurchasePayment
 from app.core.domain.trips import (
     BookingStatus,
     ContributionStatus,
@@ -190,6 +191,34 @@ class CompleteManually:
     ref: str
 
 
+@dataclass(frozen=True, slots=True)
+class VerifyIdentity:
+    """`member` completes the (simulated) ID verification at the payment partner (KYC light)."""
+
+    member: str
+
+
+@dataclass(frozen=True, slots=True)
+class SetPayBy:
+    """The organizer moves the funding deadline to `hours` from the scenario clock's now."""
+
+    hours: float
+
+
+@dataclass(frozen=True, slots=True)
+class CheckFundingDeadlines:
+    """The background sweep runs once: overdue, not fully paid trips are refunded and EXPIRE."""
+
+
+@dataclass(frozen=True, slots=True)
+class SiteAsksMore:
+    """The target's supplier site charges `percent` more than the booked amount at checkout
+    (the agent's single-use card is limited to exactly the booked amount)."""
+
+    target: Target
+    percent: float
+
+
 # ---- expectations -------------------------------------------------------------------------
 
 
@@ -291,6 +320,33 @@ class ExpectPot:
 
 
 @dataclass(frozen=True, slots=True)
+class ExpectEscrow:
+    """The trip escrow at the payment partner, read from the partner's own records. Every
+    field left None is not checked."""
+
+    collected_minor: int | None = None
+    paid_to_suppliers_minor: int | None = None
+    refunded_minor: int | None = None
+    held_minor: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectPayment:
+    """Every live booking of the target was paid by the escrow this way: `payout` (API
+    supplier) or `virtual_card` (the agent); `card_status` checks the card (`used`, `closed`)."""
+
+    target: Target
+    kind: PurchasePayment | None
+    card_status: CardStatus | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectKyc:
+    member: str
+    status: KycStatus
+
+
+@dataclass(frozen=True, slots=True)
 class ExpectError:
     """The NEXT step must fail with this domain error code (e.g. `trip_not_ready`)."""
 
@@ -315,6 +371,10 @@ type Action = (
     | EnterTravellerDetails
     | Leave
     | CompleteManually
+    | VerifyIdentity
+    | SetPayBy
+    | CheckFundingDeadlines
+    | SiteAsksMore
 )
 type Expectation = (
     ExpectStatus
@@ -329,6 +389,9 @@ type Expectation = (
     | ExpectAgentMessage
     | ExpectWallet
     | ExpectPot
+    | ExpectEscrow
+    | ExpectPayment
+    | ExpectKyc
     | ExpectError
 )
 type Step = Action | Expectation
@@ -346,6 +409,9 @@ EXPECTATIONS = (
     ExpectAgentMessage,
     ExpectWallet,
     ExpectPot,
+    ExpectEscrow,
+    ExpectPayment,
+    ExpectKyc,
     ExpectError,
 )
 
@@ -377,6 +443,9 @@ class Scenario:
     # HOLDS for the scenario's trip flow: off by default like the app; scenarios about holds
     # turn them on explicitly.
     holds: bool = False
+    # Every member has passed the payment partner's ID verification at the start, so top-ups
+    # above the KYC-light threshold go through; the KYC scenario turns it off.
+    kyc_verified: bool = True
 
     @property
     def members(self) -> tuple[str, ...]:
@@ -394,7 +463,13 @@ def describe(step: Step) -> str:
             continue
         if item.name in ("approved", "fund_wallets") and value is True:
             continue
-        shown = value.value if isinstance(value, TripStatus | BookingStatus) else value
+        shown = (
+            value.value
+            if isinstance(
+                value, TripStatus | BookingStatus | PurchasePayment | CardStatus | KycStatus
+            )
+            else value
+        )
         if isinstance(shown, EventKind | ContributionStatus):
             shown = shown.value
         if isinstance(shown, tuple | list):

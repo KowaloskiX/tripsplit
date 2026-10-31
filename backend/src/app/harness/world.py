@@ -29,10 +29,12 @@ from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.harness.adapters import HarnessClock, RoutingLauncher, ScriptablePrices, ScriptedLauncher
 from app.harness.scenario import Scenario, SupplierSpec
+from app.payments.fake_partner import FakePartner
 from app.payments.wallet import WalletPayments
 from app.services.auth import AuthService
 from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
+from app.services.escrow import EscrowService
 from app.services.proposals import ProposalService
 from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerDetailsUpdate, TravellerService
@@ -116,6 +118,10 @@ class World:
     # Shares are paid from members' wallets; the dummy bank confirms top-ups inline.
     wallet: WalletService
     checkout: WalletCheckoutService
+    # The simulated licensed payment partner (instant, on the scenario clock) and the trip
+    # escrow it holds; the scripted agent pays with the escrow's virtual cards through it.
+    partner: FakePartner
+    escrow: EscrowService
     live_search_log: LiveSearchLog | None = None
     liteapi_log: LiteApiLog | None = None
     duffel_log: DuffelLog | None = None
@@ -178,7 +184,10 @@ class World:
                 behaviours[spec.id] = behaviour
         suppliers = SupplierRegistry(adapters)
 
-        scripted = ScriptedLauncher(runs_dir, suppliers=suppliers, behaviours=behaviours)
+        partner = FakePartner(db, latency_s=0, kyc_delay=timedelta(0), clock=clock.now)
+        scripted = ScriptedLauncher(
+            runs_dir, suppliers=suppliers, behaviours=behaviours, card_network=partner
+        )
         launcher: AgentLauncher = scripted
         if options.live_agent_base_url:
             # The demo rail trajectory lets the live agent replay instead of planning each step.
@@ -189,8 +198,9 @@ class World:
             )
             launcher = RoutingLauncher(live=live, scripted=scripted)
         runner = BackgroundRunner()
-        wallet = WalletService(db, None, confirm_delay_s=0)
-        payments = WalletPayments(wallet)
+        wallet = WalletService(db, None, confirm_delay_s=0, partner=partner)
+        escrow = EscrowService(partner, wallet, clock=clock.now)
+        payments = WalletPayments(escrow)
         contributions = ContributionService(payments)
         researcher = CatalogResearcher(suppliers)
         return cls(
@@ -202,7 +212,7 @@ class World:
             clock=clock,
             suppliers=suppliers,
             behaviours=behaviours,
-            trips=TripService(db, suppliers=suppliers),
+            trips=TripService(db, suppliers=suppliers, escrow=escrow),
             proposals=ProposalService(
                 db,
                 researcher,
@@ -215,6 +225,7 @@ class World:
                     price_tolerance_percent=scenario.price_tolerance_percent,
                     holds=scenario.holds,
                 ),
+                escrow=escrow,
             ),
             contributions=contributions,
             bookings=BookingService(
@@ -228,6 +239,7 @@ class World:
                 clock=clock.now,
                 price_tolerance_percent=scenario.price_tolerance_percent,
                 holds=scenario.holds,
+                escrow=escrow,
             ),
             travellers=TravellerService(),
             scripted=scripted,
@@ -235,6 +247,8 @@ class World:
             launcher=launcher,
             wallet=wallet,
             checkout=WalletCheckoutService(contributions, wallet),
+            partner=partner,
+            escrow=escrow,
             live_search_log=pkp.log if pkp is not None else None,
             liteapi_log=liteapi_log,
             duffel_log=duffel_log,
@@ -275,6 +289,8 @@ class World:
             if not isinstance(issued, Ok):
                 raise RuntimeError(f"could not register {name}: {issued.error}")
             self.users[name] = issued.value.user.id
+            if self.scenario.kyc_verified:
+                await self.verify_identity(name)
         brief = self.scenario.brief
         created = await self.trips.create(
             self.organizer_id,
@@ -304,6 +320,12 @@ class World:
         await self.enter_details(
             [n for n in self.scenario.members if n not in self.scenario.without_traveller_details]
         )
+
+    async def verify_identity(self, name: str) -> None:
+        index = self.scenario.members.index(name)
+        details = fake_details(index)
+        assert details.date_of_birth is not None
+        await self.wallet.submit_kyc(self.users[name], name, details.date_of_birth, None)
 
     async def enter_details(self, names: list[str]) -> None:
         for name in names:

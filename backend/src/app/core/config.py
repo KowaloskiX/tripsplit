@@ -102,6 +102,12 @@ class Settings(BaseSettings):
     payments: PaymentsKind = "wallet"
     # How long the dummy bank takes to confirm a wallet top-up.
     wallet_confirm_delay_s: float = Field(default=1.5, ge=0, le=30)
+    # The simulated licensed payment partner (app.payments.fake_partner) that holds the money:
+    # its per-call latency, the cumulative top-up above which a member must verify their ID
+    # (KYC light; 1 000 zł), and how often the funding-deadline sweep runs (0 = off).
+    partner_latency_ms: int = Field(default=120, ge=0, le=5_000)
+    kyc_light_limit_minor: int = Field(default=100_000, ge=0)
+    funding_check_interval_s: float = Field(default=30.0, ge=0)
     # The booking agent (see app.agent). Relative paths resolve against `backend/` — the
     # directory the agent subprocess runs in.
     agent_var_dir: str = "var/agent"

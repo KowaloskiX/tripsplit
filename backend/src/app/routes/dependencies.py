@@ -16,7 +16,7 @@ from app.core.domain.identity import AuthenticatedUser
 from app.core.domain.result import Ok
 from app.core.errors_http import DomainHTTPError
 from app.db.deps import DbDep
-from app.payments.providers import build_payment_provider
+from app.payments.providers import build_escrow, build_payment_provider, build_wallet_service
 from app.services.auth import AuthService
 from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
@@ -112,8 +112,10 @@ def get_supplier_registry(settings: SettingsDep) -> SupplierRegistry:
 SupplierRegistryDep = Annotated[SupplierRegistry, Depends(get_supplier_registry)]
 
 
-def get_trip_service(database: DbDep, suppliers: SupplierRegistryDep) -> TripService:
-    return TripService(database, suppliers=suppliers)
+def get_trip_service(
+    database: DbDep, settings: SettingsDep, suppliers: SupplierRegistryDep
+) -> TripService:
+    return TripService(database, suppliers=suppliers, escrow=build_escrow(settings, database))
 
 
 def get_proposal_service(
@@ -134,6 +136,7 @@ def get_proposal_service(
             holds=settings.holds_enabled,
         ),
         progress_events=settings.search_progress_events,
+        escrow=build_escrow(settings, database),
     )
 
 
@@ -148,7 +151,7 @@ def get_contribution_service(database: DbDep, settings: SettingsDep) -> Contribu
 def get_wallet_service(
     database: DbDep, settings: SettingsDep, runner: BackgroundRunnerDep
 ) -> WalletService:
-    return WalletService(database, runner, confirm_delay_s=settings.wallet_confirm_delay_s)
+    return build_wallet_service(settings, database, runner)
 
 
 def get_wallet_checkout_service(
@@ -164,11 +167,11 @@ def get_demo_service(
     database: DbDep, settings: SettingsDep, suppliers: SupplierRegistryDep
 ) -> DemoService:
     # Seeded members are topped up before `pay-all` when shares are paid from wallets.
-    wallet = WalletService(database) if settings.payments == "wallet" else None
+    wallet = build_wallet_service(settings, database) if settings.payments == "wallet" else None
     return DemoService(
         database,
         get_contribution_service(database, settings),
-        get_trip_service(database, suppliers),
+        get_trip_service(database, settings, suppliers),
         wallet,
     )
 
@@ -205,6 +208,7 @@ def get_booking_service(
         price_tolerance_percent=settings.price_tolerance_percent,
         holds=settings.holds_enabled,
         payments=build_payment_provider(settings, database),
+        escrow=build_escrow(settings, database),
     )
 
 

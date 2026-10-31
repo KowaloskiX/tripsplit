@@ -52,6 +52,8 @@ class TopUpFailure(StrEnum):
     INVALID_CARD = "invalid_card"
     DECLINED = "payment_declined"
     NOT_FOUND = "top_up_not_found"
+    # Cumulative top-ups would cross the KYC-light threshold: verify your ID first.
+    KYC_REQUIRED = "kyc_required"
 
 
 @dataclass(frozen=True, slots=True)

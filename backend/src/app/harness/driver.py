@@ -11,6 +11,7 @@ import json
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
+from datetime import timedelta
 from typing import Any, Literal
 
 from beanie import PydanticObjectId
@@ -44,6 +45,7 @@ from app.harness.scenario import (
     Approve,
     CastVotes,
     CheckDisruptions,
+    CheckFundingDeadlines,
     CloseVoting,
     CompleteManually,
     Disrupt,
@@ -53,8 +55,11 @@ from app.harness.scenario import (
     ExpectBookingStatus,
     ExpectBudget,
     ExpectError,
+    ExpectEscrow,
     ExpectEvent,
     ExpectHold,
+    ExpectKyc,
+    ExpectPayment,
     ExpectPot,
     ExpectPurchases,
     ExpectShares,
@@ -64,6 +69,8 @@ from app.harness.scenario import (
     GeneratePackages,
     Leave,
     Pay,
+    SetPayBy,
+    SiteAsksMore,
     StartBookings,
     Step,
     SupplierDisruption,
@@ -72,13 +79,14 @@ from app.harness.scenario import (
     TargetSelector,
     TopUp,
     TopUpAndPay,
+    VerifyIdentity,
     describe,
 )
 from app.harness.world import World
 from app.models.bookings import Booking
 from app.repositories.trips import ProposalRepository
 from app.services.bookings import running_monitors
-from app.services.wallet import TopUpRequest, WalletEntryView, trip_pot
+from app.services.wallet import TopUpRequest, WalletEntryView
 from app.suppliers.duffel import DuffelLog
 from app.suppliers.liteapi import LiteApiLog
 from app.suppliers.pkp import LiveSearchLog
@@ -403,6 +411,18 @@ class Driver:
                 return f"{', '.join(step.members)} entered their details", ()
             case Leave():
                 return await self._leave(step), ("resplit",)
+            case VerifyIdentity():
+                await self.world.verify_identity(step.member)
+                kyc = await self.world.wallet.kyc(self.world.users[step.member])
+                return f"{step.member}: ID verification {kyc.status.value}", ()
+            case SetPayBy():
+                return await self._set_pay_by(step), ()
+            case CheckFundingDeadlines():
+                expired = await self.world.escrow.expire_overdue(self.world.clock.now())
+                return f"{len(expired)} trip(s) past the deadline refunded", ()
+            case SiteAsksMore():
+                self.world.scripted.site_markup_percent[step.target] = step.percent
+                return f"{step.target} sites charge {step.percent:+g}% at checkout", ()
             case CompleteManually():
                 return await self._complete(step), ("booking_confirmed",)
             case _:
@@ -666,6 +686,13 @@ class Driver:
             f"replacement(s) {new}; total {before} -> {after}"
         )
 
+    async def _set_pay_by(self, step: SetPayBy) -> str:
+        world = self.world
+        moment = world.clock.now() + timedelta(hours=step.hours)
+        result = await world.trips.set_pay_by(world.trip_id, world.organizer_id, moment)
+        self._raise_on(result)
+        return f"pay by {moment:%Y-%m-%d %H:%M} UTC"
+
     async def _leave(self, step: Leave) -> str:
         world = self.world
         leave: Any = getattr(world.trips, "leave")  # noqa: B009 — feature-detected method
@@ -744,8 +771,17 @@ class Driver:
                 return await self._expect_budget(step, snap)
             case ExpectWallet():
                 return await self._expect_wallet(step)
+            case ExpectEscrow():
+                return await self._expect_escrow(step, snap)
+            case ExpectPayment():
+                return await self._expect_payment(step, snap)
+            case ExpectKyc():
+                kyc = await self.world.wallet.kyc(self.world.users[step.member])
+                if kyc.status is not step.status:
+                    raise StepFailed(f"{step.member}'s KYC is {kyc.status}, expected {step.status}")
+                return f"{step.member}: KYC {kyc.status.value} (level {kyc.level.value})"
             case ExpectPot():
-                pot = await trip_pot(self.world.trip_oid)
+                pot = await self.world.trips.pot_of(snap.trip)
                 if pot.held_minor != step.held_minor:
                     raise StepFailed(f"the pot holds {pot.held_minor}, expected {step.held_minor}")
                 return (
@@ -764,6 +800,47 @@ class Driver:
                 return said[-1].message
             case _:
                 raise StepFailed(f"unknown step {step!r}")
+
+    async def _expect_escrow(self, step: ExpectEscrow, snap: Snapshot) -> str:
+        totals = await self.world.escrow.totals(snap.trip)
+        if totals is None:
+            raise StepFailed("the trip has no escrow")
+        wanted = {
+            "collected": (step.collected_minor, totals.collected_minor),
+            "paid to suppliers": (step.paid_to_suppliers_minor, totals.paid_to_suppliers_minor),
+            "refunded": (step.refunded_minor, totals.refunded_minor),
+            "held": (step.held_minor, totals.held_minor),
+        }
+        wrong = [
+            f"{name} {actual} (expected {expected})"
+            for name, (expected, actual) in wanted.items()
+            if expected is not None and expected != actual
+        ]
+        if wrong:
+            raise StepFailed("escrow: " + ", ".join(wrong))
+        return "escrow: " + ", ".join(f"{name} {actual}" for name, (_, actual) in wanted.items())
+
+    async def _expect_payment(self, step: ExpectPayment, snap: Snapshot) -> str:
+        found = [b for b in snap.live_bookings if matches(b, step.target)]
+        if not found:
+            raise StepFailed(f"no live {step.target} booking")
+        lines = []
+        for booking in found:
+            if booking.payment_kind is not step.kind:
+                raise StepFailed(
+                    f"{step.target} was paid by {booking.payment_kind}, expected {step.kind}"
+                )
+            card = await self.world.escrow.card_of(booking)
+            if step.card_status is not None and (
+                card is None or card.status is not step.card_status
+            ):
+                raise StepFailed(
+                    f"{step.target} card is {card.status if card else None}, "
+                    f"expected {step.card_status}"
+                )
+            shown = f"card •••• {booking.card_last4}" if card else booking.payment_ref
+            lines.append(f"{step.target}: {booking.payment_kind} {shown}")
+        return "; ".join(lines)
 
     async def _expect_wallet(self, step: ExpectWallet) -> str:
         view = await self.world.wallet.wallet(self.world.users[step.member])

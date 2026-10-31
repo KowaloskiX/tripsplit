@@ -113,6 +113,9 @@ class TripResponse(_ReadModel):
     organizer_id: str
     chosen_proposal_id: str | None
     total_minor: int
+    # The funding deadline (set at voting close): not fully paid by then, the trip escrow
+    # refunds every paid share and the trip EXPIRES.
+    pay_by: datetime | None = None
 
 
 class TripSummaryResponse(_ReadModel):
@@ -177,13 +180,23 @@ class ContributionResponse(_ReadModel):
 
 
 class PotResponse(_ReadModel):
-    """The trip wallet: paid in from members' wallets, spent on confirmed bookings, paid back,
-    and what it still holds."""
+    """The trip escrow at the payment partner: paid in from members' wallets, paid to
+    suppliers (payouts + virtual-card spends), refunded, and what the partner still holds."""
 
     collected_minor: int
+    # Paid to suppliers.
     spent_minor: int
     refunded_minor: int
     held_minor: int
+    # Part of `held_minor` sitting on live single-use virtual cards.
+    reserved_minor: int = 0
+    # The partner's escrow wallet ("wlt_…"); null without an escrow (PAYMENTS=fake).
+    escrow_wallet_id: str | None = None
+    pay_by: datetime | None = None
+    # Net share transfers in vs. what the escrow must collect before it releases anything.
+    funded_minor: int = 0
+    target_minor: int = 0
+    held_by: str = "TripSplit Pay"
 
 
 class RoomResponse(_ReadModel):
@@ -209,6 +222,10 @@ class EventResponse(_ReadModel):
     actor_user_id: str | None
     actor_name: str | None
     created_at: datetime
+
+
+class SetPayByRequest(StrictRequest):
+    pay_by: datetime
 
 
 class TripStatusResponse(_ReadModel):

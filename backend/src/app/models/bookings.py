@@ -9,6 +9,7 @@ import pymongo
 from beanie import Document, PydanticObjectId
 from pydantic import Field, model_validator
 
+from app.core.domain.escrow import PurchasePayment
 from app.core.domain.trips import (
     AgentOutcome,
     AgentRunStatus,
@@ -60,6 +61,13 @@ class Booking(TimestampMixin, Document):
     hold_expires_at: datetime | None = None
     # When `amount_minor` was last confirmed by the supplier (a quote or a hold).
     quoted_at: datetime | None = None
+    # How the trip escrow paid this purchase (None = not paid from an escrow): a payout to an
+    # API supplier ("po_…") or a single-use virtual card for the agent ("card_…").
+    payment_kind: PurchasePayment | None = None
+    payment_ref: str | None = None
+    card_last4: str | None = None
+    # Bumped before each payout / card, so a retry after a failure gets a fresh idempotency key.
+    payment_attempts: int = 0
 
     @model_validator(mode="before")
     @classmethod

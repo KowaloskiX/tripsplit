@@ -11,10 +11,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from itertools import pairwise
+from typing import Any
 
 from beanie import PydanticObjectId
 
 from app.core.domain.bookings import contribution_status
+from app.core.domain.escrow import CardStatus, EscrowTotals, PurchasePayment
 from app.core.domain.suppliers import (
     SupplierCapabilities,
     hold_is_live,
@@ -28,9 +30,17 @@ from app.models.bookings import AgentRun, Booking
 from app.models.travellers import TravellerProfile
 from app.models.trips import Contribution, Trip, TripEvent, TripMember
 from app.models.wallet import Wallet, WalletTransaction
+from app.payments.fake_partner import card_view, movement_of
+from app.payments.fake_partner_models import (
+    PartnerCardRecord,
+    PartnerLedgerRecord,
+    PartnerWalletRecord,
+)
+from app.payments.partner import LedgerKind
 from app.repositories.bookings import BookingRepository
 from app.repositories.travellers import TravellerProfileRepository
 from app.repositories.trips import ContributionRepository, MemberRepository, TripRepository
+from app.services.escrow import escrow_totals
 from app.services.travellers import details_of
 from app.suppliers.registry import SupplierRegistry
 
@@ -58,6 +68,7 @@ ALLOWED_TRANSITIONS: frozenset[tuple[TripStatus, TripStatus]] = frozenset(
         (S.REBOOKING, S.PAYING),
         (S.PAYING, S.REBOOKING),  # top-ups after a disruption are complete
         (S.BOOKED, S.DONE),
+        (S.PAYING, S.EXPIRED),  # the funding deadline passed: the escrow refunded everyone
     }
 )
 # A booking in one of these has started buying — Rule #1 must have held when it got there.
@@ -84,6 +95,14 @@ class Snapshot:
     # The wallets of everyone with a share (members and former members) and their ledgers.
     wallets: dict[PydanticObjectId, int] = field(default_factory=dict)
     ledger: list[WalletTransaction] = field(default_factory=list)
+    # The payment partner's side: each member's partner wallet balance (by our user id), the
+    # trip escrow's totals and release state, its cards and its release movements.
+    partner_balances: dict[PydanticObjectId, int] = field(default_factory=dict)
+    escrow: EscrowTotals | None = None
+    escrow_funded_minor: int = 0
+    escrow_target_minor: int = 0
+    cards: list[PartnerCardRecord] = field(default_factory=list)
+    releases: list[PartnerLedgerRecord] = field(default_factory=list)
 
     @property
     def live_bookings(self) -> list[Booking]:
@@ -109,6 +128,7 @@ async def load_snapshot(trip_id: PydanticObjectId) -> Snapshot:
     people = list({*(m.user_id for m in members), *(c.user_id for c in contributions)})
     wallets = await Wallet.find({"user_id": {"$in": people}}).to_list(len(people) + 1)
     ledger = await WalletTransaction.find({"user_id": {"$in": people}}).to_list(5_000)
+    partner = await _partner_side(trip, wallets)
     return Snapshot(
         trip=trip,
         members=members,
@@ -119,7 +139,56 @@ async def load_snapshot(trip_id: PydanticObjectId) -> Snapshot:
         profiles=await TravellerProfileRepository().for_users([m.user_id for m in members]),
         wallets={w.user_id: w.balance_minor for w in wallets},
         ledger=ledger,
+        **partner,
     )
+
+
+async def _partner_side(trip: Trip, wallets: list[Wallet]) -> dict[str, Any]:
+    """Read straight from the partner's collections — the harness audits the partner too."""
+    linked = {w.user_id: w.partner_wallet_id for w in wallets if w.partner_wallet_id}
+    records = await PartnerWalletRecord.find(
+        {"wallet_id": {"$in": [*linked.values(), trip.escrow_wallet_id or ""]}}
+    ).to_list(len(linked) + 2)
+    by_id = {record.wallet_id: record for record in records}
+    found: dict[str, Any] = {
+        "partner_balances": {
+            user: by_id[wallet].balance_minor for user, wallet in linked.items() if wallet in by_id
+        }
+    }
+    escrow_id = trip.escrow_wallet_id
+    if escrow_id is None or escrow_id not in by_id:
+        return found
+    entries = (
+        await PartnerLedgerRecord.find(
+            {"$or": [{"debit_wallet_id": escrow_id}, {"credit_wallet_id": escrow_id}]}
+        )
+        .sort("created_at", "_id")
+        .to_list()
+    )
+    cards = await PartnerCardRecord.find(PartnerCardRecord.funding_wallet_id == escrow_id).to_list()
+    totals = escrow_totals(
+        [movement_of(entry) for entry in entries], [card_view(card) for card in cards], escrow_id
+    )
+    record = by_id[escrow_id]
+    found.update(
+        escrow=EscrowTotals(
+            collected_minor=totals.collected_minor,
+            paid_to_suppliers_minor=totals.paid_to_suppliers_minor,
+            refunded_minor=totals.refunded_minor,
+            reserved_minor=totals.reserved_minor,
+            balance_minor=record.balance_minor,
+        ),
+        escrow_funded_minor=record.funded_minor,
+        escrow_target_minor=record.release_target_minor,
+        cards=cards,
+        releases=[
+            e
+            for e in entries
+            if e.debit_wallet_id == escrow_id
+            and e.kind in (LedgerKind.PAYOUT, LedgerKind.CARD_FUNDING)
+        ],
+    )
+    return found
 
 
 @dataclass(frozen=True, slots=True)
@@ -431,6 +500,75 @@ def _pot_never_negative(ctx: InvariantContext) -> list[str]:
     return []
 
 
+def _escrow_balances(ctx: InvariantContext) -> list[str]:
+    """Escrow = share transfers - payouts - card spends - refunds - live card reserves, >= 0."""
+    escrow = ctx.after.escrow
+    if escrow is None:
+        return []
+    problems = []
+    if escrow.balance_minor < 0:
+        problems.append(f"the escrow balance is negative: {escrow.balance_minor}")
+    if escrow.held_minor != escrow.expected_held_minor:
+        problems.append(
+            f"the escrow holds {escrow.held_minor} (balance {escrow.balance_minor} + reserved "
+            f"{escrow.reserved_minor}) but collected {escrow.collected_minor} - paid to "
+            f"suppliers {escrow.paid_to_suppliers_minor} - refunded {escrow.refunded_minor} = "
+            f"{escrow.expected_held_minor}"
+        )
+    return problems
+
+
+def _card_limits(ctx: InvariantContext) -> list[str]:
+    """No virtual card's limit exceeds its purchase amount, no card spends above its limit,
+    and a card is charged at most once."""
+    snap = ctx.after
+    by_card = {
+        b.payment_ref: b
+        for b in snap.bookings
+        if b.payment_kind is PurchasePayment.VIRTUAL_CARD and b.payment_ref
+    }
+    problems = []
+    for card in snap.cards:
+        booking = by_card.get(card.card_id)
+        if booking is not None and card.limit_minor > booking.amount_minor:
+            problems.append(
+                f"card {card.card_id} limit {card.limit_minor} > purchase {booking.amount_minor}"
+            )
+        if card.spent_minor > card.limit_minor:
+            problems.append(f"card {card.card_id} spent {card.spent_minor} > {card.limit_minor}")
+        if card.status is not CardStatus.USED and card.spent_minor:
+            problems.append(f"card {card.card_id} spent money but is {card.status}")
+    return problems
+
+
+def _no_release_before_funded(ctx: InvariantContext) -> list[str]:
+    """Rule #1 at the partner: a payout or card funding only from a 100% funded escrow."""
+    before = {e.entry_id for e in ctx.before.releases} if ctx.before else set()
+    fresh = [e for e in ctx.after.releases if e.entry_id not in before]
+    if not fresh:
+        return []
+    snap = ctx.after
+    problems = []
+    if snap.escrow_funded_minor < snap.escrow_target_minor or snap.escrow_target_minor <= 0:
+        problems.append(
+            f"{len(fresh)} release(s) while the escrow is funded {snap.escrow_funded_minor} of "
+            f"{snap.escrow_target_minor}"
+        )
+    if snap.outstanding_minor > 0:
+        problems.append(f"{len(fresh)} release(s) while {snap.outstanding_minor} is still owed")
+    return problems
+
+
+def _mirror_matches_partner(ctx: InvariantContext) -> list[str]:
+    """Our wallet mirror equals the member's e-money wallet at the partner."""
+    snap = ctx.after
+    return [
+        f"wallet of {user} mirrors {snap.wallets.get(user, 0)}, the partner holds {balance}"
+        for user, balance in snap.partner_balances.items()
+        if snap.wallets.get(user, 0) != balance
+    ]
+
+
 INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "shares_sum_to_total",
@@ -504,6 +642,27 @@ INVARIANTS: tuple[Invariant, ...] = (
         "pot_never_negative",
         "the trip never spends or refunds more than it collected from the wallets",
         _pot_never_negative,
+    ),
+    Invariant(
+        "escrow_balances",
+        "escrow = share transfers - payouts - card spends - refunds (- live card reserves), "
+        "never negative",
+        _escrow_balances,
+    ),
+    Invariant(
+        "card_within_purchase",
+        "no virtual card limit above its purchase amount; each card charged once, within it",
+        _card_limits,
+    ),
+    Invariant(
+        "no_release_before_funded",
+        "no payout or card funding before the escrow is 100% funded (Rule #1 at the partner)",
+        _no_release_before_funded,
+    ),
+    Invariant(
+        "member_wallet_matches_partner",
+        "every member's mirrored wallet equals their wallet at the payment partner",
+        _mirror_matches_partner,
     ),
     Invariant(
         "feed_is_chronological",

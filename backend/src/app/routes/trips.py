@@ -16,6 +16,7 @@ from app.schemas.trips import (
     JoinTripRequest,
     PostMessageRequest,
     RoomResponse,
+    SetPayByRequest,
     TripStatusResponse,
     TripSummaryResponse,
 )
@@ -86,6 +87,25 @@ async def leave_trip(
 ) -> TripStatusResponse:
     """The caller drops out before anything is bought; the rest re-split the total."""
     return TripStatusResponse.model_validate(trip_value(await service.leave(trip_id, user.id)))
+
+
+@router.post(
+    "/{trip_id}/pay-by",
+    operation_id="trips-set-pay-by",
+    responses={
+        **NOT_FOUND,
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
+    },
+)
+async def set_pay_by(
+    trip_id: str, payload: SetPayByRequest, service: TripServiceDep, user: CurrentUser
+) -> TripStatusResponse:
+    """The organizer moves the funding deadline (PAYING only, must be in the future)."""
+    return TripStatusResponse.model_validate(
+        trip_value(await service.set_pay_by(trip_id, user.id, payload.pay_by))
+    )
 
 
 @router.get("/{trip_id}/feed", operation_id="trips-feed", responses=NOT_FOUND)

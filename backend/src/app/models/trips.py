@@ -51,12 +51,18 @@ class Trip(TimestampMixin, Document):
     chosen_proposal_id: PydanticObjectId | None = None
     # The amount the group is paying right now (sum of bookings of the chosen package).
     total_minor: int = 0
+    # The trip escrow wallet at the payment partner ("wlt_…"), opened at voting close.
+    escrow_wallet_id: str | None = None
+    # The funding deadline: not 100% paid by then, the escrow refunds everyone (EXPIRED).
+    pay_by: datetime | None = None
 
     class Settings:
         name: ClassVar[str] = "trips"
         indexes: ClassVar[list[pymongo.IndexModel]] = [
             pymongo.IndexModel([("invite_code", 1)], unique=True, name="uq_trips_invite_code"),
             pymongo.IndexModel([("organizer_id", 1)], name="ix_trips_organizer_id"),
+            # The funding-deadline sweep: PAYING trips whose `pay_by` has passed.
+            pymongo.IndexModel([("status", 1), ("pay_by", 1)], name="ix_trips_status_pay_by"),
         ]
 
 

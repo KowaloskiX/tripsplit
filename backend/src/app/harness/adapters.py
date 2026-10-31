@@ -17,13 +17,15 @@ from typing import Any
 
 from app.agent.launcher import AgentLauncher, LaunchSpec, RunHandle
 from app.core.domain.bookings import repriced_minor
-from app.core.domain.result import Result
+from app.core.domain.result import Err, Result
 from app.core.domain.travellers import TravellerDetails
 from app.db.documents import utc_now
 from app.db.identifiers import to_object_id
 from app.harness.scenario import ScriptedOutcome, Target, TargetSelector
 from app.models.bookings import Booking
+from app.payments.partner import PaymentPartner
 from app.repositories.bookings import BookingRepository
+from app.services.escrow import card_charge_from_vault
 from app.suppliers.ports import (
     BookingRef,
     DisruptionNotice,
@@ -112,11 +114,29 @@ class Launch:
     passengers: int
 
 
+@dataclass(frozen=True, slots=True)
+class SiteCheckout:
+    """The supplier site's payment step: it charges the card the agent typed from its vault
+    for the site's price, through the payment partner's card network."""
+
+    network: PaymentPartner
+    vault: dict[str, str]
+    amount_minor: int
+    merchant: str
+
+
 class ScriptedHandle:
-    def __init__(self, run_dir: Path, outcome: ScriptedOutcome, approval_timeout_s: float) -> None:
+    def __init__(
+        self,
+        run_dir: Path,
+        outcome: ScriptedOutcome,
+        approval_timeout_s: float,
+        checkout: SiteCheckout | None = None,
+    ) -> None:
         self.run_dir = run_dir
         self.outcome = outcome
         self.approval_timeout_s = approval_timeout_s
+        self.checkout = checkout
 
     async def wait(self) -> int:
         if self.outcome != "done":
@@ -127,12 +147,32 @@ class ScriptedHandle:
         if decision is None:
             self._result("handoff", "Nobody approved the summary in time.", 7, "")
         elif decision:
+            declined = await self._pay_at_checkout()
+            if declined is not None:
+                self._result("handoff", declined, 8, "")
+                return 0
             ref = f"SIM-{self.run_dir.name[-6:].upper()}"
             (self.run_dir / "08-done.png").write_bytes(_PNG)
             self._result("done", "simulated confirmation", 8, ref)
         else:
             self._result("handoff", "The organizer rejected the summary.", 7, "")
         return 0
+
+    async def _pay_at_checkout(self) -> str | None:
+        """The agent pays with the trip's single-use card; the reason when it is declined."""
+        checkout = self.checkout
+        if checkout is None or "card_number" not in checkout.vault:
+            return None
+        charged = await checkout.network.charge_card(
+            card_charge_from_vault(checkout.vault, checkout.amount_minor, checkout.merchant),
+            idempotency_key=f"site:{self.run_dir.name}",
+        )
+        if isinstance(charged, Err):
+            return (
+                f"The supplier's checkout declined the virtual card ({charged.error}): the site "
+                "asks more than the card's limit."
+            )
+        return None
 
     async def _await_approval(self) -> bool | None:
         loop = asyncio.get_running_loop()
@@ -171,6 +211,10 @@ class ScriptedLauncher:
     # Target (a mode or a kind) -> outcome.
     outcomes: dict[str, ScriptedOutcome] = field(default_factory=dict)
     launches: list[Launch] = field(default_factory=list)
+    # The card network the scripted checkout charges through (None = nobody pays).
+    card_network: PaymentPartner | None = None
+    # Target -> percent the supplier site charges above the booked amount at checkout.
+    site_markup_percent: dict[str, float] = field(default_factory=dict)
 
     def script(self, target: Target, outcome: ScriptedOutcome) -> None:
         self.outcomes[target] = outcome
@@ -207,7 +251,24 @@ class ScriptedLauncher:
         status = {"milestone": "review", "reached": ["search", "review"], "step": _STEPS[outcome]}
         if outcome == "done":
             _write_json(run_dir / STATUS_FILE, {**status, "outcome": live})
-        return ScriptedHandle(run_dir, outcome, self.approval_timeout_s)
+        return ScriptedHandle(
+            run_dir, outcome, self.approval_timeout_s, self._checkout(booking, spec)
+        )
+
+    def _checkout(self, booking: Booking | None, spec: LaunchSpec) -> SiteCheckout | None:
+        if self.card_network is None or booking is None:
+            return None
+        markup = 0.0
+        for target in (booking.mode.value if booking.mode else None, booking.kind.value):
+            if target is not None and target in self.site_markup_percent:
+                markup = self.site_markup_percent[target]
+                break
+        return SiteCheckout(
+            network=self.card_network,
+            vault=dict(spec.vault),
+            amount_minor=repriced_minor(booking.amount_minor, markup),
+            merchant=booking.supplier,
+        )
 
     @staticmethod
     async def _booking_of(run_id: str) -> Booking | None:
