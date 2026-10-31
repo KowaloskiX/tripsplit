@@ -5,6 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DigitRoll } from "@/components/ui/number-roll";
 import { Stamp } from "@/components/ui/stamp";
+import {
+  isExample,
+  LinkChips,
+  PhotoStrip,
+  type Provenance,
+  ProvenancePill,
+  type TrustImage,
+  type TrustLink,
+} from "@/features/trust";
 import type { ProposalResponse, SegmentResponse } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
@@ -21,6 +30,12 @@ type ProposalCardProps = {
   leading?: boolean;
   /** Lost the vote and is on its way out: steps back and fades. */
   receding?: boolean;
+  /** Where the prices come from — shown as a pill; an example is styled as one. */
+  provenance?: Provenance | undefined;
+  /** "Open on intercity.pl", "Hotel on map"… */
+  links?: readonly TrustLink[] | undefined;
+  /** Hotel photos, shown as a strip at the top. */
+  images?: readonly TrustImage[] | undefined;
 };
 
 const TIME = new Intl.DateTimeFormat(undefined, {
@@ -43,7 +58,11 @@ export function ProposalCard({
   voting,
   leading = false,
   receding = false,
+  provenance,
+  links = [],
+  images = [],
 }: ProposalCardProps): ReactNode {
+  const example = isExample(provenance);
   return (
     <article
       data-leading={leading}
@@ -52,6 +71,8 @@ export function ProposalCard({
         proposal.chosen || proposal.voted_by_me
           ? "border-ink shadow-card"
           : "border-line hover:border-ink/30 hover:shadow-card",
+        // An example must never pass for a real offer.
+        example && "border-2 border-dashed border-ink/25 shadow-none",
         proposal.chosen && "thump",
         receding && "recede",
       )}
@@ -66,6 +87,14 @@ export function ProposalCard({
       )}
       {/* Clips the perforation notches; the stamp and the glow sit outside it. */}
       <div className="flex min-w-0 flex-col overflow-hidden rounded-[inherit]">
+        {images.length > 0 && (
+          <PhotoStrip
+            images={images}
+            layout="cover"
+            example={example}
+            className="mx-3 mt-3 sm:mx-4 sm:mt-4"
+          />
+        )}
         <div className="flex items-start justify-between gap-3 px-5 pt-6 sm:px-6">
           <h3 className="text-xl leading-snug tracking-[-0.02em] text-ink">{proposal.title}</h3>
           <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
@@ -76,6 +105,11 @@ export function ProposalCard({
           <p className="mt-2 px-5 text-[15px] leading-relaxed text-muted sm:px-6">
             {proposal.summary}
           </p>
+        )}
+        {provenance && (
+          <div className="mt-2.5 px-5 sm:px-6">
+            <ProvenancePill provenance={provenance} />
+          </div>
         )}
 
         <ul className="mt-5 space-y-2 px-3 sm:px-6">
@@ -152,6 +186,7 @@ export function ProposalCard({
             </Button>
           )}
         </div>
+        {links.length > 0 && <LinkChips links={links} className="-mt-2 px-6 pb-6" />}
       </div>
     </article>
   );
