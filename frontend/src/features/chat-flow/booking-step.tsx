@@ -100,7 +100,26 @@ function TicketCard({
  * Step 8: the agent narrates the purchases — starting them (unless AUTO_BOOK already did),
  * a live strip while it buys, one "Approve basket" button, then the tickets.
  */
-export function BookingStep({ tripId, title }: { tripId: string; title: string }): ReactNode {
+function idleText(waiting: number, stuck: readonly BookingResponse[]): string {
+  if (waiting > 0)
+    return "Everything is ready at the suppliers. Nothing is paid until you approve.";
+  const first = stuck[0];
+  if (first) {
+    const more = stuck.length > 1 ? ` and ${stuck.length - 1} more` : "";
+    return `I couldn't finish ${first.title}${more} — nothing was paid for it. Try again, or finish it by hand in the trip room.`;
+  }
+  return "Everyone has paid. Shall I book it all?";
+}
+
+export function BookingStep({
+  tripId,
+  title,
+  onOpenRoom,
+}: {
+  tripId: string;
+  title: string;
+  onOpenRoom: () => void;
+}): ReactNode {
   const { data } = useTripBookings(tripId);
   const approve = useApproveAll(tripId);
   const start = useStartAll(tripId);
@@ -108,9 +127,11 @@ export function BookingStep({ tripId, title }: { tripId: string; title: string }
   const current = data.bookings.filter((booking) => booking.status !== "cancelled");
   const waiting = current.filter((booking) => booking.status === "awaiting_approval");
   const confirmed = current.filter((booking) => booking.status === "confirmed");
-  const startable = current.filter(
-    (booking) => booking.status === "pending" || booking.status === "failed",
+  // What a start can pick up again: not started yet, failed, or handed over to a human.
+  const stuck = current.filter(
+    (booking) => booking.status === "failed" || booking.status === "handoff",
   );
+  const startable = current.filter((booking) => booking.status === "pending").concat(stuck);
   const working = current.some(
     (booking) => booking.status === "running" || booking.status === "approved",
   );
@@ -129,16 +150,19 @@ export function BookingStep({ tripId, title }: { tripId: string; title: string }
               ? waiting.length > 0
                 ? `${waiting.length} of ${current.length - confirmed.length} ready, still preparing the rest…`
                 : "Booking everything…"
-              : waiting.length > 0
-                ? "Everything is ready at the suppliers. Nothing is paid until you approve."
-                : "Everyone has paid. Shall I book it all?"
+              : idleText(waiting.length, stuck)
           }
         >
           {working && <LiveStrip tripId={tripId} title={title} />}
           {data.is_organizer && startable.length > 0 && !working && waiting.length === 0 && (
             <Button variant="sun" onClick={() => start.startAll()} disabled={start.isPending}>
-              {start.isPending ? "Starting…" : "Book everything"}
+              {start.isPending ? "Starting…" : stuck.length > 0 ? "Try again" : "Book everything"}
             </Button>
+          )}
+          {stuck.length > 0 && !working && waiting.length === 0 && (
+            <button type="button" className="ml-4 text-sm text-ink underline" onClick={onOpenRoom}>
+              Open trip room
+            </button>
           )}
           {/* One approval for the whole basket: offered once nothing is still being prepared. */}
           {data.is_organizer && waiting.length > 0 && !working && (

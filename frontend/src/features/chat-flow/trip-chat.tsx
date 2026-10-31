@@ -308,10 +308,19 @@ export function TripChat({
       )}
       {phase === "picking" && options.isLoading && <TypingMessage label="Loading options" />}
       {phase === "picking" && options.error && (
-        <AgentMessage text="I couldn't load the options one by one — the trip room has the ready-made packages.">
-          <button type="button" className="text-sm text-ink underline" onClick={onOpenRoom}>
-            Open trip room
-          </button>
+        <AgentMessage text="The options didn't load. Try again, or pick a ready-made package in the trip room.">
+          <div className="flex gap-4">
+            <button
+              type="button"
+              className="text-sm text-ink underline"
+              onClick={() => void options.refetch()}
+            >
+              Try again
+            </button>
+            <button type="button" className="text-sm text-ink underline" onClick={onOpenRoom}>
+              Open trip room
+            </button>
+          </div>
         </AgentMessage>
       )}
 
@@ -343,7 +352,7 @@ export function TripChat({
       ))}
 
       {(phase === "booking" || phase === "approve" || phase === "booked") && (
-        <BookingStep tripId={tripId} title={room.trip.title} />
+        <BookingStep tripId={tripId} title={room.trip.title} onOpenRoom={onOpenRoom} />
       )}
       {phase === "stopped" && (
         <AgentMessage text={`This trip is ${room.trip.status}. The trip room has the details.`}>
