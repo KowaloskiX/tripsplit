@@ -29,7 +29,7 @@ from app.repositories.trips import (
 )
 from app.services.contributions import ContributionService
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
-from app.services.trips import JOINABLE_STATUSES
+from app.services.trips import JOINABLE_STATUSES, NotJoinableError
 
 DEMO_EMAIL_DOMAIN = "demo.tripsplit.invalid"
 DEMO_NAMES = (
@@ -74,6 +74,9 @@ class DemoService:
         unusable_hash = await hash_password(secrets.token_urlsafe(32))
 
         async def write(session: AsyncClientSession) -> None:
+            # Same guard as a real join: no member may slip in after the vote is closed.
+            if not await self.trips.touch_if_status(trip_oid, JOINABLE_STATUSES, session):
+                raise NotJoinableError
             for name in names:
                 user = await self.users.add(
                     User(
@@ -96,7 +99,10 @@ class DemoService:
                     session=session,
                 )
 
-        await self.db.in_transaction(write)
+        try:
+            await self.db.in_transaction(write)
+        except NotJoinableError:
+            return Err(TripError.INVALID_STATE)
         return Ok(len(names))
 
     async def vote_all(

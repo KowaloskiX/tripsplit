@@ -4,6 +4,7 @@ No business rules here. Every method takes an optional `session` so a service ca
 inside a transaction. Every filter is backed by an index declared on the document.
 """
 
+from collections.abc import Iterable
 from datetime import datetime
 from typing import Any
 
@@ -68,6 +69,25 @@ class TripRepository:
             session=session,
         )
         return result.modified_count == 1
+
+    async def touch_if_status(
+        self,
+        trip_id: PydanticObjectId,
+        statuses: Iterable[TripStatus],
+        session: AsyncClientSession,
+    ) -> bool:
+        """Inside a transaction: assert the status AND write the trip document.
+
+        The write is the point. A concurrent transaction that also writes the trip (e.g. closing
+        the vote) now conflicts with this one, so one of them retries against fresh data
+        instead of both committing on a stale read.
+        """
+        result = await Trip.get_pymongo_collection().update_one(
+            {"_id": trip_id, "status": {"$in": list(statuses)}},
+            {"$set": {"updated_at": utc_now()}},
+            session=session,
+        )
+        return result.matched_count == 1
 
 
 class MemberRepository:

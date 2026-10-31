@@ -39,6 +39,10 @@ from app.services.trip_views import (
 JOINABLE_STATUSES = frozenset({TripStatus.COLLECTING, TripStatus.PROPOSING, TripStatus.VOTING})
 
 
+class NotJoinableError(Exception):
+    """Raised inside a join transaction to abort it when the trip left the joinable stages."""
+
+
 @dataclass(frozen=True, slots=True)
 class NewTrip:
     title: str
@@ -181,6 +185,10 @@ class TripService:
             return Err(TripError.INVALID_STATE)
 
         async def write(session: AsyncClientSession) -> None:
+            # Re-checked inside the transaction: closing the vote may have moved the trip since
+            # the read above, and a member added after the split would get no share.
+            if not await self.trips.touch_if_status(trip_oid, JOINABLE_STATUSES, session):
+                raise NotJoinableError
             await self.members.add(
                 TripMember(trip_id=trip_oid, user_id=user_oid, display_name=display_name),
                 session=session,
@@ -194,7 +202,10 @@ class TripService:
                 session=session,
             )
 
-        await self.db.in_transaction(write)
+        try:
+            await self.db.in_transaction(write)
+        except NotJoinableError:
+            return Err(TripError.INVALID_STATE)
         return Ok(result)
 
     async def feed(

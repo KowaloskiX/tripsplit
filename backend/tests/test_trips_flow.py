@@ -1,5 +1,6 @@
 """The trip money path over HTTP: create -> join -> research -> vote -> close -> pay -> booking."""
 
+import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
@@ -12,7 +13,9 @@ from app.core.config import Settings, get_settings
 from app.core.domain.trips import BookingKind, BookingStatus, EventKind, TripStatus
 from app.core.http_security import CSRF_HEADER_NAME
 from app.db.identifiers import to_object_id
+from app.models.trips import Trip
 from app.repositories.bookings import BookingRepository
+from app.repositories.trips import TripRepository
 
 PASSWORD = "correct-horse-battery-staple"
 
@@ -298,3 +301,52 @@ async def test_demo_routes_do_not_exist_in_production(
     ):
         response = await organizer.post(f"/api/trips/{trip_id}/demo/{path}", body)
         assert response.status_code == 404, f"{path}: {response.text}"
+
+
+async def test_a_join_racing_the_vote_close_is_turned_away(
+    app: FastAPI, member_factory: MemberFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The join read the trip while it was still VOTING; the close committed before the join's
+    transaction. The in-transaction status check must refuse the newcomer — otherwise they are
+    a member with no share."""
+    organizer = await member_factory("organizer@example.com")
+    late = await member_factory("late@example.com")
+    trip_id = await _create_trip(organizer)
+    await _research(app, organizer, trip_id)
+    invite_code = (await _room(organizer, trip_id))["invite_code"]
+
+    stale = await TripRepository().get_by_invite_code(invite_code)
+    assert stale is not None and stale.status is TripStatus.VOTING
+    assert (await organizer.post(f"/api/trips/{trip_id}/voting/close")).status_code == 200
+
+    async def stale_read(self: TripRepository, code: str, session: object = None) -> Trip:
+        return stale
+
+    monkeypatch.setattr(TripRepository, "get_by_invite_code", stale_read)
+    joined = await late.post("/api/trips/join", {"invite_code": invite_code, "display_name": "X"})
+    assert joined.status_code == 409, joined.text
+
+    room = await _room(organizer, trip_id)
+    assert len(room["members"]) == len(room["contributions"]) == 1
+
+
+async def test_concurrent_joins_and_close_never_leave_a_member_without_a_share(
+    app: FastAPI, member_factory: MemberFactory
+) -> None:
+    organizer = await member_factory("organizer@example.com")
+    friends = [await member_factory(f"friend{i}@example.com") for i in range(4)]
+    trip_id = await _create_trip(organizer)
+    await _research(app, organizer, trip_id)
+    invite_code = (await _room(organizer, trip_id))["invite_code"]
+
+    await asyncio.gather(
+        organizer.post(f"/api/trips/{trip_id}/voting/close"),
+        *(
+            friend.post("/api/trips/join", {"invite_code": invite_code, "display_name": f"F{i}"})
+            for i, friend in enumerate(friends)
+        ),
+    )
+    room = await _room(organizer, trip_id)
+    assert room["trip"]["status"] == TripStatus.PAYING
+    assert len(room["members"]) == len(room["contributions"])
+    assert sum(c["amount_minor"] for c in room["contributions"]) == room["trip"]["total_minor"]

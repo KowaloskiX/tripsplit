@@ -202,8 +202,6 @@ class ProposalService:
             [vote.proposal_id for vote in votes],
         )
         winner = next(proposal for proposal in proposals if identifier_of(proposal) == winner_id)
-        members = await self.members.for_trip(trip_oid)
-        shares = split_evenly(winner.total_minor, len(members))
 
         async def write(session: AsyncClientSession) -> None:
             moved = await self.trips.transition_status(
@@ -211,6 +209,11 @@ class ProposalService:
             )
             if not moved:
                 raise _StatusChanged
+            # Counted inside the transaction, after the status write: a concurrent join writes
+            # the trip document too (see TripService.join), so either it committed first and is
+            # counted here, or it conflicts, retries and is turned away.
+            members = await self.members.for_trip(trip_oid, session=session)
+            shares = split_evenly(winner.total_minor, len(members))
             await self.trips.update(
                 trip,
                 {
