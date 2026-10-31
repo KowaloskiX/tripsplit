@@ -14,6 +14,12 @@ def test_known_placeholder_is_substituted() -> None:
     assert _resolve("{{vault.passenger_1_first_name}}", vault) == "Anna"
 
 
+def test_card_secrets_are_masked_however_short_but_a_party_size_is_not() -> None:
+    vault = Vault({"card_cvc": "737", "card_number": "4242424242424242", "party": "3"})
+    masked = vault.mask("CVC 737, card 4242424242424242, 3 passengers")
+    assert masked == "CVC •••, card •••, 3 passengers"
+
+
 def test_unknown_placeholder_fails_loudly_and_lists_the_real_keys() -> None:
     vault = Vault({"passenger_1_first_name": "Anna"})
     with pytest.raises(UnknownVaultKey, match="passenger_1_first_name"):

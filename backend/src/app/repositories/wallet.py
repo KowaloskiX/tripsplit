@@ -34,7 +34,11 @@ class WalletRepository:
             {
                 "$inc": {"balance_minor": amount_minor},
                 "$set": {"updated_at": now},
-                "$setOnInsert": {"currency": WALLET_CURRENCY, "created_at": now},
+                "$setOnInsert": {
+                    "currency": WALLET_CURRENCY,
+                    "partner_wallet_id": None,
+                    "created_at": now,
+                },
             },
             upsert=True,
             return_document=ReturnDocument.AFTER,
@@ -43,6 +47,22 @@ class WalletRepository:
         if document is None:  # pragma: no cover - an upsert always returns the document
             raise LookupError("the wallet upsert returned nothing")
         return int(document["balance_minor"])
+
+    async def link_partner(self, user_id: PydanticObjectId, partner_wallet_id: str) -> None:
+        """Records the member's partner wallet on the mirror (creating the mirror if needed)."""
+        now = utc_now()
+        await Wallet.get_pymongo_collection().update_one(
+            {"user_id": user_id},
+            {
+                "$set": {"partner_wallet_id": partner_wallet_id, "updated_at": now},
+                "$setOnInsert": {
+                    "balance_minor": 0,
+                    "currency": WALLET_CURRENCY,
+                    "created_at": now,
+                },
+            },
+            upsert=True,
+        )
 
     async def debit(
         self, user_id: PydanticObjectId, amount_minor: int, session: AsyncClientSession
@@ -80,17 +100,20 @@ class WalletTransactionRepository:
         balance_after_minor: int,
         completed_at: datetime,
         session: AsyncClientSession,
+        *,
+        partner_ref: str | None = None,
     ) -> bool:
         """pending -> completed, exactly once (compare-and-set on the status)."""
+        changes: dict[str, object] = {
+            "status": WalletTransactionStatus.COMPLETED,
+            "balance_after_minor": balance_after_minor,
+            "completed_at": completed_at,
+        }
+        if partner_ref is not None:
+            changes["partner_ref"] = partner_ref
         result = await WalletTransaction.get_pymongo_collection().update_one(
             {"_id": transaction_id, "status": WalletTransactionStatus.PENDING},
-            {
-                "$set": {
-                    "status": WalletTransactionStatus.COMPLETED,
-                    "balance_after_minor": balance_after_minor,
-                    "completed_at": completed_at,
-                }
-            },
+            {"$set": changes},
             session=session,
         )
         return result.modified_count == 1
@@ -113,6 +136,12 @@ class WalletTransactionRepository:
             session=session,
         )
         return result.modified_count == 1
+
+    async def by_partner_ref(self, partner_ref: str) -> WalletTransaction | None:
+        # The `$type` makes the query match the partial unique index's filter.
+        return await WalletTransaction.find_one(
+            {"partner_ref": {"$eq": partner_ref, "$type": "string"}}
+        )
 
     async def history(self, user_id: PydanticObjectId, limit: int) -> list[WalletTransaction]:
         """The newest `limit` entries — a page, not "everything", so no truncation warning."""

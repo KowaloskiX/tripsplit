@@ -40,6 +40,7 @@ _TRIP_STATUS: dict[TripError, int] = {
     TripError.ALREADY_PAID: status.HTTP_409_CONFLICT,
     TripError.ORGANIZER_CANNOT_LEAVE: status.HTTP_409_CONFLICT,
     TripError.BOOKING_STARTED: status.HTTP_409_CONFLICT,
+    TripError.INVALID_DEADLINE: status.HTTP_422_UNPROCESSABLE_CONTENT,
     TripError.ATTRACTION_NOT_FOUND: status.HTTP_404_NOT_FOUND,
 }
 
@@ -52,6 +53,7 @@ _TRIP_MESSAGE: dict[TripError, str] = {
     TripError.ALREADY_PAID: "Your share is already paid.",
     TripError.ORGANIZER_CANNOT_LEAVE: "The organizer cannot leave their own trip.",
     TripError.BOOKING_STARTED: "Too late to leave: the agent has already started booking.",
+    TripError.INVALID_DEADLINE: "The pay-by deadline must be in the future.",
     TripError.ATTRACTION_NOT_FOUND: "No such attraction on this trip.",
 }
 
@@ -84,6 +86,7 @@ _BOOKING_STATUS: dict[BookingError, int] = {
     BookingError.TRAVELLER_DETAILS_MISSING: status.HTTP_409_CONFLICT,
     BookingError.QUOTE_EXPIRED: status.HTTP_409_CONFLICT,
     BookingError.SUPPLIER_UNKNOWN: status.HTTP_409_CONFLICT,
+    BookingError.PAYMENT_FAILED: status.HTTP_409_CONFLICT,
 }
 
 _BOOKING_MESSAGE: dict[BookingError, str] = {
@@ -107,6 +110,9 @@ _BOOKING_MESSAGE: dict[BookingError, str] = {
     ),
     BookingError.QUOTE_EXPIRED: "The price is no longer guaranteed. Start the booking again.",
     BookingError.SUPPLIER_UNKNOWN: "The supplier of this booking is not available right now.",
+    BookingError.PAYMENT_FAILED: (
+        "The trip escrow could not pay this purchase — see the trip feed, then try again."
+    ),
 }
 
 
@@ -120,6 +126,7 @@ _TOP_UP_STATUS: dict[TopUpFailure, int] = {
     TopUpFailure.INVALID_CARD: status.HTTP_422_UNPROCESSABLE_CONTENT,
     TopUpFailure.DECLINED: status.HTTP_402_PAYMENT_REQUIRED,
     TopUpFailure.NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    TopUpFailure.KYC_REQUIRED: status.HTTP_409_CONFLICT,
 }
 
 _TOP_UP_MESSAGE: dict[TopUpFailure, str] = {
@@ -128,6 +135,9 @@ _TOP_UP_MESSAGE: dict[TopUpFailure, str] = {
     TopUpFailure.INVALID_CARD: "Enter a valid card.",
     TopUpFailure.DECLINED: "Your bank declined the payment.",
     TopUpFailure.NOT_FOUND: "No such top-up.",
+    TopUpFailure.KYC_REQUIRED: (
+        "Top-ups above the verification limit need a quick ID check first (KYC)."
+    ),
 }
 
 

@@ -27,6 +27,7 @@ from app.core.http_security import CSRF_HEADER_NAME
 from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.main import create_app
+from app.payments.partner import WalletOwnerKind
 from app.services.auth import AuthService
 from app.services.wallet import TopUpRequest, WalletService
 
@@ -137,11 +138,21 @@ async def test_concurrent_charges_never_overdraw(database: Database, settings: S
     user = await _user(database, settings, "race@example.com")
     await service.credit(user, 10_000, WalletTransactionKind.ADJUSTMENT)
 
-    results = await asyncio.gather(*(service.charge(user, "0" * 24, 4_000) for _ in range(5)))
+    escrow = await service.partner.create_wallet(WalletOwnerKind.TRIP_ESCROW, "trip:race", "PLN")
+    results = await asyncio.gather(
+        *(
+            service.charge(
+                user, "0" * 24, 4_000, to_wallet=escrow, idempotency_key=f"race:{attempt}"
+            )
+            for attempt in range(5)
+        )
+    )
     assert sum(isinstance(r, Ok) for r in results) == 2
     refused = [r for r in results if isinstance(r, Err)]
     assert all(isinstance(r.error, InsufficientFunds) for r in refused)
     assert await service.balance(user) == 2_000
+    assert await service.partner.balance(escrow) == 8_000
+    assert await service.partner.balance(await service.partner_wallet_id(user)) == 2_000
     await _ledger_matches_balance(user, service)
 
 
@@ -204,7 +215,11 @@ async def test_wallet_endpoints_top_up_and_history(
 ) -> None:
     anna = browsers[0]
     empty = (await anna.get("/api/wallet")).json()
-    assert empty == {"balance_minor": 0, "currency": "PLN", "transactions": []}
+    assert empty["balance_minor"] == 0
+    assert empty["transactions"] == []
+    assert empty["held_by"] == "TripSplit Pay"
+    assert empty["kyc"]["status"] == "not_started"
+    assert empty["kyc"]["remaining_minor"] == 100_000
 
     bad = await anna.post("/api/wallet/top-ups", {"amount_minor": 50, "method": "blik"})
     assert bad.status_code == 422
@@ -300,12 +315,11 @@ async def test_paying_a_share_from_the_wallet_and_the_pot(
     room = (await anna.get(f"/api/trips/{trip_id}")).json()
     assert room["trip"]["status"] == TripStatus.BOOKING
     total = room["trip"]["total_minor"]
-    assert room["pot"] == {
-        "collected_minor": total,
-        "spent_minor": 0,
-        "refunded_minor": 0,
-        "held_minor": total,
-    }
+    pot = room["pot"]
+    assert pot["escrow_wallet_id"].startswith("wlt_")
+    assert (pot["collected_minor"], pot["spent_minor"], pot["refunded_minor"]) == (total, 0, 0)
+    assert pot["held_minor"] == pot["funded_minor"] == pot["target_minor"] == total
+    assert room["trip"]["pay_by"] is not None
 
 
 async def test_demo_pay_all_funds_seeded_members(
@@ -330,3 +344,53 @@ async def test_demo_pay_all_funds_seeded_members(
         room["pot"]["collected_minor"]
         == room["trip"]["total_minor"] - room["my_contribution"]["amount_minor"]
     )
+
+
+async def test_kyc_light_blocks_top_ups_until_the_id_is_verified(
+    wallet_app: FastAPI, browsers: list[Browser]
+) -> None:
+    anna = browsers[0]
+    first = await anna.post(
+        "/api/wallet/top-ups", {"amount_minor": 90_000, "method": "blik", "blik_code": "123456"}
+    )
+    assert first.status_code == 202
+    await _drain(wallet_app)
+    over = await anna.post(
+        "/api/wallet/top-ups", {"amount_minor": 20_000, "method": "blik", "blik_code": "123456"}
+    )
+    assert over.status_code == 409
+    assert over.json()["code"] == "kyc_required"
+
+    verifying = await anna.post(
+        "/api/wallet/kyc",
+        {"legal_name": "Anna Kowalska", "birth_date": "1990-05-04", "document_number": "EH1234567"},
+    )
+    assert verifying.status_code == 202, verifying.text
+    assert verifying.json()["status"] == "pending"
+    # Masked: the number itself is never echoed (nor stored).
+    assert verifying.json()["document_masked"] == "•••• 4567"
+    assert "EH1234567" not in verifying.text
+    await asyncio.sleep(1.1)
+    wallet = (await anna.get("/api/wallet")).json()
+    assert wallet["kyc"]["status"] == "verified"
+    assert wallet["kyc"]["remaining_minor"] is None
+    passed = await anna.post(
+        "/api/wallet/top-ups", {"amount_minor": 20_000, "method": "blik", "blik_code": "123456"}
+    )
+    assert passed.status_code == 202
+
+
+async def test_the_organizer_moves_the_pay_by_deadline(
+    wallet_app: FastAPI, browsers: list[Browser]
+) -> None:
+    anna, kuba = browsers
+    trip_id, _ = await _paying_trip(wallet_app, anna, kuba)
+    past = await anna.post(f"/api/trips/{trip_id}/pay-by", {"pay_by": "2020-01-01T00:00:00Z"})
+    assert past.status_code == 422
+    assert past.json()["code"] == "invalid_pay_by"
+    not_mine = await kuba.post(f"/api/trips/{trip_id}/pay-by", {"pay_by": "2099-01-01T00:00:00Z"})
+    assert not_mine.status_code == 403
+    moved = await anna.post(f"/api/trips/{trip_id}/pay-by", {"pay_by": "2099-01-01T00:00:00Z"})
+    assert moved.status_code == 200, moved.text
+    room = (await anna.get(f"/api/trips/{trip_id}")).json()
+    assert room["trip"]["pay_by"].startswith("2099-01-01")

@@ -4,11 +4,12 @@ A card never travels in full: the browser checks the (test) number and sends the
 digits only. A BLIK code is checked and forgotten — neither is stored.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.domain.escrow import KycLevel, KycStatus
 from app.core.domain.wallet import (
     MAX_TOP_UP_MINOR,
     MIN_TOP_UP_MINOR,
@@ -60,11 +61,36 @@ class WalletTransactionResponse(_ReadModel):
     completed_at: datetime | None
 
 
+class KycResponse(_ReadModel):
+    level: KycLevel
+    status: KycStatus
+    # Cumulative top-ups above this need ID verification (KYC light).
+    limit_minor: int
+    topped_up_minor: int
+    # How much more may be topped up unverified; null once verified.
+    remaining_minor: int | None
+    # The document's last four digits, masked ("•••• 1234") — the number is never stored.
+    document_masked: str | None = None
+
+
+class KycRequest(StrictRequest):
+    """ "ID verification" (simulated): verified about a second later. The document number is
+    optional, passed to the partner, never stored by TripSplit."""
+
+    legal_name: str = Field(min_length=2, max_length=120)
+    birth_date: date
+    document_number: str | None = Field(default=None, max_length=40)
+
+
 class WalletResponse(_ReadModel):
     balance_minor: int
     currency: str
     # The newest 50, newest first.
     transactions: list[WalletTransactionResponse]
+    kyc: KycResponse
+    # Who really holds the money: the (simulated) licensed payment partner.
+    held_by: str
+    partner_wallet_id: str | None
 
 
 class CheckoutResponse(_ReadModel):

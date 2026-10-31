@@ -18,6 +18,7 @@ const STATUS_TONE: Record<TripStatus, BadgeTone> = {
   disrupted: "danger",
   rebooking: "warn",
   done: "neutral",
+  expired: "danger",
 };
 
 export function TripList(): ReactNode {

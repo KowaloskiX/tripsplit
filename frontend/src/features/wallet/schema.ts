@@ -69,3 +69,28 @@ export function cardSchema(now: Date = new Date()) {
     cvc: z.string().regex(/^\d{3,4}$/, { message: "3 or 4 digits." }),
   });
 }
+
+/** "ID verification" (KYC light): a name and a date of birth; the document is optional. */
+export const kycSchema = z.object({
+  legal_name: z.string().trim().min(2, { message: "Your full name, as on your ID." }).max(120),
+  birth_date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Pick your date of birth." })
+    .refine((value) => new Date(value) < new Date(), { message: "That date is in the future." }),
+  document_number: z
+    .string()
+    .trim()
+    .max(40)
+    .transform((value) => (value === "" ? null : value)),
+});
+
+export type KycInput = z.input<typeof kycSchema>;
+
+/** The API answered `409 kyc_required`: cumulative top-ups need an ID check first. */
+export function isKycRequired(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "kyc_required"
+  );
+}

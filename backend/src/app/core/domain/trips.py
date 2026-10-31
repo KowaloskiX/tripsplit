@@ -21,6 +21,8 @@ class TripStatus(StrEnum):
     DISRUPTED = "disrupted"  # a delay / cancellation / drop-out was reported
     REBOOKING = "rebooking"  # the agent is buying the replacement
     DONE = "done"
+    # Not 100% funded by `pay_by`: the escrow refunded every paid share. Terminal.
+    EXPIRED = "expired"
 
 
 class MemberRole(StrEnum):
@@ -171,6 +173,9 @@ class EventKind(StrEnum):
     HOLD_PLACED = "hold_placed"  # the supplier holds the price while the group pays
     HOLD_EXPIRED = "hold_expired"  # the hold lapsed before the purchase — re-held / re-quoted
     TRAVELLER_DETAILS_MISSING = "traveller_details_missing"  # names who still has to fill in
+    ESCROW_OPENED = "escrow_opened"  # the partner opened the trip escrow; the pay-by deadline
+    SUPPLIER_PAID = "supplier_paid"  # the escrow paid a supplier (payout or virtual card)
+    FUNDING_EXPIRED = "funding_expired"  # pay-by missed: every paid share went back
     ATTRACTION_VOTED = "attraction_voted"  # a member wants to see an attraction
     ITINERARY_READY = "itinerary_ready"  # the day-by-day plan was (re)generated
 

@@ -117,7 +117,8 @@ PKP_TRANSPORT=browser                                   # the default
   shared headless Camoufox in the API process — ~5 s warm-up on the first PKP call, then about
   1 s per call; a 6-person return trip needs ~25 s of research), Duffel flight search, quotes and
   orders in **test mode** (Duffel Airways etc., nothing is charged).
-- **Simulated:** stays and activities (`sim_*`), the group's payments (`PAYMENTS=fake`) and the
+- **Simulated:** stays and activities (`sim_*`), the group's money (the simulated licensed
+  partner "TripSplit Pay", see Money model) and the
   train *purchase* — with `DEMO_SUPPLIER_URL` set, train bookings point the agent at our own
   demo rail site, never at intercity.pl.
 - **No real money moves anywhere.** Duffel test orders are free, payments are fake, and the
@@ -141,6 +142,45 @@ PKP_TRANSPORT=browser                                   # the default
   bodies) for the mission-control terminal.
 - `uv run seed-demo` (dev/test only, idempotent): demo@tripsplit.app / TripSplitDemo2026!
   with 5 000 zł in the wallet.
+
+## Money model
+
+**Production shape, simulated in-house.** TripSplit must never hold client money: a licensed
+payment partner (an EMI/PI) does. Everything goes through the `PaymentPartner` port
+(`backend/src/app/payments/partner.py`); `FakePartner` (`payments/fake_partner.py`) simulates the
+partner with its OWN collections (`partner_users`, `partner_wallets`, `partner_ledger`,
+`partner_cards`, ids `usr_…`/`wlt_…`/`txn_…`/`po_…`/`card_…`), latency, idempotency keys on every
+money call and failure injection (`fail_next`). Swapping in a real provider is one adapter in
+`payments/providers.py:build_partner`.
+
+| TripSplit concept | Partner primitive | Production mapping |
+|---|---|---|
+| member wallet (`/wallet`) | user + e-money wallet; `pay_in` (BLIK / card, async confirm) | Mangopay Natural User + Wallet + PayIn (Stripe: Connect account balance) |
+| paying a share | `transfer` member wallet -> **trip escrow** wallet (tag `share`) | Mangopay Transfer |
+| trip escrow (opened at voting close) | wallet owned on the organizer's behalf, release target = Σ shares | Mangopay wallet per trip; conditional release in our orchestration |
+| API supplier purchase (Duffel, LiteAPI) | `payout` escrow -> supplier at the approval | Mangopay PayOut to the supplier's bank account |
+| agent purchase (PKP, demo rail) | single-use virtual card: `issue_virtual_card` at launch (INACTIVE, details into the agent vault as `card_*`), `activate_card` at the approval (exactly the amount, +0%), charged once, closed after (unused funds back) | Stripe Issuing / Marqeta single-use cards |
+| refunds, leftovers, missed deadline | `transfer` escrow -> member wallets (`refund` / `leftover` pro rata / `deadline_refund`) | Mangopay Transfer (+ PayOut to the bank on request) |
+| supplier cancels a bought booking | `reverse_payout` / `refund_card_charge` back into the escrow | Payout reversal / card refund |
+| KYC light | cumulative top-ups above `KYC_LIGHT_LIMIT_MINOR` (1 000 zł) -> 409 `kyc_required`; `POST /api/wallet/kyc` (name + date of birth; document number never stored, echoed masked) | Mangopay KYC LIGHT / Stripe Identity |
+
+Rules: **Rule #1 holds at the partner too** — no payout or card funding unless the escrow's net
+share transfers reach its target. Trips get `pay_by` (voting close + 48 h, `POST
+/api/trips/{id}/pay-by` moves it); not 100% paid by then, the sweep (`main.py`,
+`FUNDING_CHECK_INTERVAL_S`; harness step `CheckFundingDeadlines`) refunds every paid share and
+the trip becomes `expired`. Our `Wallet`/`WalletTransaction` are a MIRROR of partner movements
+(`partner_ref` unique); the room's `pot` reads the escrow from the partner. Harness invariants:
+`escrow_balances`, `card_within_purchase`, `no_release_before_funded`,
+`member_wallet_matches_partner`; scenarios `escrow_happy_path`, `funding_deadline_refund`,
+`kyc_required_top_up`, `card_amount_mismatch`.
+
+**Simulated:** the partner, its BLIK/card rails (BLIK `000000` / card `…0002` declined), KYC (verified
+after ~1 s), payouts and the card network (the scripted agent pays at the site's checkout; a run
+that only simulates the final click is charged by `EscrowService.settle_site_checkout`). Test
+PANs are `4242 xxxx xxxx 4242`. **Legal note:** in production the licensed partner holds the
+funds (safeguarding, AML/KYC are its obligations; it keeps its records after a TripSplit account
+is deleted). Whether selling packages makes TripSplit a tour operator / linked travel
+arrangement under the EU Package Travel Directive still has to be assessed.
 
 ## Attractions and the day plan
 

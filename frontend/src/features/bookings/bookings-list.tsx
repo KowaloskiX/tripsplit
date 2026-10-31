@@ -31,6 +31,7 @@ import { HoldCountdown } from "./hold-countdown";
 import { LiveAgentPanel } from "./live-agent-panel";
 import { ManualCompletionForm } from "./manual-completion-form";
 import { useStartBooking } from "./mutations";
+import { PaymentLine } from "./payment-line";
 
 /** How a purchase is made: the agent drives the site, the supplier's API, or a human. */
 export const CHANNEL_LABEL: Record<SupplierChannel, string> = {
@@ -126,6 +127,7 @@ export function BookingsList({
                   {formatMoney(booking.amount_minor, trip.currency)}
                   {passengersLabel(booking)}
                 </p>
+                <PaymentLine booking={booking} />
                 {booking.hold_expires_at && LIVE_HOLD.has(booking.status) && (
                   <HoldCountdown expiresAt={booking.hold_expires_at} />
                 )}

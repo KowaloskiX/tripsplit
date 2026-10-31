@@ -3,7 +3,7 @@
 import secrets
 from collections import Counter
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from beanie import PydanticObjectId
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -25,6 +25,7 @@ from app.core.domain.trips import (
     is_fully_paid,
 )
 from app.db.client import Database
+from app.db.documents import utc_now
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.bookings import Booking
 from app.models.trips import Proposal, Trip, TripMember
@@ -38,6 +39,7 @@ from app.repositories.trips import (
     VoteRepository,
 )
 from app.services.booking_plans import bookings_for_item
+from app.services.escrow import EscrowService
 from app.services.resplit import resplit_shares, status_once_paid
 from app.services.travellers import TravellerService
 from app.services.trip_access import load_access
@@ -52,7 +54,7 @@ from app.services.trip_views import (
     proposal_view,
     trip_view,
 )
-from app.services.wallet import trip_pot
+from app.services.wallet import PotView, ledger_pot
 from app.suppliers.registry import SupplierRegistry
 
 # Joining after a package won would leave the newcomer without a share in the split.
@@ -95,8 +97,16 @@ def new_invite_code() -> str:
 
 
 class TripService:
-    def __init__(self, db: Database, *, suppliers: SupplierRegistry | None = None) -> None:
+    def __init__(
+        self,
+        db: Database,
+        *,
+        suppliers: SupplierRegistry | None = None,
+        escrow: EscrowService | None = None,
+    ) -> None:
         self.db = db
+        # The trip escrow at the payment partner (PAYMENTS=wallet): the room's pot reads it.
+        self.escrow = escrow
         # The supplier plugins: rebuilt bookings are split by their capabilities, and the room
         # shows who still lacks the traveller details they require.
         self.suppliers = suppliers if suppliers is not None else SupplierRegistry()
@@ -222,9 +232,49 @@ class TripService:
                     for view, contribution in zip(contribution_views, contributions, strict=True)
                     if view.outstanding_minor == 0 and contribution.user_id in names
                 ),
-                pot=await trip_pot(trip_oid),
+                pot=await self.pot_of(trip),
             )
         )
+
+    async def pot_of(self, trip: Trip) -> PotView:
+        if self.escrow is not None and trip.escrow_wallet_id is not None:
+            return await self.escrow.pot(trip)
+        pot = await ledger_pot(identifier_of(trip))
+        if trip.pay_by is None:
+            return pot
+        return PotView(
+            collected_minor=pot.collected_minor,
+            spent_minor=pot.spent_minor,
+            refunded_minor=pot.refunded_minor,
+            held_minor=pot.held_minor,
+            pay_by=trip.pay_by,
+        )
+
+    async def set_pay_by(
+        self, trip_id: str, user_id: str, pay_by: datetime
+    ) -> Result[TripStatusView, TripError]:
+        """The organizer moves the funding deadline while the group is still paying."""
+        access = await load_access(trip_id, user_id, trips=self.trips, members=self.members)
+        if not isinstance(access, Ok):
+            return access
+        trip, me = access.value.trip, access.value.member
+        if me.role is not MemberRole.ORGANIZER:
+            return Err(TripError.NOT_ORGANIZER)
+        if trip.status is not TripStatus.PAYING:
+            return Err(TripError.INVALID_STATE)
+        moment = pay_by if pay_by.tzinfo is not None else pay_by.replace(tzinfo=UTC)
+        if moment <= utc_now():
+            return Err(TripError.INVALID_DEADLINE)
+        await self.trips.update(trip, {"pay_by": moment})
+        await self.events.add(
+            identifier_of(trip),
+            EventKind.MESSAGE,
+            EventActor.MEMBER,
+            f"{me.display_name} moved the pay-by deadline to {moment:%a %d %b, %H:%M} UTC.",
+            payload={"pay_by": moment.isoformat()},
+            actor_user_id=me.user_id,
+        )
+        return Ok(TripStatusView(trip_id=trip_id, status=trip.status))
 
     async def _required_traveller_fields(
         self, trip_id: PydanticObjectId, proposals: list[Proposal]

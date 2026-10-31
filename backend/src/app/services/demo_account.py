@@ -7,9 +7,11 @@ much). Refuses to run outside dev/test — a known password must never exist in 
 """
 
 from dataclasses import dataclass
+from datetime import date
 
 from app.core.config import Settings
 from app.core.domain.errors import AuthError
+from app.core.domain.escrow import KycLevel
 from app.core.domain.result import Err, Ok
 from app.core.domain.wallet import WalletTransactionKind
 from app.db.client import Database
@@ -21,6 +23,7 @@ DEMO_PASSWORD = "TripSplitDemo2026!"
 DEMO_ORGANIZATION = "Łukasz Demo"
 DEMO_WALLET_MINOR = 500_000  # 5 000 zł
 LOCAL_ENVS = frozenset({"dev", "test"})
+DEMO_BIRTH_DATE = date(1990, 5, 4)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +56,9 @@ async def seed_demo(database: Database, settings: Settings) -> SeededDemo:
         await wallet.credit(
             user_id, missing, WalletTransactionKind.ADJUSTMENT, reference="Demo balance"
         )
+    # The demo account has passed the partner's ID check, so a live top-up never hits KYC.
+    if (await wallet.kyc(user_id)).level is KycLevel.NONE:
+        await wallet.submit_kyc(user_id, DEMO_ORGANIZATION, DEMO_BIRTH_DATE, None)
     return SeededDemo(
         user_id=user_id,
         created=created,

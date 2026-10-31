@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { formatMoney } from "@/lib/money";
 
+import { KycCard } from "./kyc-card";
 import { useWallet } from "./queries";
 import { TopUpSheet } from "./top-up-sheet";
 import { TransactionList } from "./transaction-list";
@@ -28,6 +29,10 @@ export function WalletBalance({
         Your shares are paid from here, and refunds land back here. Demo money: BLIK and card are
         simulated, nothing real is charged.
       </p>
+      <p className="mt-2 max-w-md text-xs text-muted">
+        Funds held by TripSplit Pay (simulated licensed partner) — TripSplit itself never holds your
+        money.
+      </p>
       <Button variant="lime" size="lg" className="mt-6" onClick={onTopUp}>
         <Plus className="size-5" aria-hidden /> Top up
       </Button>
@@ -46,6 +51,7 @@ export function WalletPage(): ReactNode {
         currency={data.currency}
         onTopUp={() => setOpen(true)}
       />
+      <KycCard kyc={data.kyc} />
       <Panel>
         <PanelHeader>
           <span>History</span>

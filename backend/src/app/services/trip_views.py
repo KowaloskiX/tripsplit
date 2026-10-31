@@ -48,6 +48,7 @@ class TripView:
     organizer_id: str
     chosen_proposal_id: str | None
     total_minor: int
+    pay_by: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +182,7 @@ def trip_view(trip: Trip) -> TripView:
         organizer_id=to_text(trip.organizer_id),
         chosen_proposal_id=_optional_text(trip.chosen_proposal_id),
         total_minor=trip.total_minor,
+        pay_by=trip.pay_by,
     )
 
 

@@ -7,7 +7,13 @@ from app.core.domain.wallet import PaymentMethod
 from app.core.errors_http import ErrorResponse
 from app.routes.dependencies import CurrentUser, WalletServiceDep
 from app.routes.errors import payment_value
-from app.schemas.wallet import TopUpRequest, WalletResponse, WalletTransactionResponse
+from app.schemas.wallet import (
+    KycRequest,
+    KycResponse,
+    TopUpRequest,
+    WalletResponse,
+    WalletTransactionResponse,
+)
 from app.services.wallet import TopUpRequest as TopUp
 
 router = APIRouter(prefix="/wallet", tags=["wallet"])
@@ -19,11 +25,26 @@ async def read_wallet(service: WalletServiceDep, user: CurrentUser) -> WalletRes
     return WalletResponse.model_validate(await service.wallet(user.id))
 
 
+@router.post("/kyc", operation_id="wallet-kyc", status_code=status.HTTP_202_ACCEPTED)
+async def verify_identity(
+    payload: KycRequest, service: WalletServiceDep, user: CurrentUser
+) -> KycResponse:
+    """Simulated ID verification at the payment partner: pending now, verified in ~1 s."""
+    return KycResponse.model_validate(
+        await service.submit_kyc(
+            user.id, payload.legal_name, payload.birth_date, payload.document_number
+        )
+    )
+
+
 @router.post(
     "/top-ups",
     operation_id="wallet-top-up",
     status_code=status.HTTP_202_ACCEPTED,
-    responses={status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse}},
+    responses={
+        status.HTTP_409_CONFLICT: {"model": ErrorResponse},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
+    },
 )
 async def top_up(
     payload: TopUpRequest, service: WalletServiceDep, user: CurrentUser

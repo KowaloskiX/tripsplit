@@ -1,5 +1,7 @@
 /** Public surface of the wallet feature — other features import from here only. */
 
+export { KycCard, KycForm } from "./kyc-card";
+export { MoneyFlowSheet } from "./money-flow-sheet";
 export { PayAllForm } from "./pay-all-form";
 export { PayShareSheet, useOpenPayShare } from "./pay-share-sheet";
 export { PaymentMethodForm } from "./payment-method-form";

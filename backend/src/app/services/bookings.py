@@ -67,6 +67,7 @@ from app.repositories.trips import (
     MemberRepository,
     TripRepository,
 )
+from app.services.escrow import EscrowService, card_vault
 from app.services.resplit import MemberShare, resplit_shares
 from app.services.supplier_prices import Clock, SupplierPrices, offer_of, passengers_of
 from app.services.travellers import TravellerService
@@ -377,10 +378,14 @@ class BookingService:
         clock: Clock = utc_now,
         holds: bool = False,
         call_log: CallLog = CALL_LOG,
+        escrow: EscrowService | None = None,
     ) -> None:
         self.db = db
         # The supplier API calls, for the trip's live terminal (`activity`).
         self.call_log = call_log
+        # The trip escrow at the payment partner (PAYMENTS=wallet): payouts to API suppliers,
+        # single-use virtual cards for the agent. None = no money moves on a purchase.
+        self.escrow = escrow
         # Refunds overpayments once the trip is booked (see `_settle_refunds`).
         self.payments: PaymentProvider = payments if payments is not None else FakePayments()
         self.launcher = launcher
@@ -707,11 +712,24 @@ class BookingService:
             booking,
         )
 
+        vault = await self._vault_for(trip, booking, members)
+        if self.escrow is not None:
+            issued = await self.escrow.issue_card(trip, booking, run_id)
+            if isinstance(issued, Err):
+                await self._finish(
+                    run_id,
+                    None,
+                    failure_reason=f"TripSplit Pay could not issue a card ({issued.error}).",
+                )
+                _WATCHED.discard(run_id)
+                return Ok(BookingWithRun(booking=booking, run=run))
+            # Single-use, limited to exactly this purchase, unfunded until the approval.
+            vault.update(card_vault(issued.value.secrets))
         spec = LaunchSpec(
             run_id=run_id,
             url=booking.supplier_url,
             goal=self._goal_for(booking, party, trip.currency),
-            vault=await self._vault_for(trip, booking, members),
+            vault=vault,
             max_steps=self.max_steps,
             headful=self.headful,
         )
@@ -891,6 +909,8 @@ class BookingService:
         trip = await self.trips.get(run.trip_id)
         # Cancelled (rebooked) or already finished by hand: the run's outcome changes nothing.
         if booking is None or trip is None or booking.status in _SETTLED:
+            if booking is not None and self.escrow is not None:
+                await self.escrow.close_card(booking)
             return
         status = booking_status_after(outcome)
         if status is BookingStatus.CONFIRMED and booking.status is not BookingStatus.APPROVED:
@@ -899,12 +919,37 @@ class BookingService:
             # not trusted blindly — a human checks it on the supplier site.
             status = BookingStatus.HANDOFF
             reason = f"The agent reported a purchase nobody approved — check it. {reason}"
+        if self.escrow is not None:
+            status, reason = await self._settle_card(trip, booking, status, reason)
         confirmation = str((raw or {}).get("confirmation_ref") or "") or None
         changes: dict[str, Any] = {"status": status}
         if status is BookingStatus.CONFIRMED:
             changes["confirmation_ref"] = confirmation
         await self.bookings.update(booking, changes)
         await self._announce_finish(trip, booking, status, reason, run_id)
+
+    async def _settle_card(
+        self, trip: Trip, booking: Booking, status: BookingStatus, reason: str
+    ) -> tuple[BookingStatus, str]:
+        """After an agent run: a confirmed purchase must have been paid by its virtual card —
+        a run that only simulated the final click is charged by the site's checkout here. A
+        declined card is not a purchase: a human takes over. Then the card closes (single
+        use) and anything unspent returns to the escrow."""
+        assert self.escrow is not None
+        if status is BookingStatus.CONFIRMED:
+            settled = await self.escrow.settle_site_checkout(trip, booking)
+            if isinstance(settled, Err):
+                status = BookingStatus.HANDOFF
+                reason = (
+                    f"{booking.supplier}'s checkout declined the trip's virtual card "
+                    f"({settled.error}) — it is limited to exactly "
+                    f"{format_money(booking.amount_minor, trip.currency)}. Check the price on "
+                    "the site and finish by hand."
+                )
+        await self.escrow.close_card(booking)
+        if status is BookingStatus.CONFIRMED:
+            await self.escrow.announce_card_spend(trip, booking)
+        return status, reason
 
     async def _announce_finish(
         self, trip: Trip, booking: Booking, status: BookingStatus, reason: str, run_id: str
@@ -960,6 +1005,8 @@ class BookingService:
             None,
         )
         await self._settle_refunds(fresh)
+        if self.escrow is not None:
+            await self.escrow.return_leftover(fresh)
 
     async def _settle_refunds(self, trip: Trip) -> None:
         """Pays every overpayment back once the trip is fully bought — not earlier, because a
@@ -1046,6 +1093,21 @@ class BookingService:
         run = await self._current_run(booking)
         if run is None:
             return Err(BookingError.NOT_AWAITING_APPROVAL)
+        if self.escrow is not None and booking.payment_kind is not None:
+            if approved:
+                # The pay click: fund the agent's card with exactly this purchase's amount.
+                activated = await self.escrow.activate_card(trip, booking)
+                if isinstance(activated, Err):
+                    await self._say(
+                        trip,
+                        EventKind.MESSAGE,
+                        f"TripSplit Pay could not fund the card for {booking.title} "
+                        f"({activated.error}). Nothing was paid.",
+                        booking,
+                    )
+                    return Err(BookingError.PAYMENT_FAILED)
+            else:
+                await self.escrow.close_card(booking)
         status = BookingStatus.APPROVED if approved else BookingStatus.HANDOFF
         # Status first (compare-and-set), the runner's file second: the monitor never sees a
         # finished purchase on a booking that is not APPROVED yet.
@@ -1136,6 +1198,19 @@ class BookingService:
         if not moved:
             return Err(BookingError.NOT_AWAITING_APPROVAL)
         await self._say_decision(trip, member, booking, approved=True)
+        if self.escrow is not None:
+            await self.escrow.sync_target(identifier_of(trip))
+            paid = await self.escrow.pay_supplier(trip, booking)
+            if isinstance(paid, Err):
+                await self.bookings.update(booking, {"status": BookingStatus.FAILED})
+                await self._announce_finish(
+                    trip,
+                    booking,
+                    BookingStatus.FAILED,
+                    f"TripSplit Pay refused the payout ({paid.error}); nothing was bought.",
+                    "",
+                )
+                return Ok(BookingWithRun(booking=booking, run=None))
         members = await self.members.for_trip(identifier_of(trip))
         passengers = passengers_of(booking, members)
         details = await self.travellers.details_for(passengers)
@@ -1152,6 +1227,11 @@ class BookingService:
             await self._announce_finish(trip, booking, BookingStatus.CONFIRMED, "", "")
         else:
             await self.bookings.update(booking, {"status": BookingStatus.FAILED})
+            if self.escrow is not None:
+                # The supplier did not deliver: it sends the payout back to the escrow.
+                await self.escrow.reverse_payout(
+                    await self.bookings.get(identifier_of(booking)) or booking
+                )
             await self._announce_finish(trip, booking, BookingStatus.FAILED, bought.error, "")
         return Ok(BookingWithRun(booking=booking, run=None))
 
@@ -1218,8 +1298,28 @@ class BookingService:
             },
             actor_user_id=member.user_id,
         )
+        if self.escrow is not None:
+            await self._pay_manual_purchase(trip, booking)
         await self._maybe_trip_booked(trip)
         return Ok(BookingWithRun(booking=booking, run=await self._current_run(booking)))
+
+    async def _pay_manual_purchase(self, trip: Trip, booking: Booking) -> None:
+        """A purchase finished by hand is settled from the escrow as a payout to the supplier
+        (the partner pays the supplier's invoice) — unless its virtual card already paid."""
+        assert self.escrow is not None
+        fresh = await self.bookings.get(identifier_of(booking)) or booking
+        card = await self.escrow.card_of(fresh)
+        if card is not None and card.spent_minor > 0:
+            return
+        paid = await self.escrow.pay_supplier(trip, fresh)
+        if isinstance(paid, Err):
+            await self._say(
+                trip,
+                EventKind.MESSAGE,
+                f"TripSplit Pay could not pay {booking.supplier} for {booking.title} "
+                f"({paid.error}) — settle it with the supplier.",
+                booking,
+            )
 
     # ---- disruption -----------------------------------------------------------------------
 
@@ -1387,6 +1487,12 @@ class BookingService:
             return added, plan.shares
 
         added, shares = await self.db.in_transaction(write)
+        if self.escrow is not None:
+            # The supplier cancelled: what it was paid comes back into the escrow, and the
+            # escrow's release target follows the re-split.
+            for target in targets:
+                await self.escrow.return_supplier_funds(target)
+            await self.escrow.sync_target(identifier_of(trip))
         return Disruption(
             cancelled=targets,
             replacements=added,

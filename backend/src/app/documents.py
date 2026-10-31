@@ -14,6 +14,7 @@ from app.models.organizations import Membership, Organization
 from app.models.travellers import TravellerProfile
 from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember, Vote
 from app.models.wallet import Wallet, WalletTransaction
+from app.payments.fake_partner_models import PARTNER_DOCUMENTS
 
 DOCUMENT_MODELS: tuple[type[Any], ...] = (
     User,
@@ -31,6 +32,8 @@ DOCUMENT_MODELS: tuple[type[Any], ...] = (
     TravellerProfile,
     Wallet,
     WalletTransaction,
+    # The simulated payment partner's own collections (it would be an external system).
+    *PARTNER_DOCUMENTS,
     TripAttractions,
     Itinerary,
 )

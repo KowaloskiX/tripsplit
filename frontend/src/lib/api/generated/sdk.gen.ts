@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsGraphData, AgentRunsGraphErrors, AgentRunsGraphResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AttractionsListData, AttractionsListErrors, AttractionsListResponses, AttractionsVoteData, AttractionsVoteErrors, AttractionsVoteResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsActivityData, BookingsActivityErrors, BookingsActivityResponses, BookingsApproveAllData, BookingsApproveAllErrors, BookingsApproveAllResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartAllData, BookingsStartAllErrors, BookingsStartAllResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayAllSharesData, ContributionsPayAllSharesErrors, ContributionsPayAllSharesResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, ContributionsTopUpAndPayData, ContributionsTopUpAndPayErrors, ContributionsTopUpAndPayResponses, DemoDirectorProgressData, DemoDirectorProgressErrors, DemoDirectorProgressResponses, DemoDirectorStartData, DemoDirectorStartErrors, DemoDirectorStartResponses, DemoDirectorStopData, DemoDirectorStopErrors, DemoDirectorStopResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoPhonesData, DemoPhonesErrors, DemoPhonesResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ItineraryGenerateData, ItineraryGenerateErrors, ItineraryGenerateResponses, ItineraryGetData, ItineraryGetErrors, ItineraryGetResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsQuickCreateData, TripsQuickCreateErrors, TripsQuickCreateResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses, WalletReadData, WalletReadResponses, WalletTopUpData, WalletTopUpErrors, WalletTopUpResponses, WalletTopUpStatusData, WalletTopUpStatusErrors, WalletTopUpStatusResponses } from './types.gen';
+import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsGraphData, AgentRunsGraphErrors, AgentRunsGraphResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AttractionsListData, AttractionsListErrors, AttractionsListResponses, AttractionsVoteData, AttractionsVoteErrors, AttractionsVoteResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsActivityData, BookingsActivityErrors, BookingsActivityResponses, BookingsApproveAllData, BookingsApproveAllErrors, BookingsApproveAllResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartAllData, BookingsStartAllErrors, BookingsStartAllResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayAllSharesData, ContributionsPayAllSharesErrors, ContributionsPayAllSharesResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, ContributionsTopUpAndPayData, ContributionsTopUpAndPayErrors, ContributionsTopUpAndPayResponses, DemoDirectorProgressData, DemoDirectorProgressErrors, DemoDirectorProgressResponses, DemoDirectorStartData, DemoDirectorStartErrors, DemoDirectorStartResponses, DemoDirectorStopData, DemoDirectorStopErrors, DemoDirectorStopResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoPhonesData, DemoPhonesErrors, DemoPhonesResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ItineraryGenerateData, ItineraryGenerateErrors, ItineraryGenerateResponses, ItineraryGetData, ItineraryGetErrors, ItineraryGetResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsQuickCreateData, TripsQuickCreateErrors, TripsQuickCreateResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses, TripsSetPayByData, TripsSetPayByErrors, TripsSetPayByResponses, WalletKycData, WalletKycErrors, WalletKycResponses, WalletReadData, WalletReadResponses, WalletTopUpData, WalletTopUpErrors, WalletTopUpResponses, WalletTopUpStatusData, WalletTopUpStatusErrors, WalletTopUpStatusResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -423,6 +423,20 @@ export const tripsPostMessage = <ThrowOnError extends boolean = false>(options: 
 });
 
 /**
+ * Set Pay By
+ *
+ * The organizer moves the funding deadline (PAYING only, must be in the future).
+ */
+export const tripsSetPayBy = <ThrowOnError extends boolean = false>(options: Options<TripsSetPayByData, ThrowOnError>): RequestResult<TripsSetPayByResponses, TripsSetPayByErrors, ThrowOnError> => (options.client ?? client).post<TripsSetPayByResponses, TripsSetPayByErrors, ThrowOnError>({
+    url: '/api/trips/{trip_id}/pay-by',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Generate Proposals
  *
  * Starts the research and returns at once; the packages arrive in the feed.
@@ -452,6 +466,20 @@ export const proposalsCloseVoting = <ThrowOnError extends boolean = false>(optio
  * The caller's balance and their newest 50 ledger entries.
  */
 export const walletRead = <ThrowOnError extends boolean = false>(options?: Options<WalletReadData, ThrowOnError>): RequestResult<WalletReadResponses, unknown, ThrowOnError> => (options?.client ?? client).get<WalletReadResponses, unknown, ThrowOnError>({ url: '/api/wallet', ...options });
+
+/**
+ * Verify Identity
+ *
+ * Simulated ID verification at the payment partner: pending now, verified in ~1 s.
+ */
+export const walletKyc = <ThrowOnError extends boolean = false>(options: Options<WalletKycData, ThrowOnError>): RequestResult<WalletKycResponses, WalletKycErrors, ThrowOnError> => (options.client ?? client).post<WalletKycResponses, WalletKycErrors, ThrowOnError>({
+    url: '/api/wallet/kyc',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Top Up

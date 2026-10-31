@@ -106,7 +106,11 @@ function RoomPage(): ReactNode {
           {showContributions && (
             <div className={paying ? "-order-1 flex flex-col gap-6" : "flex flex-col gap-6"}>
               <ContributionsPanel room={room} />
-              <TripPotCard pot={room.pot} currency={room.trip.currency} />
+              <TripPotCard
+                pot={room.pot}
+                currency={room.trip.currency}
+                fundingOpen={room.trip.status === "paying"}
+              />
             </div>
           )}
           {/* After the package vote — while the group pays, it never blocks the money. */}

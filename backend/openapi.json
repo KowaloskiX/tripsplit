@@ -370,7 +370,8 @@
           "booking_not_completable",
           "traveller_details_missing",
           "quote_expired",
-          "supplier_unknown"
+          "supplier_unknown",
+          "payment_failed"
         ],
         "title": "BookingError",
         "type": "string"
@@ -390,6 +391,17 @@
           "amount_minor": {
             "title": "Amount Minor",
             "type": "integer"
+          },
+          "card_last4": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Card Last4"
           },
           "channel": {
             "$ref": "#/components/schemas/SupplierChannel"
@@ -454,6 +466,27 @@
             },
             "title": "Passenger User Ids",
             "type": "array"
+          },
+          "payment_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PurchasePayment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "payment_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payment Ref"
           },
           "provenance": {
             "anyOf": [
@@ -1176,6 +1209,9 @@
           "hold_placed",
           "hold_expired",
           "traveller_details_missing",
+          "escrow_opened",
+          "supplier_paid",
+          "funding_expired",
           "attraction_voted",
           "itinerary_ready"
         ],
@@ -1626,6 +1662,107 @@
         "type": "object"
       },
       "JsonValue": {},
+      "KycLevel": {
+        "enum": [
+          "none",
+          "light"
+        ],
+        "title": "KycLevel",
+        "type": "string"
+      },
+      "KycRequest": {
+        "additionalProperties": false,
+        "description": "\"ID verification\" (simulated): verified about a second later. The document number is\noptional, passed to the partner, never stored by TripSplit.",
+        "properties": {
+          "birth_date": {
+            "format": "date",
+            "title": "Birth Date",
+            "type": "string"
+          },
+          "document_number": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Number"
+          },
+          "legal_name": {
+            "maxLength": 120,
+            "minLength": 2,
+            "title": "Legal Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "legal_name",
+          "birth_date"
+        ],
+        "title": "KycRequest",
+        "type": "object"
+      },
+      "KycResponse": {
+        "properties": {
+          "document_masked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Masked"
+          },
+          "level": {
+            "$ref": "#/components/schemas/KycLevel"
+          },
+          "limit_minor": {
+            "title": "Limit Minor",
+            "type": "integer"
+          },
+          "remaining_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Remaining Minor"
+          },
+          "status": {
+            "$ref": "#/components/schemas/KycStatus"
+          },
+          "topped_up_minor": {
+            "title": "Topped Up Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "level",
+          "status",
+          "limit_minor",
+          "topped_up_minor",
+          "remaining_minor"
+        ],
+        "title": "KycResponse",
+        "type": "object"
+      },
+      "KycStatus": {
+        "enum": [
+          "not_started",
+          "pending",
+          "verified"
+        ],
+        "title": "KycStatus",
+        "type": "string"
+      },
       "LinkKind": {
         "enum": [
           "book",
@@ -2066,22 +2203,65 @@
         "type": "object"
       },
       "PotResponse": {
-        "description": "The trip wallet: paid in from members' wallets, spent on confirmed bookings, paid back,\nand what it still holds.",
+        "description": "The trip escrow at the payment partner: paid in from members' wallets, paid to\nsuppliers (payouts + virtual-card spends), refunded, and what the partner still holds.",
         "properties": {
           "collected_minor": {
             "title": "Collected Minor",
             "type": "integer"
           },
+          "escrow_wallet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Escrow Wallet Id"
+          },
+          "funded_minor": {
+            "default": 0,
+            "title": "Funded Minor",
+            "type": "integer"
+          },
+          "held_by": {
+            "default": "TripSplit Pay",
+            "title": "Held By",
+            "type": "string"
+          },
           "held_minor": {
             "title": "Held Minor",
             "type": "integer"
+          },
+          "pay_by": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pay By"
           },
           "refunded_minor": {
             "title": "Refunded Minor",
             "type": "integer"
           },
+          "reserved_minor": {
+            "default": 0,
+            "title": "Reserved Minor",
+            "type": "integer"
+          },
           "spent_minor": {
             "title": "Spent Minor",
+            "type": "integer"
+          },
+          "target_minor": {
+            "default": 0,
+            "title": "Target Minor",
             "type": "integer"
           }
         },
@@ -2280,6 +2460,15 @@
           "example"
         ],
         "title": "ProvenanceSource",
+        "type": "string"
+      },
+      "PurchasePayment": {
+        "description": "How the escrow paid one booking.",
+        "enum": [
+          "payout",
+          "virtual_card"
+        ],
+        "title": "PurchasePayment",
         "type": "string"
       },
       "QuickDraftResponse": {
@@ -2899,6 +3088,21 @@
         "title": "SessionResponse",
         "type": "object"
       },
+      "SetPayByRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "pay_by": {
+            "format": "date-time",
+            "title": "Pay By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pay_by"
+        ],
+        "title": "SetPayByRequest",
+        "type": "object"
+      },
       "ShareChangeResponse": {
         "properties": {
           "delta_minor": {
@@ -3415,6 +3619,18 @@
             "title": "Origin",
             "type": "string"
           },
+          "pay_by": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pay By"
+          },
           "status": {
             "$ref": "#/components/schemas/TripStatus"
           },
@@ -3470,7 +3686,8 @@
           "booked",
           "disrupted",
           "rebooking",
-          "done"
+          "done",
+          "expired"
         ],
         "title": "TripStatus",
         "type": "string"
@@ -3576,6 +3793,24 @@
             "title": "Currency",
             "type": "string"
           },
+          "held_by": {
+            "title": "Held By",
+            "type": "string"
+          },
+          "kyc": {
+            "$ref": "#/components/schemas/KycResponse"
+          },
+          "partner_wallet_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Partner Wallet Id"
+          },
           "transactions": {
             "items": {
               "$ref": "#/components/schemas/WalletTransactionResponse"
@@ -3587,7 +3822,10 @@
         "required": [
           "balance_minor",
           "currency",
-          "transactions"
+          "transactions",
+          "kyc",
+          "held_by",
+          "partner_wallet_id"
         ],
         "title": "WalletResponse",
         "type": "object"
@@ -6349,6 +6587,89 @@
         ]
       }
     },
+    "/api/trips/{trip_id}/pay-by": {
+      "post": {
+        "description": "The organizer moves the funding deadline (PAYING only, must be in the future).",
+        "operationId": "trips-set-pay-by",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetPayByRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Set Pay By",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
     "/api/trips/{trip_id}/proposals/generate": {
       "post": {
         "description": "Starts the research and returns at once; the packages arrive in the feed.",
@@ -6598,6 +6919,48 @@
         ]
       }
     },
+    "/api/wallet/kyc": {
+      "post": {
+        "description": "Simulated ID verification at the payment partner: pending now, verified in ~1 s.",
+        "operationId": "wallet-kyc",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KycRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KycResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Verify Identity",
+        "tags": [
+          "wallet"
+        ]
+      }
+    },
     "/api/wallet/top-ups": {
       "post": {
         "description": "Starts a dummy BLIK / card top-up: pending now, completed (or declined) in ~1.5 s.",
@@ -6622,6 +6985,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
           },
           "422": {
             "content": {

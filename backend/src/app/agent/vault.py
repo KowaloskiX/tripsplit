@@ -37,8 +37,10 @@ class Vault:
         if not text:
             return text
         out = text
+        secrets = {str(v) for k, v in self._flat.items() if k.startswith("card_")}
         for value in sorted((str(v) for v in self._flat.values()), key=len, reverse=True):
-            if len(value) < 2 or (value.isdigit() and len(value) < 5):
+            short = len(value) < 2 or (value.isdigit() and len(value) < 5)
+            if short and value not in secrets:
                 continue  # a party size like "3" is not a secret, and masking it garbles text
             out = out.replace(value, "•••")
             out = out.replace(quote_plus(value), "•••").replace(quote(value), "•••")

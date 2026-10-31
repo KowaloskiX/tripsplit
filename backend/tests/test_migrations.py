@@ -17,6 +17,7 @@ from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
 from app.db.client import Database
 from app.models.bookings import Booking
 from app.models.trips import Proposal, Trip
+from app.models.wallet import Wallet, WalletTransaction
 
 MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
 
@@ -31,6 +32,7 @@ def _load(name: str) -> ModuleType:
 
 SUPPLIER_PLUGINS = _load("20261031_120000_supplier_plugins")
 TRIP_PREFERENCES = _load("20261031_150000_trip_preferences")
+ESCROW = _load("20261031_190000_escrow")
 BOOKING_TRUST = _load("20261031_180000_booking_trust")
 DEPARTS = datetime(2026, 11, 20, 7, 52, tzinfo=UTC)
 
@@ -147,6 +149,8 @@ async def test_supplier_plugins_forward_and_backward(database: Database) -> None
     assert before is not None
     assert (before.kind, before.mode) == (BookingKind.TRANSPORT, TransportMode.RAIL)
 
+    # A deploy runs every pending migration; the later ones add their own keys.
+    await ESCROW.Forward.escrow_fields.run(session=None)
     await SUPPLIER_PLUGINS.Forward.transport_with_modes.run(session=None)
 
     # Every added field is present now, so the validator accepts updates of old documents.
@@ -219,6 +223,7 @@ async def test_trip_preferences_forward_and_backward(database: Database) -> None
     before = await Trip.get(trip_id)  # expand: read before the backfill
     assert before is not None and before.earliest_departure_hour is None
 
+    await ESCROW.Forward.escrow_fields.run(session=None)
     await TRIP_PREFERENCES.Forward.trip_preferences.run(session=None)
     raw = await _raw(Trip, trip_id)
     assert (raw["earliest_departure_hour"], raw["max_transfers"]) == (None, None)
@@ -229,6 +234,58 @@ async def test_trip_preferences_forward_and_backward(database: Database) -> None
 
     await TRIP_PREFERENCES.Backward.no_trip_preferences.run(session=None)
     assert "max_transfers" not in await _raw(Trip, trip_id)
+
+
+async def test_escrow_fields_forward_and_backward(database: Database) -> None:
+    user_id = PydanticObjectId()
+    wallets = Wallet.get_pymongo_collection()
+    old_wallet = {
+        "user_id": user_id,
+        "balance_minor": 5_000,
+        "currency": "PLN",
+        "created_at": DEPARTS,
+        "updated_at": DEPARTS,
+    }
+    wallet_id = (await wallets.insert_one(old_wallet, bypass_document_validation=True)).inserted_id
+    old_entry = {
+        "user_id": user_id,
+        "kind": "top_up",
+        "amount_minor": 5_000,
+        "balance_after_minor": 5_000,
+        "trip_id": None,
+        "method": "blik",
+        "status": "completed",
+        "reference": "BLIK",
+        "pay_trip_on_completion": False,
+        "failure_reason": None,
+        "created_at": DEPARTS,
+        "completed_at": DEPARTS,
+    }
+    entries = WalletTransaction.get_pymongo_collection()
+    entry_id = (await entries.insert_one(old_entry, bypass_document_validation=True)).inserted_id
+    booking_id = (
+        await Booking.get_pymongo_collection().insert_one(
+            {
+                **_old_booking(PydanticObjectId(), "stay", "Booking.com"),
+                "train_query": None,
+                "kind": "stay",
+            },
+            bypass_document_validation=True,
+        )
+    ).inserted_id
+    before = await Wallet.get(wallet_id)  # expand: read before the backfill
+    assert before is not None and before.partner_wallet_id is None
+
+    await ESCROW.Forward.escrow_fields.run(session=None)
+    assert (await _raw(Wallet, wallet_id))["partner_wallet_id"] is None
+    assert (await _raw(WalletTransaction, entry_id))["partner_ref"] is None
+    raw_booking = await _raw(Booking, booking_id)
+    assert (raw_booking["payment_kind"], raw_booking["payment_attempts"]) == (None, 0)
+    await ESCROW.Forward.escrow_fields.run(session=None)  # idempotent
+
+    await ESCROW.Backward.no_escrow_fields.run(session=None)
+    assert "partner_wallet_id" not in await _raw(Wallet, wallet_id)
+    assert "payment_kind" not in await _raw(Booking, booking_id)
 
 
 async def test_booking_trust_forward_and_backward(database: Database) -> None:
@@ -249,6 +306,7 @@ async def test_booking_trust_forward_and_backward(database: Database) -> None:
     before = await Booking.get(booking_id)  # expand: read before the backfill
     assert before is not None and before.links == [] and before.provenance is None
 
+    await ESCROW.Forward.escrow_fields.run(session=None)  # a later migration's keys
     await BOOKING_TRUST.Forward.booking_trust.run(session=None)
     raw = await _raw(Booking, booking_id)
     assert (raw["links"], raw["images"], raw["provenance"]) == ([], [], None)

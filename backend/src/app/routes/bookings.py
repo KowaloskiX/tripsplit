@@ -79,6 +79,9 @@ def booking_response(item: BookingWithRun) -> BookingResponse:
         else None,
         passenger_user_ids=[to_text(user_id) for user_id in booking.passenger_user_ids],
         run=run_response(item.run) if item.run is not None else None,
+        payment_kind=booking.payment_kind,
+        payment_ref=booking.payment_ref,
+        card_last4=booking.card_last4,
         links=[LinkResponse.model_validate(link, from_attributes=True) for link in booking.links],
         images=list(booking.images),
         provenance=ProvenanceResponse.model_validate(booking.provenance, from_attributes=True)

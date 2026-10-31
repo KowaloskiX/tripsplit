@@ -20,6 +20,7 @@ class TripError(StrEnum):
     ALREADY_PAID = "already_paid"
     ORGANIZER_CANNOT_LEAVE = "organizer_cannot_leave"
     BOOKING_STARTED = "booking_started"  # too late to leave: the agent is already buying
+    INVALID_DEADLINE = "invalid_pay_by"  # a funding deadline in the past
     ATTRACTION_NOT_FOUND = "attraction_not_found"
 
 
@@ -55,3 +56,5 @@ class BookingError(StrEnum):
     # The quote (or hold) behind a summary went stale before the approval: start again.
     QUOTE_EXPIRED = "quote_expired"
     SUPPLIER_UNKNOWN = "supplier_unknown"  # the booking names a supplier that is not enabled
+    # The trip escrow could not pay this purchase (not funded, card expired, partner down).
+    PAYMENT_FAILED = "payment_failed"

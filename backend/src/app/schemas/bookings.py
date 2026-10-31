@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from app.core.domain.errors import BookingError
+from app.core.domain.escrow import PurchasePayment
 from app.core.domain.trips import (
     AgentOutcome,
     AgentRunStatus,
@@ -77,6 +78,11 @@ class BookingResponse(BaseModel):
     # Who travels on this purchase (empty on bookings made before parties were recorded).
     passenger_user_ids: list[str]
     run: AgentRunResponse | None
+    # How the trip escrow paid it: `payout` (API supplier) or `virtual_card` (the agent, with
+    # a single-use card •••• `card_last4`); null = not paid from an escrow (yet).
+    payment_kind: PurchasePayment | None = None
+    payment_ref: str | None = None
+    card_last4: str | None = None
     # Trust: where to book / verify / find it, photos, where the data came from.
     # Always sent; optional in the schema so clients built before them keep compiling.
     links: list[LinkResponse] = Field(default_factory=list)

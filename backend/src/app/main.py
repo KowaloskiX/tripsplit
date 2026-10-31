@@ -1,5 +1,7 @@
 """FastAPI entry point. All routes live under /api (same origin as the frontend)."""
 
+import asyncio
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -23,8 +25,28 @@ from app.core.rate_limit import (
 from app.db.client import Database
 from app.db.indexes import verify_indexes
 from app.documents import DOCUMENT_MODELS
+from app.payments.providers import build_escrow
 from app.routes.api import api_router
 from app.suppliers.providers import close_shared_transports
+
+logger = logging.getLogger(__name__)
+
+
+async def sweep_funding_deadlines(database: Database, settings: Settings) -> None:
+    """Every `funding_check_interval_s`: trips not 100% paid by their `pay_by` are refunded
+    from their escrow and EXPIRE. In-process, like the other background jobs."""
+    while True:
+        await asyncio.sleep(settings.funding_check_interval_s)
+        escrow = build_escrow(settings, database)
+        if escrow is None:
+            continue
+        try:
+            expired = await escrow.expire_overdue()
+        except Exception:
+            logger.exception("the funding-deadline sweep failed")
+            continue
+        if expired:
+            logger.info("funding deadline missed, escrow refunded: %s", ", ".join(expired))
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -49,6 +71,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         # indexes stays out of the load balancer instead of turning every query into a scan.
         app.state.indexes_present = await verify_indexes(database.database, DOCUMENT_MODELS)
         app.state.database = database
+        if resolved.funding_check_interval_s > 0 and resolved.payments == "wallet":
+            app.state.background.spawn(
+                sweep_funding_deadlines(database, resolved), name="funding-deadline-sweep"
+            )
         try:
             yield
         finally:

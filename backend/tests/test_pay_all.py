@@ -30,7 +30,13 @@ from tests.test_wallet import (  # noqa: F401 — `browsers` is a pytest fixture
 @pytest.fixture
 def wallet_settings(settings: Settings) -> Settings:
     return settings.model_copy(
-        update={"payments": "wallet", "wallet_confirm_delay_s": 0, "auto_book": True}
+        update={
+            "payments": "wallet",
+            "wallet_confirm_delay_s": 0,
+            "auto_book": True,
+            # Paying for everyone tops up several shares at once; KYC light has its own tests.
+            "kyc_light_limit_minor": 100_000_000,
+        }
     )
 
 

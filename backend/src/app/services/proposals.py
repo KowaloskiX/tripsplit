@@ -22,6 +22,7 @@ from app.ai.research import (
 )
 from app.core.background import BackgroundRunner
 from app.core.domain.errors import TripError
+from app.core.domain.escrow import default_pay_by
 from app.core.domain.packages import format_money, is_over_budget, per_person, pick_winner
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import SupplierCapabilities
@@ -46,6 +47,7 @@ from app.repositories.trips import (
     VoteRepository,
 )
 from app.services.booking_plans import bookings_for_item
+from app.services.escrow import EscrowService
 from app.services.supplier_prices import SupplierPrices
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
 from app.services.trip_views import TripStatusView
@@ -78,9 +80,12 @@ class ProposalService:
         suppliers: SupplierRegistry | None = None,
         prices: SupplierPrices | None = None,
         progress_events: bool = False,
+        escrow: EscrowService | None = None,
         verifier: PlanVerifier | None = None,
     ) -> None:
         self.db = db
+        # Opens the trip escrow at the payment partner when the vote closes (PAYMENTS=wallet).
+        self.escrow = escrow
         # Link liveness + og:image photos at research time (None = links stored as found).
         self.verifier = verifier
         # A feed message per finished supplier search while researching.
@@ -309,6 +314,8 @@ class ProposalService:
                     "status": TripStatus.PAYING,
                     "chosen_proposal_id": winner_id,
                     "total_minor": winner.total_minor,
+                    # The funding deadline; the organizer may move it.
+                    "pay_by": default_pay_by(self.prices.clock()),
                 },
                 session=session,
             )
@@ -365,6 +372,8 @@ class ProposalService:
             return Err(TripError.INVALID_STATE)
         fresh = await self.trips.get(trip_oid)
         if fresh is not None:
+            if self.escrow is not None:
+                await self.escrow.open(fresh)
             await self.prices.place_holds(fresh)
         return Ok(TripStatusView(trip_id=trip_id, status=TripStatus.PAYING))
 

@@ -37,6 +37,12 @@ TENANT_EXEMPT_COLLECTIONS = frozenset(
         # Per user too: a wallet pays shares of trips in any organization.
         "wallets",
         "wallet_transactions",
+        # The simulated payment partner's own records (an external EMI in production): keyed
+        # by the partner's owner refs, never by organization.
+        "partner_users",
+        "partner_wallets",
+        "partner_ledger",
+        "partner_cards",
         # Trip documents too: what the group does at the destination, seen by its members.
         "trip_attractions",
         "itineraries",
