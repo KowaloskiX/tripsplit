@@ -72,11 +72,19 @@ The trip flow is supplier-agnostic: rail, flights, buses, stays and activities a
 behind `backend/src/app/suppliers/ports.py` (`SupplierAdapter`), each declaring
 `SupplierCapabilities` (kind/mode, channel `api`/`agent`/`manual`, purchase cap, holds, quote
 TTL, required traveller fields). Services read capabilities, never supplier names. Enable them
-with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`).
+with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`, `liteapi`).
+
+`liteapi` = real hotels through the LiteAPI SANDBOX (`LITEAPI_KEY=sand_...`; any other key is
+refused unless `LITEAPI_ALLOW_LIVE=true`): city hotels + rates for the whole party in one booking
+(rooms = pairs of adults, an odd one in a triple), prebook = the hold (15 min), book with the
+sandbox test card (`ACC_CREDIT_CARD`) on approval, `GET /bookings/{id}` reports cancellations.
+Search keeps only picks LiteAPI can prebook right now (many sandbox rates cannot).
 
 ```bash
 cd backend && uv run trip-harness run all            # simulated suppliers, scripted agent
 cd backend && uv run trip-harness run prague_happy_path --live-search   # real PKP (~20 s)
+cd backend && uv run trip-harness run prague_liteapi_live --live-stays  # real hotel, sandbox (~15 s)
+uv run trip-harness run prague_liteapi_live --live-stays --live-search  # + real PKP train (~40 s)
 uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
 ```
 
