@@ -49,6 +49,9 @@ class SupplierCapabilities:
     # traveller details are complete — at voting close if they are, else when the purchase
     # starts. False = a hold needs nothing but the party size.
     hold_needs_traveller_details: bool = False
+    # A simulator: its offers are illustrative examples. The research uses them only when no
+    # real supplier of the same kind has anything (a package never lacks a stay).
+    simulated: bool = False
 
     def __post_init__(self) -> None:
         if (self.kind is BookingKind.TRANSPORT) != (self.mode is not None):

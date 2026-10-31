@@ -124,7 +124,8 @@ class Settings(BaseSettings):
     # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`; the
     # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `liteapi`
     # (real hotels through LiteAPI — needs `liteapi_key`); `duffel` (real flights through the
-    # Duffel API — needs `duffel_api_key`).
+    # Duffel API — needs `duffel_api_key`); `osm_activities` (real sights near the centre as
+    # free ideas, from Wikipedia — never bought).
     suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
     # How `pkp_intercity` reaches PKP's gateway: `browser` = one shared headless Camoufox
     # for the process (PKP sits behind Akamai, which resets plain HTTP); `http` = httpx.
