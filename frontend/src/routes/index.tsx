@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage(): ReactNode {
   return (
-    <div className="bg-surface">
+    <div className="bg-bg">
       <LandingHero />
       <HowItWorks />
       <ClosingCta />
