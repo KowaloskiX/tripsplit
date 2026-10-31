@@ -64,6 +64,10 @@ def _click(page, ref):
     though they're clickable; fall back to scroll -> force click -> DOM click so
     the loop never stalls retrying the same click."""
     loc = _locator(page, ref)
+    if loc.count() == 0:
+        # Gone (the page moved on, or a replayed flow's ref is stale): fail at once and let
+        # the loop re-observe, instead of ~14 s of actionability waits on nothing.
+        raise LookupError(f"ref {ref} is not on the page")
     try:
         loc.click(timeout=6000)
         return
@@ -75,7 +79,9 @@ def _click(page, ref):
         loc.click(timeout=3000, force=True)
         return
     except Exception:
-        loc.evaluate("el => el.click()")
+        # Bounded: a ref that vanished (the page moved on) must not stall the run for the
+        # default 20 s before the loop re-observes.
+        loc.evaluate("el => el.click()", timeout=3000)
 
 
 def act(browser, action, vault):
