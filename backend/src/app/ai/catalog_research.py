@@ -226,10 +226,13 @@ class CatalogResearcher:
     ) -> list[PackageItemPlan]:
         adapters = self.suppliers.of_kind(kind, mode)
         answers = await asyncio.gather(*(self._ask(adapter, request) for adapter in adapters))
+        # An attraction for the itinerary (`itinerary_only`) is voted on after the package,
+        # never sold inside it.
         return [
             _item(adapter, offer)
             for adapter, offers in zip(adapters, answers, strict=True)
             for offer in offers
+            if offer.supplier_data.get("itinerary_only") is not True
         ]
 
     async def _ask(self, adapter: SupplierAdapter, request: SearchRequest) -> list[Offer]:

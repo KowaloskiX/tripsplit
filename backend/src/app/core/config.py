@@ -115,11 +115,13 @@ class Settings(BaseSettings):
     # drives the agent at a real carrier. Empty = off.
     demo_supplier_url: str = ""
     # The supplier plugins, comma-separated ids (see app.suppliers.providers): the simulators
-    # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`; the
+    # `sim_rail`, `sim_flight`, `sim_bus`, `sim_stay`, `sim_stay_site`, `sim_activity`, and the
+    # attraction candidates `sim_tickets` (bought by the agent on the demo ticket shop) and
+    # `sim_sights` (free ideas); the
     # real `pkp_intercity` (search + re-quote against PKP's gateway); `demo_rail`; `liteapi`
     # (real hotels through LiteAPI — needs `liteapi_key`); `duffel` (real flights through the
     # Duffel API — needs `duffel_api_key`).
-    suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity"
+    suppliers: str = "sim_rail,sim_flight,sim_bus,sim_stay,sim_activity,sim_tickets,sim_sights"
     # How `pkp_intercity` reaches PKP's gateway: `browser` = one shared headless Camoufox
     # for the process (PKP sits behind Akamai, which resets plain HTTP); `http` = httpx.
     pkp_transport: PkpTransportKind = "browser"
