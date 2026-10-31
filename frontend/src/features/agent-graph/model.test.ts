@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { DEMO_RAIL_GRAPH, DEMO_RAIL_STEPS, DEMO_RAIL_TOTAL_MS, stepsAt } from "./fixtures";
-import { buildPipeline, countersOf, nodeStateOf, orderNodes } from "./model";
+import { buildPipeline, countersOf, fieldLabels, nodeStateOf, orderNodes } from "./model";
 import { countersSentence } from "./run-counters";
 import { parseFlowGraph, parseRunSteps, type RunStep } from "./schema";
 
@@ -135,5 +135,18 @@ describe("stepsAt", () => {
       status: "running",
       duration_ms: 900,
     });
+  });
+});
+
+describe("fieldLabels", () => {
+  it("turns vault keys into words and drops repeats", () => {
+    expect(
+      fieldLabels([
+        "passenger_N_first_name",
+        "passenger_{i}_last_name",
+        "passenger_2_first_name",
+        "goal.date",
+      ]),
+    ).toEqual(["first name", "last name", "date"]);
   });
 });

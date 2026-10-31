@@ -94,12 +94,12 @@ export function BrowserPane({ browser, live, className }: BrowserPaneProps): Rea
             <span className="size-2.5 rounded-full bg-[#febc2e]" />
             <span className="size-2.5 rounded-full bg-[#28c840]" />
           </span>
-          <span className="ticket-mono flex min-w-0 flex-1 items-center gap-1.5 truncate rounded-full bg-bg px-3 py-1 text-[11px] text-muted">
+          <span className="ticket-mono flex min-w-0 flex-1 items-center gap-1.5 truncate rounded-full bg-bg px-3 py-1 text-xs text-muted">
             <Lock className="size-3 shrink-0" aria-hidden />
             <span className="truncate">{browser.host}</span>
           </span>
           {live && (
-            <span className="ticket-mono inline-flex items-center gap-1.5 rounded-full bg-lime px-2 py-0.5 text-[10px] uppercase text-pastel-ink">
+            <span className="ticket-mono inline-flex items-center gap-1.5 rounded-full bg-lime px-2 py-0.5 text-xs uppercase text-pastel-ink">
               <span
                 aria-hidden
                 className="size-1.5 animate-pulse rounded-full bg-current motion-reduce:animate-none"

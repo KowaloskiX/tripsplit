@@ -160,7 +160,7 @@ export function ProposalCard({
                     {item.segments.map((segment) => (
                       <li
                         key={`${segment.number}-${segment.departs_at}`}
-                        className="ticket-mono text-[11px] text-muted"
+                        className="text-xs tabular-nums text-muted"
                       >
                         {segmentLine(segment)}
                       </li>

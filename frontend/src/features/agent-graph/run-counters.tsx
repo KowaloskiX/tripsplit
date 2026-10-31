@@ -16,7 +16,7 @@ export function countersSentence(counters: Counters): string {
 export function RunCounters({ counters }: { counters: Counters }): ReactNode {
   const tiles: Tile[] = [
     {
-      label: "LLM calls",
+      label: "AI calls",
       value: String(counters.llmCalls),
       icon: Sparkles,
       tone: "bg-pastel-blush text-pastel-ink",
@@ -56,8 +56,10 @@ export function RunCounters({ counters }: { counters: Counters }): ReactNode {
             <tile.icon className="size-[18px]" aria-hidden />
           </span>
           <div className="min-w-0">
-            <dt className="text-xs font-medium text-muted">{tile.label}</dt>
-            <dd className="ticket-mono text-xl leading-tight text-ink">{tile.value}</dd>
+            <dt className="whitespace-nowrap text-xs font-medium text-muted">{tile.label}</dt>
+            <dd className="ticket-mono whitespace-nowrap text-xl leading-tight text-ink">
+              {tile.value}
+            </dd>
           </div>
         </div>
       ))}
