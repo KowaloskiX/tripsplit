@@ -44,7 +44,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootDocument({ children }: { children: ReactNode }): ReactNode {
   return (
-    <html lang="en">
+    // `suppressHydrationWarning`: THEME_INIT_SCRIPT adds the `dark` class to <html> before
+    // React hydrates — on purpose, to avoid a light flash. It applies to this element's own
+    // attributes only, so mismatches anywhere below are still reported.
+    <html lang="en" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

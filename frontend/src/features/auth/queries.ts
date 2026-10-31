@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useHydrated } from "@tanstack/react-router";
 
 import { authSessionOptions, type CurrentUserResponse } from "@/lib/api";
 
@@ -20,5 +21,11 @@ export function useSession(): {
   isKnown: boolean;
 } {
   const query = useQuery(sessionQueryOptions());
-  return { user: query.data?.user ?? null, isKnown: query.data !== undefined };
+  // Until hydration finishes the answer is withheld even if it is already cached: a client-only
+  // route's guard (`ensureQueryData` in `beforeLoad`) can resolve it BEFORE the server-rendered
+  // header hydrates, and rendering the signed-in variant then mismatches the server's
+  // placeholder. One render later it is safe.
+  const hydrated = useHydrated();
+  const data = hydrated ? query.data : undefined;
+  return { user: data?.user ?? null, isKnown: data !== undefined };
 }
