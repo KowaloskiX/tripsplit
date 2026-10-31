@@ -2226,7 +2226,7 @@
             "type": "integer"
           },
           "held_by": {
-            "default": "TripSplit Pay",
+            "default": "Razor Trip Pay",
             "title": "Held By",
             "type": "string"
           },
@@ -3959,7 +3959,7 @@
     }
   },
   "info": {
-    "title": "TripSplit API",
+    "title": "Razor Trip API",
     "version": "0.0.0"
   },
   "openapi": "3.1.0",

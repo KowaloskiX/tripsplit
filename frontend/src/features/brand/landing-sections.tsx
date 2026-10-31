@@ -75,7 +75,7 @@ export function LandingFooter(): ReactNode {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-8 sm:px-6">
         <Wordmark className="text-xl" />
         <div className="flex items-center gap-6 text-sm text-muted">
-          <span>© {new Date().getFullYear()} tripsplit</span>
+          <span>© {new Date().getFullYear()} Razor Trip</span>
           <Link to="/login" className="transition duration-150 hover:text-ink">
             Sign in
           </Link>

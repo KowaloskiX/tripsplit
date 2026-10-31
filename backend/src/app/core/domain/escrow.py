@@ -23,7 +23,7 @@ DEFAULT_CARD_TTL = timedelta(hours=24)
 # The card limit is EXACTLY the purchase amount: +0% tolerance.
 CARD_TOLERANCE_PERCENT = 0
 # The legal entity shown in the UI: a simulated licensed partner.
-PARTNER_DISPLAY_NAME = "TripSplit Pay"
+PARTNER_DISPLAY_NAME = "Razor Trip Pay"
 
 
 class KycLevel(StrEnum):

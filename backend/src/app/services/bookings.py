@@ -719,7 +719,7 @@ class BookingService:
                 await self._finish(
                     run_id,
                     None,
-                    failure_reason=f"TripSplit Pay could not issue a card ({issued.error}).",
+                    failure_reason=f"Razor Trip Pay could not issue a card ({issued.error}).",
                 )
                 _WATCHED.discard(run_id)
                 return Ok(BookingWithRun(booking=booking, run=run))
@@ -1101,7 +1101,7 @@ class BookingService:
                     await self._say(
                         trip,
                         EventKind.MESSAGE,
-                        f"TripSplit Pay could not fund the card for {booking.title} "
+                        f"Razor Trip Pay could not fund the card for {booking.title} "
                         f"({activated.error}). Nothing was paid.",
                         booking,
                     )
@@ -1207,7 +1207,7 @@ class BookingService:
                     trip,
                     booking,
                     BookingStatus.FAILED,
-                    f"TripSplit Pay refused the payout ({paid.error}); nothing was bought.",
+                    f"Razor Trip Pay refused the payout ({paid.error}); nothing was bought.",
                     "",
                 )
                 return Ok(BookingWithRun(booking=booking, run=None))
@@ -1316,7 +1316,7 @@ class BookingService:
             await self._say(
                 trip,
                 EventKind.MESSAGE,
-                f"TripSplit Pay could not pay {booking.supplier} for {booking.title} "
+                f"Razor Trip Pay could not pay {booking.supplier} for {booking.title} "
                 f"({paid.error}) — settle it with the supplier.",
                 booking,
             )

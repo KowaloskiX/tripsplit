@@ -189,7 +189,7 @@ def offer_of(sight: Sight, request: SearchRequest, city: City, now: datetime) ->
         seller=SELLER,
         purchase_url=sight.url,
         details=f"{sight.description}. An idea in {city.name}: free or pay on site — "
-        "TripSplit buys nothing for it.",
+        "Razor Trip buys nothing for it.",
         links=(
             OfferLink(label=f"{sight.title} on Wikipedia", url=sight.url, kind=LinkKind.VERIFY),
             OfferLink(

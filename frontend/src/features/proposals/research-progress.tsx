@@ -47,7 +47,7 @@ export function ResearchProgress({
     <div className={cn("space-y-4", className)}>
       <div role="status" className="rounded-xl bg-agent-bg px-4 py-3.5 text-agent-fg">
         <p className="flex items-center gap-2 text-[15px]">
-          <span className="text-xs font-medium text-agent-tag">tripsplit agent</span>
+          <span className="text-xs font-medium text-agent-tag">Razor Trip agent</span>
           <TypingIndicator className="text-agent-tag" />
         </p>
         <p className="mt-1 text-[15px]">Researching trains, flights, stays and things to do…</p>

@@ -217,7 +217,7 @@ async def test_wallet_endpoints_top_up_and_history(
     empty = (await anna.get("/api/wallet")).json()
     assert empty["balance_minor"] == 0
     assert empty["transactions"] == []
-    assert empty["held_by"] == "TripSplit Pay"
+    assert empty["held_by"] == "Razor Trip Pay"
     assert empty["kyc"]["status"] == "not_started"
     assert empty["kyc"]["remaining_minor"] == 100_000
 

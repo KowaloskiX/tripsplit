@@ -27,8 +27,10 @@ type ProvenancePillProps = {
   className?: string;
 };
 
-/** "Live from PKP Intercity · checked 2 min ago", "Duffel test data", "Example · not bookable". */
+/** "Live from PKP Intercity · checked 2 min ago", "LiteAPI sandbox", "Example · not bookable".
+ * Test-mode offers (Duffel) show no pill: they are real airline offers in a test account. */
 export function ProvenancePill({ provenance, now, className }: ProvenancePillProps): ReactNode {
+  if (provenance.kind === "test") return null;
   const Icon = ICON[provenance.kind];
   const label = provenanceLabel(provenance, now);
   return (

@@ -24,7 +24,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "tripsplit: from group chat to tickets" },
+      { title: "Razor Trip: from group chat to tickets" },
       {
         name: "description",
         content:
@@ -123,7 +123,7 @@ function SiteHeader(): ReactNode {
       >
         <Link
           to="/"
-          aria-label="tripsplit home"
+          aria-label="Razor Trip home"
           className="rounded-full transition duration-150 hover:opacity-75"
         >
           <Wordmark />

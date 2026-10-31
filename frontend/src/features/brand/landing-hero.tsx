@@ -138,7 +138,7 @@ function ProductVisual(): ReactNode {
       </div>
 
       <div className="absolute -right-3 -bottom-6 hidden max-w-[15rem] rounded-[var(--radius-panel)] border border-line bg-surface px-4 py-3 shadow-pop sm:block lg:-right-6">
-        <p className="text-xs font-medium text-agent-tag">tripsplit agent</p>
+        <p className="text-xs font-medium text-agent-tag">Razor Trip agent</p>
         <p className="mt-0.5 text-[13px] leading-snug text-ink">
           Your train is late. I rebooked the 08:15, no extra cost.
         </p>
@@ -166,7 +166,7 @@ export function ChatToTicket(): ReactNode {
             className="cue bubble-in rounded-2xl rounded-tl-md bg-agent-bg px-4 py-3 ring-1 ring-line"
             style={at(950)}
           >
-            <p className="text-xs font-medium text-agent-tag">tripsplit agent</p>
+            <p className="text-xs font-medium text-agent-tag">Razor Trip agent</p>
             <p className="mt-1 text-[15px] text-agent-fg">
               3 packages from 593 zł each. Vote, then pay your share and I&apos;ll book.
             </p>

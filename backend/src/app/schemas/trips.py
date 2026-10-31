@@ -242,7 +242,7 @@ class PotResponse(_ReadModel):
     # Net share transfers in vs. what the escrow must collect before it releases anything.
     funded_minor: int = 0
     target_minor: int = 0
-    held_by: str = "TripSplit Pay"
+    held_by: str = "Razor Trip Pay"
 
 
 class RoomResponse(_ReadModel):

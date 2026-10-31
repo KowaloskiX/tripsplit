@@ -88,7 +88,7 @@ export function TripPotCard({
       {fundingOpen && pot.pay_by && <PayByCountdown payBy={pot.pay_by} />}
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-1 pb-4 sm:px-5">
         <p className="text-xs text-muted">
-          Held by {pot.held_by ?? "TripSplit Pay"} (simulated licensed partner).
+          Held by {pot.held_by ?? "Razor Trip Pay"} (simulated licensed partner).
         </p>
         <Button variant="ghost" size="sm" onClick={() => setExplainer(true)}>
           <Info className="size-4" aria-hidden /> How your money moves

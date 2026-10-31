@@ -40,7 +40,7 @@ export function KycForm({ onDone }: { onDone?: () => void }): ReactNode {
   if (verify.data) {
     return (
       <p className="text-sm text-ink" role="status">
-        Checking your ID with TripSplit Pay…
+        Checking your ID with Razor Trip Pay…
         {verify.data.document_masked ? ` Document ${verify.data.document_masked}.` : ""}
       </p>
     );
@@ -66,7 +66,7 @@ export function KycForm({ onDone }: { onDone?: () => void }): ReactNode {
       <Field
         htmlFor={`${id}-doc`}
         label="ID document number (optional)"
-        hint="Checked by the partner and forgotten — TripSplit never stores it."
+        hint="Checked by the partner and forgotten — Razor Trip never stores it."
         error={errors.document_number}
       >
         <Input
@@ -95,7 +95,7 @@ export function KycCard({ kyc }: { kyc: KycResponse }): ReactNode {
     );
   }
   if (kyc.status === "pending") {
-    return <p className="text-sm text-muted">Checking your ID with TripSplit Pay…</p>;
+    return <p className="text-sm text-muted">Checking your ID with Razor Trip Pay…</p>;
   }
   return (
     <div className="space-y-3 rounded-[var(--radius-control)] border border-line p-4">
