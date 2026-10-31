@@ -32,7 +32,7 @@ from typing import Any
 from app.agent.goal import GoalSpec
 from app.agent.paths import trajectories_dir
 from app.agent.rules import FieldKind, choose_offer, classify_field, vault_placeholder
-from app.agent.site_profiles import SiteProfile, Stage
+from app.agent.site_profiles import SiteProfile, Stage, profile_for
 from app.agent.trajectory import _goto_is_replayable, _host
 
 FLOW_VERSION = 2
@@ -413,9 +413,16 @@ def _flow_path(host: str) -> str:
     return os.path.join(trajectories_dir(), f"{host}.flow.json")
 
 
+def _flow_key(url: str) -> str:
+    """The URL's host, plus the site profile's scope when it shares the host with another."""
+    host = _host(url)
+    scope = profile_for(url).flow_scope
+    return f"{host}.{scope}" if host and scope else host
+
+
 def load(url: str) -> dict[str, Any] | None:
     """The flow for this URL's host; a legacy raw trajectory is compiled on the fly."""
-    host = _host(url)
+    host = _flow_key(url)
     if not host:
         return None
     legacy_path = os.path.join(trajectories_dir(), f"{host}.json")
@@ -435,7 +442,7 @@ def load(url: str) -> dict[str, Any] | None:
 
 
 def save(url: str, flow: dict[str, Any]) -> str | None:
-    host = _host(url)
+    host = _flow_key(url)
     if not host or not flow.get("steps"):
         return None
     os.makedirs(trajectories_dir(), exist_ok=True)
