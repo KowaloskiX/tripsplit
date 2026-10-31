@@ -139,9 +139,12 @@ class PkpIntercitySupplier:
     id = SUPPLIER_ID
     display_name = CARRIER
 
-    def __init__(self, transport: Transport) -> None:
+    def __init__(self, transport: Transport, purchase_site: str | None = None) -> None:
+        """`purchase_site`: in a demo, where the agent BUYS the train instead of e-IC (our
+        fake rail site) — prices still come from PKP, the agent never drives intercity.pl."""
         self.capabilities = CAPABILITIES
         self.client = IntercityClient(transport)
+        self.purchase_site = purchase_site
         self.log = LiveSearchLog()
 
     # ---- search -------------------------------------------------------------------------
@@ -274,7 +277,8 @@ class PkpIntercitySupplier:
             seller=CARRIER,
             segments=segments,
             refundable=False,
-            purchase_url=results_url(
+            purchase_url=self.purchase_site
+            or results_url(
                 first.departs_at.date(), first.from_code, first.to_code, f"{first.departs_at:%H:%M}"
             ),
             details=(

@@ -146,10 +146,12 @@ Both artifacts are committed. Never hand-edit the generated client.
 - **Refunds are paid out when the trip reaches BOOKED** (`BookingService._settle_refunds`
   through `PaymentProvider.refund`, one `refund_issued` event each) — not at re-split time,
   because a later rebooking could still need the money.
-- **Demo bookings go to the fake rail supplier only if `DEMO_SUPPLIER_URL` is set** (dev/test,
-  e.g. `http://localhost:8000`): train bookings created at voting close then point at
-  `/api/demo-supplier/rail`. The stay and activity still point at real suppliers — do not start
-  them in a demo.
+- **Demo bookings go to the fake rail site only if `DEMO_SUPPLIER_URL` is set** (dev/test,
+  e.g. `http://localhost:8000`): it enables the `demo_rail` supplier AND makes `pkp_intercity`
+  offers point their purchase at `/api/demo-supplier/rail` (real PKP price, fake checkout — the
+  site lists its own three trains, so the agent books the closest one there). Without it, a PKP
+  booking would send the agent to the real intercity.pl. Agent-channel stays/activities (e.g.
+  `sim_stay_site`) still point at real sites — do not start them in a demo.
 - **Bookings stuck after a backend restart heal on the next listing:** a still-alive agent
   (`agent.pid`) is re-attached, a `result.json` is applied, anything else fails the booking.
 
