@@ -100,7 +100,8 @@ async def test_six_people_are_quoted_as_two_purchases_of_three() -> None:
     quote = await client.group_quote(connection, 5100065, 5400014, travellers=6)
 
     assert quote is not None
-    assert transport.fare_requests == [3, 3]  # never a 6-person request the API rejects
+    # Never a 6-person request the API rejects, and 3 + 3 is priced by one request.
+    assert transport.fare_requests == [3]
     assert quote.total_minor == 6 * 15565
     assert quote.offer_name == "Super Promo International"
     assert not quote.refundable

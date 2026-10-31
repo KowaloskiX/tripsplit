@@ -43,7 +43,7 @@ class FakeBrowser(BrowserTransport):
 
 async def test_starts_lazily_and_reuses_one_browser() -> None:
     log: list[str] = []
-    shared = SharedBrowserTransport(lambda: FakeBrowser(log))
+    shared = SharedBrowserTransport(lambda: FakeBrowser(log), max_concurrent=1)
     assert not shared.started and log == []
     answers = await asyncio.gather(*(shared.get_json(f"u{n}") for n in range(5)))
     assert [a["url"] for a in answers] == [f"u{n}" for n in range(5)]
