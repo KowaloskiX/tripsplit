@@ -6,11 +6,19 @@ started it returns immediately while the agent works.
 
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 
 from beanie import PydanticObjectId
 from pymongo.asynchronous.client_session import AsyncClientSession
 
-from app.ai.research import PackagePlan, PackageResearcher, TripBrief
+from app.ai.research import (
+    PackagePlan,
+    PackageResearcher,
+    SearchOutcome,
+    SupplierProgress,
+    TripBrief,
+    research_progress,
+)
 from app.core.background import BackgroundRunner
 from app.core.domain.errors import TripError
 from app.core.domain.packages import format_money, is_over_budget, per_person, pick_winner
@@ -60,8 +68,11 @@ class ProposalService:
         *,
         suppliers: SupplierRegistry | None = None,
         prices: SupplierPrices | None = None,
+        progress_events: bool = False,
     ) -> None:
         self.db = db
+        # A feed message per finished supplier search while researching.
+        self.progress_events = progress_events
         # The supplier plugins: their capabilities split each item into purchases.
         self.suppliers = suppliers if suppliers is not None else SupplierRegistry()
         # Places the holds when the vote closes (suppliers that support them).
@@ -126,6 +137,8 @@ class ProposalService:
     ) -> None:
         """The background half of `generate`. Never raises: a failure is reported in the feed
         and the trip returns to the status it had before."""
+        if self.progress_events:
+            research_progress.set(self._progress_sink(trip_id))
         try:
             plans = await self.researcher.research(brief)
             if not plans:
@@ -145,6 +158,29 @@ class ProposalService:
             )
             return
         await self._store(trip_id, brief, plans)
+
+    def _progress_sink(
+        self, trip_id: PydanticObjectId
+    ) -> Callable[[SupplierProgress], Awaitable[None]]:
+        async def report(progress: SupplierProgress) -> None:
+            await self.events.add(
+                trip_id,
+                EventKind.MESSAGE,
+                EventActor.AGENT,
+                progress_message(progress),
+                payload={
+                    "supplier_progress": {
+                        "supplier_id": progress.supplier_id,
+                        "supplier": progress.supplier,
+                        "kind": progress.kind.value,
+                        "outcome": progress.outcome.value,
+                        "offers": progress.offers,
+                        "seconds": progress.seconds,
+                    }
+                },
+            )
+
+        return report
 
     async def _store(
         self, trip_id: PydanticObjectId, brief: TripBrief, plans: list[PackagePlan]
@@ -360,3 +396,23 @@ def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, brief: TripBrief) ->
         per_person_minor=share,
         over_budget=is_over_budget(share, brief.budget_per_person_minor),
     )
+
+
+def progress_message(progress: SupplierProgress) -> str:
+    """ "PKP Intercity ✓ 2 offers · 2.9 s", "Duffel ✗ too slow (15.0 s)"."""
+    name = progress.supplier
+    match progress.outcome:
+        case SearchOutcome.OK | SearchOutcome.CACHED:
+            noun = "offer" if progress.offers == 1 else "offers"
+            took = (
+                "cached"
+                if progress.outcome is SearchOutcome.CACHED
+                else f"{progress.seconds:.1f} s"
+            )
+            return f"{name} ✓ {progress.offers} {noun} · {took}"
+        case SearchOutcome.EMPTY:
+            return f"{name} · nothing for these dates · {progress.seconds:.1f} s"
+        case SearchOutcome.TIMEOUT:
+            return f"{name} ✗ too slow ({progress.seconds:.1f} s) — going on without it"
+        case SearchOutcome.FAILED:
+            return f"{name} ✗ unavailable right now"

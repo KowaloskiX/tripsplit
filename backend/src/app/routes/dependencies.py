@@ -131,6 +131,7 @@ def get_proposal_service(
             price_tolerance_percent=settings.price_tolerance_percent,
             holds=settings.holds_enabled,
         ),
+        progress_events=settings.search_progress_events,
     )
 
 

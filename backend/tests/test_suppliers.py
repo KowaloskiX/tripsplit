@@ -231,7 +231,7 @@ async def test_the_pkp_adapter_searches_whole_party_offers() -> None:
     assert "Sold as 3+3" in offer.details
     assert offer.purchase_url.startswith("https://ebilet.intercity.pl/")
     assert offer.supplier_data["legs"][0]["train_number"] == 131
-    assert transport.fare_requests == [3, 3]
+    assert transport.fare_requests == [3]  # 3 + 3 is priced by one request
     assert (
         await pkp.search(
             SearchRequest(

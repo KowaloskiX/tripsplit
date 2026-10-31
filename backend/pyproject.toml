@@ -41,6 +41,7 @@ agent-login = "app.agent.login:main"
 intercity-search = "app.suppliers.intercity_cli:main"
 trip-harness = "app.harness.cli:main"
 agent-eval = "app.agent_evals.cli:main"
+search-bench = "app.suppliers.search_bench:main"
 
 [build-system]
 requires = ["hatchling"]

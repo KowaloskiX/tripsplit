@@ -90,6 +90,13 @@ class Settings(BaseSettings):
     # by Claude Code in `-p` mode (falls back to the catalogue wording on any failure).
     researcher: ResearcherKind = "catalog"
     research_timeout_s: int = 300
+    # Supplier searches of one research run concurrently; one slower than this contributes no
+    # offers (it keeps running and fills the cache). Results are cached in-process for
+    # `search_cache_ttl_s` (0 = off) so a re-generate on the same route is instant.
+    search_supplier_timeout_s: float = Field(default=15.0, gt=0.0)
+    search_cache_ttl_s: float = Field(default=300.0, ge=0.0)
+    # A feed message per finished supplier search ("PKP Intercity ✓ 2 offers · 2.9 s").
+    search_progress_events: bool = True
     # Who takes the money. `fake` always succeeds; Stripe plugs in behind the same port later.
     payments: PaymentsKind = "fake"
     # The booking agent (see app.agent). Relative paths resolve against `backend/` — the
