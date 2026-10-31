@@ -28,6 +28,7 @@ cd .. && pnpm install
 ```bash
 cd backend && uv run uvicorn app.main:app --reload --port 8000   # backend
 pnpm dev                                                          # frontend -> :3000
+WEB_PORT=3100 API_PORT=8100 pnpm dev                              # other ports (turbo passes both through)
 curl localhost:8000/api/health                                    # {"status":"ok",...}
 ```
 
