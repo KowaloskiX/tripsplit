@@ -80,7 +80,12 @@ def get_trip_service(database: DbDep) -> TripService:
 def get_proposal_service(
     database: DbDep, settings: SettingsDep, runner: BackgroundRunnerDep
 ) -> ProposalService:
-    return ProposalService(database, build_researcher(settings), runner)
+    return ProposalService(
+        database,
+        build_researcher(settings),
+        runner,
+        train_supplier_url=settings.demo_train_supplier_url,
+    )
 
 
 def get_contribution_service(settings: SettingsDep) -> ContributionService:

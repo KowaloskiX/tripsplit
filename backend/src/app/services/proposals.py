@@ -15,7 +15,7 @@ from app.core.background import BackgroundRunner
 from app.core.domain.errors import TripError
 from app.core.domain.packages import booking_goal, format_money, per_person, pick_winner
 from app.core.domain.result import Err, Ok, Result
-from app.core.domain.trips import EventActor, EventKind, TripStatus, split_evenly
+from app.core.domain.trips import BookingKind, EventActor, EventKind, TripStatus, split_evenly
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.bookings import Booking
@@ -44,9 +44,17 @@ class _StatusChanged(Exception):
 
 class ProposalService:
     def __init__(
-        self, db: Database, researcher: PackageResearcher, runner: BackgroundRunner
+        self,
+        db: Database,
+        researcher: PackageResearcher,
+        runner: BackgroundRunner,
+        *,
+        train_supplier_url: str | None = None,
     ) -> None:
         self.db = db
+        # Demo seam: when set, train bookings go to this (fake) supplier instead of the
+        # researched one. The goal is unchanged — only where the agent drives.
+        self.train_supplier_url = train_supplier_url
         self.researcher = researcher
         self.runner = runner
         self.trips = TripRepository()
@@ -220,7 +228,10 @@ class ProposalService:
                 session=session,
             )
             for item in winner.items:
-                await self.bookings.add(_booking(trip, item, len(members)), session=session)
+                booking = _booking(trip, item, len(members))
+                if item.kind is BookingKind.TRAIN and self.train_supplier_url:
+                    booking.supplier_url = self.train_supplier_url
+                await self.bookings.add(booking, session=session)
             await self.events.add(
                 trip_oid,
                 EventKind.PROPOSAL_CHOSEN,

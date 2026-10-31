@@ -98,6 +98,10 @@ class Settings(BaseSettings):
     # Show the agent's browser window (local debugging only).
     agent_headful: bool = False
     agent_max_steps: int = 40
+    # Demo only: the base URL of THIS backend (e.g. http://localhost:8000). When set on dev/test,
+    # train bookings created at voting close point at the fake rail supplier under it instead of
+    # the real carrier, so a live demo never drives the agent at a real supplier. Empty = off.
+    demo_supplier_url: str = ""
 
     @field_validator("cors_origins")
     @classmethod
@@ -165,6 +169,13 @@ class Settings(BaseSettings):
     def demo_routes_enabled(self) -> bool:
         """The fake supplier and the disruption trigger exist on dev/test only."""
         return self.app_env in _LOCAL_ENVS
+
+    @property
+    def demo_train_supplier_url(self) -> str | None:
+        """Where train bookings point in a demo: the fake rail supplier, or None (real URL)."""
+        if not self.demo_supplier_url or not self.demo_routes_enabled:
+            return None
+        return f"{self.demo_supplier_url.rstrip('/')}/api/demo-supplier/rail"
 
 
 @lru_cache

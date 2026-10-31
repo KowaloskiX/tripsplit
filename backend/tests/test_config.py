@@ -65,3 +65,14 @@ def test_api_docs_are_local_only() -> None:
     catalogue."""
     assert Settings(app_env="dev").expose_api_docs is True
     assert Settings(app_env="prod", auth_secret=STRONG_SECRET).expose_api_docs is False
+
+
+def test_demo_train_supplier_only_on_local_envs() -> None:
+    """A demo must never send the agent to a real carrier — and prod never to the fake one."""
+    assert Settings(app_env="dev").demo_train_supplier_url is None
+    assert (
+        Settings(app_env="dev", demo_supplier_url="http://localhost:8000/").demo_train_supplier_url
+        == "http://localhost:8000/api/demo-supplier/rail"
+    )
+    prod = Settings(app_env="prod", auth_secret=STRONG_SECRET, demo_supplier_url="http://x")
+    assert prod.demo_train_supplier_url is None

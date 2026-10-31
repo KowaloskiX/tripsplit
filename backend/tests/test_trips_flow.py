@@ -9,7 +9,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.core.background import BackgroundRunner
 from app.core.config import Settings, get_settings
-from app.core.domain.trips import BookingStatus, EventKind, TripStatus
+from app.core.domain.trips import BookingKind, BookingStatus, EventKind, TripStatus
 from app.core.http_security import CSRF_HEADER_NAME
 from app.db.identifiers import to_object_id
 from app.repositories.bookings import BookingRepository
@@ -225,6 +225,27 @@ async def test_odd_split_sums_to_the_total(app: FastAPI, member_factory: MemberF
     assert len(shares) == 7
     assert sum(shares) == room["trip"]["total_minor"]
     assert max(shares) - min(shares) <= 1
+
+
+async def test_demo_supplier_url_redirects_only_the_train(
+    app: FastAPI, settings: Settings, member_factory: MemberFactory
+) -> None:
+    app.dependency_overrides[get_settings] = lambda: settings.model_copy(
+        update={"demo_supplier_url": "http://localhost:8000"}
+    )
+    organizer = await member_factory("organizer@example.com")
+    trip_id = await _create_trip(organizer)
+    await _research(app, organizer, trip_id)
+    assert (await organizer.post(f"/api/trips/{trip_id}/voting/close")).status_code == 200
+
+    trip_oid = to_object_id(trip_id)
+    assert trip_oid is not None
+    by_kind = {b.kind: b for b in await BookingRepository().for_trip(trip_oid)}
+    train = by_kind.pop(BookingKind.TRAIN)
+    assert train.supplier_url == "http://localhost:8000/api/demo-supplier/rail"
+    assert "Stop at the summary before paying." in train.goal
+    assert by_kind, "the fixture package has more than a train"
+    assert all("demo-supplier" not in b.supplier_url for b in by_kind.values())
 
 
 async def test_feed_messages_and_after_filter(app: FastAPI, member_factory: MemberFactory) -> None:
