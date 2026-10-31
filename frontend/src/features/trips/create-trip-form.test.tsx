@@ -12,6 +12,10 @@ import { createTripSchema, toCreateTripBody } from "./schema";
 const VALID = {
   title: "Weekend in Prague",
   origin: "Warszawa",
+  destination: "Praha",
+  transportMode: "rail" as const,
+  earliestDeparture: "8",
+  maxTransfers: "",
   brief: "cheap, good food",
   dateFrom: "2026-11-20",
   dateTo: "2026-11-22",
@@ -26,6 +30,10 @@ describe("createTripSchema", () => {
     expect(toCreateTripBody(parsed)).toEqual({
       title: "Weekend in Prague",
       origin: "Warszawa",
+      destination: "Praha",
+      transport_mode: "rail",
+      earliest_departure_hour: 8,
+      max_transfers: null,
       brief: "cheap, good food",
       date_from: "2026-11-20",
       date_to: "2026-11-22",
@@ -33,6 +41,20 @@ describe("createTripSchema", () => {
       budget_per_person_minor: 45_050,
       display_name: "Łukasz",
     });
+  });
+
+  it("sends no mode or preferences when the group has none", () => {
+    const parsed = createTripSchema.parse({
+      ...VALID,
+      transportMode: "any",
+      earliestDeparture: "",
+    });
+    const body = toCreateTripBody(parsed);
+    expect([body.transport_mode, body.earliest_departure_hour, body.max_transfers]).toEqual([
+      null,
+      null,
+      null,
+    ]);
   });
 
   it("sends no budget when the field is empty", () => {
@@ -46,6 +68,8 @@ describe("createTripSchema", () => {
     [{ groupSize: "2.5" }, "groupSize", "Enter a whole number of people."],
     [{ budgetPerPerson: "lots" }, "budgetPerPerson", "Enter an amount like 450 or 450.50"],
     [{ title: "   " }, "title", "Give the trip a name."],
+    [{ destination: " " }, "destination", "Where are you going?"],
+    [{ earliestDeparture: "24" }, "earliestDeparture", "Pick an hour between 0 and 23"],
   ])("rejects %o", (override, field, message) => {
     const result = createTripSchema.safeParse({ ...VALID, ...override });
     expect(result.success).toBe(false);
@@ -79,11 +103,19 @@ describe("CreateTripForm", () => {
     const { navigatedTo } = await renderInRouter(<CreateTripForm defaultDisplayName="Ola" />);
 
     await user.type(screen.getByLabelText("Trip name"), "Weekend in Prague");
+    await user.type(screen.getByLabelText("To"), "Praha");
+    await user.selectOptions(screen.getByLabelText("Getting there"), "rail");
     await user.type(screen.getByLabelText("Start"), "2026-11-20");
     await user.type(screen.getByLabelText("End"), "2026-11-22");
     await user.click(screen.getByRole("button", { name: "Create trip" }));
 
     await waitFor(() => expect(navigatedTo()).toBe("/t/trip-1"));
-    expect(body).toMatchObject({ title: "Weekend in Prague", group_size: 6, display_name: "Ola" });
+    expect(body).toMatchObject({
+      title: "Weekend in Prague",
+      destination: "Praha",
+      transport_mode: "rail",
+      group_size: 6,
+      display_name: "Ola",
+    });
   });
 });

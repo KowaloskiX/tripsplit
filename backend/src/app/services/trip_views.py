@@ -39,6 +39,8 @@ class TripView:
     currency: str
     destination: str
     transport_mode: TransportMode | None
+    earliest_departure_hour: int | None
+    max_transfers: int | None
     status: TripStatus
     organizer_id: str
     chosen_proposal_id: str | None
@@ -165,6 +167,8 @@ def trip_view(trip: Trip) -> TripView:
         currency=trip.currency,
         destination=trip.destination,
         transport_mode=trip.transport_mode,
+        earliest_departure_hour=trip.earliest_departure_hour,
+        max_transfers=trip.max_transfers,
         status=trip.status,
         organizer_id=to_text(trip.organizer_id),
         chosen_proposal_id=_optional_text(trip.chosen_proposal_id),

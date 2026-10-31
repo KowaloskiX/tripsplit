@@ -12,6 +12,7 @@ from beanie import Document, PydanticObjectId
 from pydantic import BaseModel, Field, model_validator
 
 from app.core.domain.trips import (
+    MAX_TRANSFERS_LIMIT,
     BookingKind,
     ContributionStatus,
     EventActor,
@@ -41,6 +42,9 @@ class Trip(TimestampMixin, Document):
     destination: str = Field(default="", max_length=TITLE_MAX_LENGTH)
     # How the group wants to travel; None = any mode the enabled suppliers offer.
     transport_mode: TransportMode | None = None
+    # Simple transport preferences (see `TravelPreferences`); None = no preference.
+    earliest_departure_hour: int | None = Field(default=None, ge=0, le=23)
+    max_transfers: int | None = Field(default=None, ge=0, le=MAX_TRANSFERS_LIMIT)
     status: TripStatus = TripStatus.COLLECTING
     organizer_id: PydanticObjectId
     invite_code: str

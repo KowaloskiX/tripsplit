@@ -13,12 +13,14 @@ from app.core.domain.errors import TripError
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import TravellerField
 from app.core.domain.trips import (
+    NO_PREFERENCES,
     BookingStatus,
     ContributionStatus,
     EventActor,
     EventKind,
     MemberRole,
     TransportMode,
+    TravelPreferences,
     TripStatus,
     is_fully_paid,
 )
@@ -84,6 +86,7 @@ class NewTrip:
     display_name: str
     destination: str = ""
     transport_mode: TransportMode | None = None
+    preferences: TravelPreferences = NO_PREFERENCES
 
 
 def new_invite_code() -> str:
@@ -123,6 +126,8 @@ class TripService:
                     budget_per_person_minor=data.budget_per_person_minor,
                     destination=data.destination,
                     transport_mode=data.transport_mode,
+                    earliest_departure_hour=data.preferences.earliest_departure_hour,
+                    max_transfers=data.preferences.max_transfers,
                     organizer_id=organizer_id,
                     invite_code=invite_code,
                 ),

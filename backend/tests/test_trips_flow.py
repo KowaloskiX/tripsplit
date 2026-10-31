@@ -331,6 +331,26 @@ async def test_trip_dates_must_be_in_order(member_factory: MemberFactory) -> Non
     assert response.status_code == 422
 
 
+async def test_the_trip_keeps_the_groups_travel_preferences(
+    member_factory: MemberFactory,
+) -> None:
+    organizer = await member_factory("organizer@example.com")
+    trip_id = await _create_trip(
+        organizer,
+        destination="Praha",
+        transport_mode="rail",
+        earliest_departure_hour=8,
+        max_transfers=1,
+    )
+    trip = (await _room(organizer, trip_id))["trip"]
+    assert (trip["destination"], trip["transport_mode"]) == ("Praha", "rail")
+    assert (trip["earliest_departure_hour"], trip["max_transfers"]) == (8, 1)
+    plain = (await _room(organizer, await _create_trip(organizer)))["trip"]
+    assert (plain["earliest_departure_hour"], plain["max_transfers"]) == (None, None)
+    too_late = await organizer.post("/api/trips", {**TRIP, "earliest_departure_hour": 24})
+    assert too_late.status_code == 422
+
+
 async def test_demo_routes_do_not_exist_in_production(
     app: FastAPI, settings: Settings, member_factory: MemberFactory
 ) -> None:

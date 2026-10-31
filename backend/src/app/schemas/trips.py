@@ -11,6 +11,7 @@ from pydantic import AfterValidator, BaseModel, ConfigDict, Field, JsonValue, mo
 
 from app.core.domain.suppliers import TravellerField
 from app.core.domain.trips import (
+    MAX_TRANSFERS_LIMIT,
     BookingKind,
     ContributionStatus,
     EventActor,
@@ -56,6 +57,10 @@ class CreateTripRequest(StrictRequest):
     destination: str = Field(default="", max_length=TITLE_MAX_LENGTH)
     # How the group wants to travel; null = any mode the suppliers offer.
     transport_mode: TransportMode | None = None
+    # Earliest departure hour (local, 0-23) for every leg; null = any time.
+    earliest_departure_hour: int | None = Field(default=None, ge=0, le=23)
+    # Most changes per direction (0 = direct only); null = any.
+    max_transfers: int | None = Field(default=None, ge=0, le=MAX_TRANSFERS_LIMIT)
 
     @model_validator(mode="after")
     def _dates_in_order(self) -> Self:
@@ -102,6 +107,8 @@ class TripResponse(_ReadModel):
     currency: str
     destination: str
     transport_mode: TransportMode | None
+    earliest_departure_hour: int | None
+    max_transfers: int | None
     status: TripStatus
     organizer_id: str
     chosen_proposal_id: str | None

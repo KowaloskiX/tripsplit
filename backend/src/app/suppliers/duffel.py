@@ -46,7 +46,7 @@ from app.core.domain.bookings import format_money
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import SupplierCapabilities, TravellerField
 from app.core.domain.travellers import Gender, TravellerDetails, split_name
-from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode, TravelPreferences
 from app.suppliers.airports import airport_code
 from app.suppliers.duffel_client import SEARCH_TIMEOUT_S, DuffelClient, DuffelFailure
 from app.suppliers.ports import (
@@ -319,6 +319,12 @@ def select_offers(offers: Sequence[FlightOffer], limit: int) -> list[FlightOffer
     return sorted(picks, key=lambda offer: (offer.total_amount, offer.id))
 
 
+def fits_preferences(offer: FlightOffer, preferences: TravelPreferences) -> bool:
+    """Every slice leaves no earlier than the group wants (local time at the airport) and
+    changes planes at most `max_transfers` times."""
+    return all(preferences.accepts(legs[0].departs_at.hour, len(legs) - 1) for legs in offer.slices)
+
+
 # ---- travellers -----------------------------------------------------------------------------
 
 _ASCII_FOLD = str.maketrans({"ł": "l", "Ł": "L", "ø": "o", "Ø": "O", "ß": "ss", "đ": "d"})
@@ -459,7 +465,11 @@ class DuffelSupplier:
             self.log.notes.append(f"the Duffel search was refused: {found.error.describe()}")
             return []
         request_id, offers = found.value
-        usable = [offer for offer in offers if self._holdable(offer)]
+        usable = [
+            offer
+            for offer in offers
+            if self._holdable(offer) and fits_preferences(offer, request.preferences)
+        ]
         chosen = select_offers(usable, self.config.max_offers)
         self.log.notes.append(
             f"{origin} -> {destination} {searched} pax: {len(offers)} offers, "

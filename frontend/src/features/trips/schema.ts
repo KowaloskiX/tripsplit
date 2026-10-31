@@ -4,6 +4,30 @@ import type { CreateTripRequest } from "@/lib/api";
 
 /** Must match `MAX_GROUP_SIZE` on the backend. */
 export const MAX_GROUP_SIZE = 20;
+/** Must match `MAX_TRANSFERS_LIMIT` on the backend. */
+export const MAX_TRANSFERS = 3;
+
+/** Cities the enabled suppliers know well — offered as suggestions, any city is accepted. */
+export const SUGGESTED_DESTINATIONS = [
+  "Praha",
+  "Barcelona",
+  "Berlin",
+  "Wien",
+  "Budapest",
+  "Kraków",
+  "Lisbon",
+  "Rome",
+] as const;
+
+export const TRANSPORT_MODES = ["any", "rail", "flight", "bus"] as const;
+export type TransportChoice = (typeof TRANSPORT_MODES)[number];
+
+export const TRANSPORT_LABELS: Record<TransportChoice, string> = {
+  any: "Any",
+  rail: "Train",
+  flight: "Flight",
+  bus: "Bus",
+};
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const WHOLE_NUMBER = /^\d+$/;
@@ -17,6 +41,21 @@ export const createTripSchema = z
   .object({
     title: z.string().trim().min(1, "Give the trip a name.").max(120),
     origin: z.string().trim().min(1, "Where are you leaving from?").max(120),
+    destination: z.string().trim().min(1, "Where are you going?").max(120),
+    transportMode: z.enum(TRANSPORT_MODES),
+    earliestDeparture: z
+      .string()
+      .refine((value) => value === "" || (WHOLE_NUMBER.test(value) && Number(value) <= 23), {
+        message: "Pick an hour between 0 and 23, or leave it empty.",
+      }),
+    maxTransfers: z
+      .string()
+      .refine(
+        (value) => value === "" || (WHOLE_NUMBER.test(value) && Number(value) <= MAX_TRANSFERS),
+        {
+          message: `At most ${MAX_TRANSFERS} changes.`,
+        },
+      ),
     brief: z.string().trim().max(4000, "Keep the brief under 4000 characters."),
     dateFrom: z.string().regex(ISO_DATE, "Pick the start date."),
     dateTo: z.string().regex(ISO_DATE, "Pick the end date."),
@@ -46,6 +85,11 @@ export function toCreateTripBody(values: CreateTripValues): CreateTripRequest {
   return {
     title: values.title,
     origin: values.origin,
+    destination: values.destination,
+    transport_mode: values.transportMode === "any" ? null : values.transportMode,
+    earliest_departure_hour:
+      values.earliestDeparture === "" ? null : Number(values.earliestDeparture),
+    max_transfers: values.maxTransfers === "" ? null : Number(values.maxTransfers),
     brief: values.brief,
     date_from: values.dateFrom,
     date_to: values.dateTo,
