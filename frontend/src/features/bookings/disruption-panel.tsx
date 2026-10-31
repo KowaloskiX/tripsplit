@@ -47,11 +47,16 @@ export function DisruptionPanel({ trip }: { trip: TripBookingsResponse }): React
             </p>
             <ul className="divide-y divide-line text-sm tabular-nums">
               {result.shares.map((share) => (
-                <li key={share.user_id} className="flex justify-between gap-3 py-1.5">
-                  <span className="text-ink">{share.display_name}</span>
-                  <span className="text-muted">
-                    {formatMoney(share.share_minor, trip.currency)} (
-                    {formatDelta(share.delta_minor, trip.currency)}) · {share.status}
+                <li key={share.user_id} className="flex items-start justify-between gap-3 py-1.5">
+                  <span className="min-w-0 truncate text-ink">{share.display_name}</span>
+                  {/* Two short lines instead of one long one: no wrapping mid-amount at 390 px. */}
+                  <span className="shrink-0 text-right">
+                    <span className="block whitespace-nowrap text-ink">
+                      {formatMoney(share.share_minor, trip.currency)}
+                    </span>
+                    <span className="block whitespace-nowrap text-xs text-muted">
+                      {formatDelta(share.delta_minor, trip.currency)} · {share.status}
+                    </span>
                   </span>
                 </li>
               ))}
