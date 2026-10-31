@@ -27,6 +27,7 @@ from app.core.domain.suppliers import (
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
 from app.core.domain.trust import Provenance, ProvenanceSource
+from app.suppliers.demo_rail import purchase_url as demo_purchase_url
 from app.suppliers.ports import (
     BookingRef,
     DisruptionKind,
@@ -90,6 +91,9 @@ class SimSupplier:
     behaviour: SimBehaviour = field(default_factory=SimBehaviour)
     holds: dict[str, tuple[datetime, int]] = field(default_factory=dict)
     purchases: list[str] = field(default_factory=list)
+    # In a demo: our fake rail site, where the agent buys a simulated train (the default
+    # sim.tripsplit.invalid URL does not resolve, so a live agent run would fail at once).
+    purchase_site: str | None = None
 
     # ---- search -------------------------------------------------------------------------
 
@@ -314,7 +318,7 @@ class SimSupplier:
             segments=segments,
             refundable=self.capabilities.refund_policy_known,
             expires_at=self.clock() + self.capabilities.quote_ttl,
-            purchase_url=f"{SIM_URL}/{self.id}/book?offer={offer_ref}",
+            purchase_url=self._purchase_url(offer_ref, per_person, segments),
             details=details,
             starts_at=starts_at or (segments[0].departs_at if segments else None),
             # Illustrative data: no links pretending to be a real carrier or hotel.
@@ -325,6 +329,20 @@ class SimSupplier:
                 "title": title[:120],
                 "currency": request.currency,
             },
+        )
+
+    def _purchase_url(self, offer_ref: str, per_person: int, segments: tuple[Segment, ...]) -> str:
+        if self.purchase_site is None or self.capabilities.mode is not TransportMode.RAIL:
+            return f"{SIM_URL}/{self.id}/book?offer={offer_ref}"
+        if not segments:
+            return f"{SIM_URL}/{self.id}/book?offer={offer_ref}"
+        return demo_purchase_url(
+            self.purchase_site,
+            origin=segments[0].origin,
+            destination=segments[-1].destination,
+            depart=segments[0].departs_at.date(),
+            back=None,
+            fare_minor=per_person,
         )
 
     # ---- quote / hold / purchase / status -------------------------------------------------
@@ -549,6 +567,7 @@ def sim_supplier(
     clock: Clock,
     behaviour: SimBehaviour | None = None,
     capabilities: SupplierCapabilities | None = None,
+    purchase_site: str | None = None,
 ) -> SimSupplier:
     """One of the standard simulators by id (`SIM_CAPABILITIES`), optionally reconfigured."""
     display_name, standard = SIM_CAPABILITIES[supplier_id]
@@ -558,4 +577,5 @@ def sim_supplier(
         capabilities=replace(capabilities or standard, simulated=True),
         clock=clock,
         behaviour=behaviour or SimBehaviour(),
+        purchase_site=purchase_site,
     )
