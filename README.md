@@ -4,6 +4,36 @@ An agent joins a group of friends, proposes ready-made trip packages, collects v
 person's share, books the train, the stay and the activities, and keeps an eye on the trip until
 the end. Nobody fronts the money for everyone: the booking fires only when every share is paid.
 
+## The pitch
+
+**The problem.** Group trips die in the group chat: hundreds of messages to pick a place, a poll
+nobody closes, and one friend who ends up booking — and fronting the money — for everyone, then
+chasing transfers for weeks. When the train is delayed, that same friend sorts it out alone.
+
+**What it does.** One brief ("weekend in Prague for 6 from Warsaw, cheap, good food") and an
+agent takes it from the group chat to tickets: it proposes three priced packages from live
+suppliers, the group votes, the total is split to the grosz, everyone pays their own share, and
+the agent books the train, the stay and the activities — then keeps watching the trip and
+rebooks on a disruption, re-splitting the difference.
+
+**Why it is different.**
+
+- **Nobody fronts the money.** Rule #1 lives in the backend, not the UI: nothing is bought until
+  every share is paid. Price moves and drop-outs re-split automatically; refunds settle once the
+  trip is booked.
+- **Post-purchase care.** A delayed train or a changed flight is rebooked by the agent; every
+  purchase of that leg is replaced and the group tops up (or gets money back) in one re-split.
+- **An agent engine, not a demo script.** A browser agent buys where there is no API, asks a
+  human once before it pays, hands over at CAPTCHA/OTP instead of bypassing it, and replays a
+  recorded checkout trajectory with **zero planner LLM calls** on repeat runs.
+- **Real suppliers behind one port.** Live PKP Intercity trains, Duffel flights (test API, real
+  hold orders), LiteAPI stays — plus simulators for every mode, swappable with `SUPPLIERS=`.
+
+Three-minute stage script, fallback plan and real-vs-simulated table:
+[`docs/DEMO.md`](./docs/DEMO.md).
+
+## The codebase
+
 Monorepo: **TanStack Start (TS)** + **FastAPI (Python)** + **MongoDB**, with hand-rolled auth,
 a browser-driving booking agent (`backend/src/app/agent/`) and enforced architecture boundaries.
 

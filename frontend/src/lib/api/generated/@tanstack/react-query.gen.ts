@@ -6,8 +6,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { agentRunsFrame, agentRunsGraph, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsApproveAll, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, bookingsStartAll, contributionsPay, demoDisruption, demoLeave, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
-import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsGraphData, AgentRunsGraphError, AgentRunsGraphResponse, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveAllData, BookingsApproveAllError, BookingsApproveAllResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartAllData, BookingsStartAllError, BookingsStartAllResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
+import { agentRunsFrame, agentRunsGraph, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsApproveAll, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, bookingsStartAll, contributionsPay, demoDirectorProgress, demoDirectorStart, demoDirectorStop, demoDisruption, demoLeave, demoPayAll, demoPhones, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
+import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsGraphData, AgentRunsGraphError, AgentRunsGraphResponse, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveAllData, BookingsApproveAllError, BookingsApproveAllResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartAllData, BookingsStartAllError, BookingsStartAllResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDirectorProgressData, DemoDirectorProgressError, DemoDirectorProgressResponse, DemoDirectorStartData, DemoDirectorStartError, DemoDirectorStartResponse, DemoDirectorStopData, DemoDirectorStopError, DemoDirectorStopResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoPhonesData, DemoPhonesError, DemoPhonesResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -480,6 +480,64 @@ export const contributionsPayMutation = (options?: Partial<Options<Contributions
 };
 
 /**
+ * Stop Director
+ *
+ * Stops the run; whatever it already did to the trip stays done.
+ */
+export const demoDirectorStopMutation = (options?: Partial<Options<DemoDirectorStopData>>): UseMutationOptions<DemoDirectorStopResponse, DemoDirectorStopError, Options<DemoDirectorStopData>> => {
+    const mutationOptions: UseMutationOptions<DemoDirectorStopResponse, DemoDirectorStopError, Options<DemoDirectorStopData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await demoDirectorStop({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const demoDirectorProgressQueryKey = (options: Options<DemoDirectorProgressData>) => createQueryKey('demoDirectorProgress', options);
+
+/**
+ * Director Progress
+ *
+ * The live progress of the trip's latest run (404 when none ran since the start-up).
+ */
+export const demoDirectorProgressOptions = (options: Options<DemoDirectorProgressData>) => queryOptions<DemoDirectorProgressResponse, DemoDirectorProgressError, DemoDirectorProgressResponse, ReturnType<typeof demoDirectorProgressQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await demoDirectorProgress({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: demoDirectorProgressQueryKey(options)
+});
+
+/**
+ * Start Director
+ *
+ * Starts a choreography (409 while one is already playing on the trip).
+ */
+export const demoDirectorStartMutation = (options?: Partial<Options<DemoDirectorStartData>>): UseMutationOptions<DemoDirectorStartResponse, DemoDirectorStartError, Options<DemoDirectorStartData>> => {
+    const mutationOptions: UseMutationOptions<DemoDirectorStartResponse, DemoDirectorStartError, Options<DemoDirectorStartData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await demoDirectorStart({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Simulate Disruption
  *
  * The demo's last scene: the transport is delayed, the agent rebooks and re-splits.
@@ -533,6 +591,26 @@ export const demoPayAllMutation = (options?: Partial<Options<DemoPayAllData>>): 
     };
     return mutationOptions;
 };
+
+export const demoPhonesQueryKey = (options: Options<DemoPhonesData>) => createQueryKey('demoPhones', options);
+
+/**
+ * Phones
+ *
+ * One compact card per member for the six-phone grid.
+ */
+export const demoPhonesOptions = (options: Options<DemoPhonesData>) => queryOptions<DemoPhonesResponse, DemoPhonesError, DemoPhonesResponse, ReturnType<typeof demoPhonesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await demoPhones({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: demoPhonesQueryKey(options)
+});
 
 /**
  * Seed Members

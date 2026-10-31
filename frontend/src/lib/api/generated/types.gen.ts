@@ -325,6 +325,106 @@ export type DependencyStatus = {
 };
 
 /**
+ * DirectorBeatResponse
+ */
+export type DirectorBeatResponse = {
+    /**
+     * Actor
+     */
+    actor: string;
+    /**
+     * At
+     */
+    at: string;
+    phase: DirectorPhase;
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * DirectorFeaturesResponse
+ */
+export type DirectorFeaturesResponse = {
+    /**
+     * Auto Book
+     */
+    auto_book: boolean;
+    /**
+     * Wallet
+     */
+    wallet: boolean;
+};
+
+/**
+ * DirectorPace
+ */
+export type DirectorPace = 'fast' | 'stage';
+
+/**
+ * DirectorPhase
+ */
+export type DirectorPhase = 'starting' | 'joining' | 'researching' | 'voting' | 'paying' | 'waiting_for_organizer' | 'booking' | 'disruption' | 'topping_up' | 'finished';
+
+/**
+ * DirectorProgressResponse
+ */
+export type DirectorProgressResponse = {
+    /**
+     * Beats
+     */
+    beats: Array<DirectorBeatResponse>;
+    /**
+     * Error
+     */
+    error: string | null;
+    features: DirectorFeaturesResponse;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    pace: DirectorPace;
+    phase: DirectorPhase;
+    script: DirectorScript;
+    /**
+     * Started At
+     */
+    started_at: string;
+    state: DirectorState;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+};
+
+/**
+ * DirectorRequest
+ */
+export type DirectorRequest = {
+    /**
+     * Leave Organizer Payment
+     */
+    leave_organizer_payment?: boolean;
+    pace?: DirectorPace;
+    script?: DirectorScript;
+    /**
+     * With Disruption
+     */
+    with_disruption?: boolean;
+};
+
+/**
+ * DirectorScript
+ */
+export type DirectorScript = 'full' | 'vote_and_pay' | 'disruption';
+
+/**
+ * DirectorState
+ */
+export type DirectorState = 'running' | 'done' | 'stopped' | 'failed';
+
+/**
  * DisruptionRequest
  */
 export type DisruptionRequest = {
@@ -670,6 +770,75 @@ export type PaymentResponse = {
      * Paid Minor
      */
     paid_minor: number;
+    status: TripStatus;
+    /**
+     * Trip Id
+     */
+    trip_id: string;
+};
+
+/**
+ * PhoneResponse
+ */
+export type PhoneResponse = {
+    /**
+     * Amount Minor
+     */
+    amount_minor: number | null;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Initials
+     */
+    initials: string;
+    /**
+     * Is Demo
+     */
+    is_demo: boolean;
+    /**
+     * Is Organizer
+     */
+    is_organizer: boolean;
+    /**
+     * Last Message
+     */
+    last_message: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Paid
+     */
+    paid: boolean;
+    /**
+     * Paid Minor
+     */
+    paid_minor: number;
+    /**
+     * User Id
+     */
+    user_id: string;
+    /**
+     * Voted For Proposal Id
+     */
+    voted_for_proposal_id: string | null;
+    /**
+     * Voted For Title
+     */
+    voted_for_title: string | null;
+};
+
+/**
+ * PhonesResponse
+ */
+export type PhonesResponse = {
+    /**
+     * Phones
+     */
+    phones: Array<PhoneResponse>;
     status: TripStatus;
     /**
      * Trip Id
@@ -1958,6 +2127,132 @@ export type ContributionsPayResponses = {
 
 export type ContributionsPayResponse = ContributionsPayResponses[keyof ContributionsPayResponses];
 
+export type DemoDirectorStopData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/director';
+};
+
+export type DemoDirectorStopErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoDirectorStopError = DemoDirectorStopErrors[keyof DemoDirectorStopErrors];
+
+export type DemoDirectorStopResponses = {
+    /**
+     * Successful Response
+     */
+    200: DirectorProgressResponse;
+};
+
+export type DemoDirectorStopResponse = DemoDirectorStopResponses[keyof DemoDirectorStopResponses];
+
+export type DemoDirectorProgressData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/director';
+};
+
+export type DemoDirectorProgressErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoDirectorProgressError = DemoDirectorProgressErrors[keyof DemoDirectorProgressErrors];
+
+export type DemoDirectorProgressResponses = {
+    /**
+     * Successful Response
+     */
+    200: DirectorProgressResponse;
+};
+
+export type DemoDirectorProgressResponse = DemoDirectorProgressResponses[keyof DemoDirectorProgressResponses];
+
+export type DemoDirectorStartData = {
+    body: DirectorRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/director';
+};
+
+export type DemoDirectorStartErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoDirectorStartError = DemoDirectorStartErrors[keyof DemoDirectorStartErrors];
+
+export type DemoDirectorStartResponses = {
+    /**
+     * Successful Response
+     */
+    202: DirectorProgressResponse;
+};
+
+export type DemoDirectorStartResponse = DemoDirectorStartResponses[keyof DemoDirectorStartResponses];
+
 export type DemoDisruptionData = {
     body: DisruptionRequest;
     path: {
@@ -2071,6 +2366,48 @@ export type DemoPayAllResponses = {
 };
 
 export type DemoPayAllResponse = DemoPayAllResponses[keyof DemoPayAllResponses];
+
+export type DemoPhonesData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/phones';
+};
+
+export type DemoPhonesErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoPhonesError = DemoPhonesErrors[keyof DemoPhonesErrors];
+
+export type DemoPhonesResponses = {
+    /**
+     * Successful Response
+     */
+    200: PhonesResponse;
+};
+
+export type DemoPhonesResponse = DemoPhonesResponses[keyof DemoPhonesResponses];
 
 export type DemoSeedMembersData = {
     body: SeedMembersRequest;
