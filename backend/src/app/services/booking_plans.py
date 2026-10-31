@@ -81,7 +81,9 @@ def bookings_for_item(
                     kind=item.kind,
                     title=item.title,
                     details=details,
-                    travellers=size,
+                    # One purchase for everybody covers the whole group, members or not
+                    # (`supplier_prices.party_of`).
+                    travellers=size if len(sizes) > 1 else max(size, trip.group_size),
                     date_from=trip.date_from,
                     date_to=trip.date_to,
                     starts_at=item.starts_at,

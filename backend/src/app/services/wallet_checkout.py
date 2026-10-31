@@ -131,7 +131,7 @@ class PayAllService:
             EventKind.MESSAGE,
             EventActor.MEMBER,
             f"{organizer.display_name} is paying for everyone: "
-            f"{format_money(total, trip.currency)} for {len(owed)} share(s).",
+            f"{format_money(total, trip.currency)} for {trip.group_size} people.",
             payload={"pay_all": True, "total_minor": total, "shares": len(owed)},
             actor_user_id=organizer.user_id,
         )
