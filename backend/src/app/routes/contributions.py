@@ -5,10 +5,20 @@ from starlette import status
 
 from app.core.domain.wallet import PaymentMethod
 from app.core.errors_http import ErrorResponse
-from app.routes.dependencies import ContributionServiceDep, CurrentUser, WalletCheckoutServiceDep
+from app.routes.dependencies import (
+    ContributionServiceDep,
+    CurrentUser,
+    PayAllServiceDep,
+    WalletCheckoutServiceDep,
+)
 from app.routes.errors import payment_value
 from app.schemas.trips import PaymentResponse
-from app.schemas.wallet import CheckoutResponse, InsufficientFundsResponse, TopUpAndPayRequest
+from app.schemas.wallet import (
+    CheckoutResponse,
+    InsufficientFundsResponse,
+    PayAllResponse,
+    TopUpAndPayRequest,
+)
 from app.services.wallet import TopUpRequest
 
 router = APIRouter(prefix="/trips/{trip_id}/contributions", tags=["contributions"])
@@ -58,3 +68,35 @@ async def top_up_and_pay(
         ),
     )
     return CheckoutResponse.model_validate(payment_value(result))
+
+
+@router.post(
+    "/pay-all-shares",
+    operation_id="contributions-pay-all-shares",
+    responses={
+        status.HTTP_403_FORBIDDEN: {"model": ErrorResponse},
+        status.HTTP_404_NOT_FOUND: {"model": ErrorResponse},
+        status.HTTP_409_CONFLICT: {"model": InsufficientFundsResponse},
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {"model": ErrorResponse},
+    },
+)
+async def pay_all_shares(
+    trip_id: str,
+    payload: TopUpAndPayRequest,
+    service: PayAllServiceDep,
+    user: CurrentUser,
+) -> PayAllResponse:
+    """The organizer pays for everyone (organizer only): tops the organizer's wallet up by the total
+    shortfall (BLIK / card) and pays every outstanding share from it; each is recorded as paid
+    by the organizer. Pays right away when the wallet already covers the total."""
+    result = await service.pay_everyone(
+        trip_id,
+        user.id,
+        TopUpRequest(
+            amount_minor=0,
+            method=PaymentMethod(payload.method),
+            blik_code=payload.blik_code,
+            card_last4=payload.card_last4,
+        ),
+    )
+    return PayAllResponse.model_validate(payment_value(result))

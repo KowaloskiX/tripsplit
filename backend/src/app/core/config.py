@@ -97,6 +97,9 @@ class Settings(BaseSettings):
     search_cache_ttl_s: float = Field(default=300.0, ge=0.0)
     # A feed message per finished supplier search ("PKP Intercity ✓ 2 offers · 2.9 s").
     search_progress_events: bool = True
+    # When the last share is paid, every purchase starts on its own ("Book everything"); the
+    # organizer still approves the basket once. Unset = on in dev, off elsewhere.
+    auto_book: bool | None = None
     # One GET per supplier link at research time (at most ~1.5 s): 404/410 links are dropped
     # and items without photos get the page's og:image.
     link_check: bool = True
@@ -228,6 +231,10 @@ class Settings(BaseSettings):
         if not self.demo_supplier_url or not self.demo_routes_enabled:
             return None
         return self.demo_supplier_url.rstrip("/")
+
+    @property
+    def auto_book_enabled(self) -> bool:
+        return self.auto_book if self.auto_book is not None else self.app_env == "dev"
 
     @property
     def holds_enabled(self) -> bool:

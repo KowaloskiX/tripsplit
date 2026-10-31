@@ -3,6 +3,7 @@ to REBOOKING after top-ups for a disruption) only when every share is covered �
 and not in the booking agent.
 """
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from app.core.domain.errors import TripError
@@ -31,9 +32,17 @@ class PaymentView:
     all_paid: bool
 
 
+type FullyPaidHook = Callable[[Trip], Awaitable[None]]
+
+
 class ContributionService:
-    def __init__(self, payments: PaymentProvider) -> None:
+    def __init__(
+        self, payments: PaymentProvider, *, on_fully_paid: FullyPaidHook | None = None
+    ) -> None:
         self.payments = payments
+        # Called once, right after the trip moved on because every share is covered (AUTO_BOOK
+        # starts every purchase from here). Never inside the payment's own write.
+        self.on_fully_paid = on_fully_paid
         self.trips = TripRepository()
         self.members = MemberRepository()
         self.contributions = ContributionRepository()
@@ -58,9 +67,12 @@ class ContributionService:
         return Ok(due) if due > 0 else Err(TripError.ALREADY_PAID)
 
     async def pay_for(
-        self, trip: Trip, member: TripMember
+        self, trip: Trip, member: TripMember, payer: TripMember | None = None
     ) -> Result[PaymentView, TripError | InsufficientFunds]:
-        """Charges `member`'s outstanding share. Callers have already checked membership."""
+        """Charges `member`'s outstanding share — to `payer` when somebody else covers it (the
+        organizer paying for everyone), else to the member. Callers have already checked
+        membership."""
+        payer = payer or member
         if trip.status is not TripStatus.PAYING:
             return Err(TripError.INVALID_STATE)
         trip_oid = identifier_of(trip)
@@ -74,7 +86,7 @@ class ContributionService:
 
         # Outside any transaction on purpose: a charge is not replayable.
         charged = await self.payments.charge(
-            to_text(trip_oid), to_text(member.user_id), outstanding, trip.currency
+            to_text(trip_oid), to_text(payer.user_id), outstanding, trip.currency
         )
         if isinstance(charged, Err):
             return charged
@@ -85,17 +97,24 @@ class ContributionService:
         if not recorded:
             # A simultaneous payment (or a re-split) won the race: give this charge back.
             await self.payments.refund(
-                to_text(trip_oid), to_text(member.user_id), receipt.paid_minor, trip.currency
+                to_text(trip_oid), to_text(payer.user_id), receipt.paid_minor, trip.currency
             )
             return Err(TripError.ALREADY_PAID)
+        money = format_money(receipt.paid_minor, trip.currency)
+        covered = payer.user_id != member.user_id
         await self.events.add(
             trip_oid,
             EventKind.CONTRIBUTION_PAID,
             EventActor.MEMBER,
-            f"{member.display_name} paid their share "
-            f"({format_money(receipt.paid_minor, trip.currency)}).",
-            payload={"amount_minor": receipt.paid_minor},
-            actor_user_id=member.user_id,
+            f"{payer.display_name} paid {member.display_name}'s share ({money})."
+            if covered
+            else f"{member.display_name} paid their share ({money}).",
+            payload={
+                "amount_minor": receipt.paid_minor,
+                "for_user_id": to_text(member.user_id),
+                "paid_by_user_id": to_text(payer.user_id),
+            },
+            actor_user_id=payer.user_id,
         )
         resumed = await self._start_booking_if_fully_paid(trip)
         all_paid = resumed is not None
@@ -127,4 +146,8 @@ class ContributionService:
                 "Everyone paid — the agent can book now.",
                 payload={"total_minor": sum(c.paid_minor for c in contributions)},
             )
+            if self.on_fully_paid is not None:
+                fresh = await self.trips.get(trip_oid)
+                if fresh is not None:
+                    await self.on_fully_paid(fresh)
         return target
