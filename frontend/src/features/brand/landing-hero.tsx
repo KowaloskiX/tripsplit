@@ -3,6 +3,7 @@ import { ArrowRight, BedDouble, Check, TrainFront } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
+import { BackgroundVideo } from "@/components/ui/background-video";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Reveal } from "@/components/ui/reveal";
@@ -37,8 +38,14 @@ export function HeroHeadline({ id, className }: { id?: string; className?: strin
 
 export function LandingHero(): ReactNode {
   return (
-    <section aria-labelledby="hero-heading" className="overflow-hidden bg-bg text-ink">
-      <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:pt-28 lg:pb-32">
+    <section aria-labelledby="hero-heading" className="relative overflow-hidden bg-bg text-ink">
+      <BackgroundVideo src="/media/hero-forest.mp4" poster="/media/hero-forest.jpg" />
+      {/* Keeps the headline readable over the footage: solid page colour on the text side. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-bg/90 via-bg/75 to-bg lg:bg-gradient-to-r lg:from-bg lg:via-bg/85 lg:to-bg/30"
+      />
+      <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:pt-28 lg:pb-32">
         <div className="max-w-xl">
           <p
             className="rise-in inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface-sunken px-3 py-1.5 text-[13px] text-muted"

@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
+import { BackgroundVideo } from "@/components/ui/background-video";
 import { Reveal } from "@/components/ui/reveal";
 
 import { StartTripButton } from "./landing-hero";
@@ -51,11 +52,18 @@ export function HowItWorks(): ReactNode {
 export function ClosingCta(): ReactNode {
   return (
     <section aria-labelledby="cta-heading" className="px-4 py-20 sm:px-6 sm:py-24">
-      <Reveal className="mx-auto flex max-w-6xl flex-col items-start gap-8 rounded-[var(--radius-panel)] bg-sand-200 px-8 py-14 sm:flex-row sm:items-center sm:justify-between sm:px-12 dark:bg-surface-sunken">
-        <h2 id="cta-heading" className="display text-[clamp(2rem,4vw,3rem)] text-balance text-ink">
-          Plan your next trip
-        </h2>
-        <StartTripButton />
+      <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[var(--radius-panel)]">
+        <BackgroundVideo src="/media/city-harbour.mp4" poster="/media/city-harbour.jpg" />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[#1C1A18]/55" />
+        <div className="relative flex flex-col items-start gap-8 px-8 py-20 sm:flex-row sm:items-center sm:justify-between sm:px-12 sm:py-24">
+          <h2
+            id="cta-heading"
+            className="display text-[clamp(2rem,4vw,3rem)] text-balance text-[#F5F3EC]"
+          >
+            Plan your next trip
+          </h2>
+          <StartTripButton />
+        </div>
       </Reveal>
     </section>
   );
