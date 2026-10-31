@@ -24,12 +24,6 @@ importers:
 
   frontend:
     dependencies:
-      '@fontsource-variable/cormorant-garamond':
-        specifier: 5.3.0
-        version: 5.3.0
-      '@fontsource-variable/dm-sans':
-        specifier: 5.3.0
-        version: 5.3.0
       '@fontsource-variable/geist-mono':
         specifier: 5.2.7
         version: 5.2.7
@@ -333,12 +327,6 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
-
-  '@fontsource-variable/cormorant-garamond@5.3.0':
-    resolution: {integrity: sha512-rgZJ/5w3hi60swAPnrOXpZf5wEH6NTrvm4H8D9Y4b1QIFUqlX14eM3QTMU/eAznjfh0eXpO1QUqsFhiy58aoMg==}
-
-  '@fontsource-variable/dm-sans@5.3.0':
-    resolution: {integrity: sha512-BpUG5bqePiDFMBM4ZtLSlPdAIOM990uB1dlXzIf4aw21yQR7BmykedLXXXMqGWsR18aMLOsbWccwJNh3ztTQaA==}
 
   '@fontsource-variable/geist-mono@5.2.7':
     resolution: {integrity: sha512-ZKlZ5sjtalb2TwXKs400mAGDlt/+2ENLNySPx0wTz3bP3mWARCsUW+rpxzZc7e05d2qGch70pItt3K4qttbIYA==}
@@ -2482,10 +2470,6 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.15.1': {}
-
-  '@fontsource-variable/cormorant-garamond@5.3.0': {}
-
-  '@fontsource-variable/dm-sans@5.3.0': {}
 
   '@fontsource-variable/geist-mono@5.2.7': {}
 

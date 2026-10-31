@@ -21,7 +21,7 @@ const button = cva(
           "border border-line bg-surface text-ink hover:border-ink/25 hover:bg-surface-sunken",
         ghost: "text-muted hover:bg-surface-sunken hover:text-ink",
         /** The one highlight: deep brown with cream text — the action that matters on the page. */
-        sun: "bg-sun text-sun-ink shadow-[0_1px_2px_rgb(78_59_49/0.12)] hover:opacity-90",
+        sun: "bg-sun text-sun-ink hover:opacity-90",
         danger: "border border-danger/40 bg-transparent text-danger hover:bg-danger-soft",
       },
       size: {

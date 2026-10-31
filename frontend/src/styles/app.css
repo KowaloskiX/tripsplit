@@ -1,75 +1,103 @@
 @import "tailwindcss";
-@import "@fontsource-variable/dm-sans";
-@import "@fontsource-variable/cormorant-garamond";
 @import "@fontsource-variable/geist-mono";
 @import "./motion.css";
+
+/* Satoshi (Indian Type Foundry, ITF Free Font License), self-hosted from Fontshare. */
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-700.woff2") format("woff2");
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Theme switching via a class on <html> — not prefers-color-scheme alone. A `.dark` subtree
    (the header, the landing hero) gets the night palette on its own. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * One place to reskin the whole app: change these values, not the components.
+ * One place to reskin the whole app: change these values, not the components. The source of
+ * truth is docs/design/tokens.json.
  *
- * Calm and warm: a white page, warm stone ink, sand for quiet fills, and one deep-brown primary
- * for the action that matters (always with cream text). Kinds get muted sage / sand / clay
- * chips. Money keeps three states of its own: paid, owes, refund.
+ * Light, calm, low energy: a warm off-white page, near-black ink, one olive-green accent for
+ * buttons, links and active states, sand for secondary surfaces, chips and dividers. Kind fills
+ * are olive / sand / clay tints. Status colours stay muted.
+ *
+ * Contrast (WCAG AA): ink 15.6:1 and muted 6.4:1 on the page, muted 4.8:1 on full sand,
+ * cream on green 5.7:1, green on surface 6.0:1. Green text on full sand is 4.3:1: use it for
+ * large text only.
  */
 :root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-sunken: #f9f6f1;
-  --ink: #453b35;
-  --muted: #6e665b;
-  --line: #ece5da;
-  --accent: #4e3b31;
-  --accent-ink: #f5efe4;
-  --live: #4e3b31;
+  --bg: #f5f3ec;
+  --surface: #fbfaf6;
+  --surface-sunken: #efe7d7;
+  --ink: #1c1a18;
+  --muted: #5e574d;
+  --line: #e6dac3;
+  --accent: #4f6814;
+  --accent-ink: #f5f3ec;
+  --live: #4f6814;
 
-  --sun: #4e3b31;
-  --sun-ink: #f5efe4;
-  --pastel-sea: #e9ece1;
-  --pastel-apricot: #f4ede1;
-  --pastel-blush: #f3e6dd;
-  --pastel-ink: #453b35;
+  --sun: #4f6814;
+  --sun-ink: #f5f3ec;
+  --pastel-sea: #e5e9d3;
+  --pastel-apricot: #efe5d1;
+  --pastel-blush: #f0ded1;
+  --pastel-ink: #1c1a18;
 
-  --success: #4c6a3a;
-  --success-soft: #eef1e7;
-  --warn: #8a5a1c;
-  --warn-soft: #f8f0e2;
-  --danger: #a13d2b;
-  --danger-soft: #f9ebe6;
-  --info: #4a6470;
-  --info-soft: #ebf0f1;
+  --success: #3f5a12;
+  --success-soft: #e6ebd6;
+  --warn: #7f5417;
+  --warn-soft: #f3e7d0;
+  --danger: #9a3a28;
+  --danger-soft: #f5e2da;
+  --info: #3f5d68;
+  --info-soft: #e3eaea;
 
-  --agent-bg: #fbf9f6;
-  --agent-fg: #453b35;
-  --agent-tag: #7a6344;
+  --agent-bg: #f1ecdf;
+  --agent-fg: #1c1a18;
+  --agent-tag: #4f6814;
 
-  --elev-card: 0 1px 2px rgb(78 59 49 / 0.04), 0 4px 18px -6px rgb(78 59 49 / 0.06);
-  --elev-pop: 0 12px 40px -12px rgb(78 59 49 / 0.22);
+  --elev-card: 0 1px 2px rgb(28 26 24 / 0.03);
+  --elev-pop: 0 12px 40px -12px rgb(28 26 24 / 0.18);
 }
 
 .dark {
-  --bg: #1b1816;
-  --surface: #221e1b;
-  --surface-sunken: #2a2521;
-  --ink: #efe8dd;
-  --muted: #aaa195;
-  --line: #3a332d;
-  --accent: #e8dcc9;
-  --accent-ink: #2a211c;
-  --live: #dcc8aa;
+  --bg: #1a1916;
+  --surface: #22211d;
+  --surface-sunken: #2b2924;
+  --ink: #f1eee6;
+  --muted: #ada796;
+  --line: #3a372f;
+  --accent: #a9c46a;
+  --accent-ink: #1a1916;
+  --live: #a9c46a;
 
-  --sun: #e8dcc9;
-  --sun-ink: #2a211c;
-  --pastel-sea: #2b2f27;
-  --pastel-apricot: #322b22;
+  --sun: #a9c46a;
+  --sun-ink: #1a1916;
+  --pastel-sea: #2c3022;
+  --pastel-apricot: #322c22;
   --pastel-blush: #33271f;
-  --pastel-ink: #efe8dd;
+  --pastel-ink: #f1eee6;
 
-  --success: #a9c38f;
-  --success-soft: #232a1d;
+  --success: #b8cf84;
+  --success-soft: #232a1a;
   --warn: #e2b36f;
   --warn-soft: #30261a;
   --danger: #e8987f;
@@ -77,22 +105,22 @@
   --info: #9bb8c4;
   --info-soft: #1e282b;
 
-  --agent-bg: #2a2521;
-  --agent-fg: #efe8dd;
-  --agent-tag: #dcc8aa;
+  --agent-bg: #2b2924;
+  --agent-fg: #f1eee6;
+  --agent-tag: #a9c46a;
 
-  --elev-card: 0 0 0 1px #3a332d;
-  --elev-pop: 0 0 0 1px #3a332d, 0 24px 48px -16px rgb(0 0 0 / 0.7);
+  --elev-card: 0 0 0 1px #3a372f;
+  --elev-pop: 0 0 0 1px #3a372f, 0 24px 48px -16px rgb(0 0 0 / 0.7);
 }
 
 /* The warm sand scale, for large quiet surfaces (hero frames, bands). Light only: pair with a
    `dark:` token. */
 @theme {
-  --color-sand-50: #fdfcfb;
-  --color-sand-100: #fbf9f6;
-  --color-sand-200: #f6f2eb;
-  --color-sand-300: #f0e9dd;
-  --color-sand-600: #c7ad87;
+  --color-sand-50: #fbfaf6;
+  --color-sand-100: #f6f1e6;
+  --color-sand-200: #efe6d5;
+  --color-sand-300: #e3d2b4;
+  --color-sand-600: #b59a6a;
 }
 
 @theme inline {
@@ -126,15 +154,15 @@
   --color-agent-fg: var(--agent-fg);
   --color-agent-tag: var(--agent-tag);
 
-  --font-sans:
-    "DM Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-    Arial, sans-serif;
-  --font-serif:
-    "Cormorant Garamond Variable", "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-sans: "Satoshi", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Headings: Nohemi once a licensed file is in the repo; until then system-ui. */
+  --font-heading: "Nohemi", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-heading);
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  --radius-control: 0.625rem;
-  --radius-panel: 14px;
+  --radius-control: 16px;
+  --radius-panel: 16px;
+  /* Spacing: Tailwind's default 0.25rem (4px) grid. */
   --radius-pill: 9999px;
 
   --shadow-card: var(--elev-card);
@@ -177,11 +205,11 @@
   color: var(--color-muted);
 }
 
-/* Display type: the serif, for page and section headlines only. */
+/* Display type: the heading face, for page and section headlines only. */
 @utility display {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  letter-spacing: -0.015em;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.035em;
   line-height: 1.05;
 }
 
