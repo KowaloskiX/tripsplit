@@ -22,6 +22,7 @@ from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
 from app.services.demo import DemoService
 from app.services.proposals import ProposalService
+from app.services.quick_trips import QuickTripService
 from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerService
 from app.services.trips import TripService
@@ -153,6 +154,15 @@ def get_demo_service(
 
 TripServiceDep = Annotated[TripService, Depends(get_trip_service)]
 ProposalServiceDep = Annotated[ProposalService, Depends(get_proposal_service)]
+
+
+def get_quick_trip_service(
+    trips: TripServiceDep, proposals: ProposalServiceDep
+) -> QuickTripService:
+    return QuickTripService(trips, proposals)
+
+
+QuickTripServiceDep = Annotated[QuickTripService, Depends(get_quick_trip_service)]
 ContributionServiceDep = Annotated[ContributionService, Depends(get_contribution_service)]
 DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]
 TravellerServiceDep = Annotated[TravellerService, Depends(get_traveller_service)]
