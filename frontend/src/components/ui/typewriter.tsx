@@ -8,6 +8,8 @@ type TypewriterProps = {
   /** Milliseconds per character. */
   speedMs?: number;
   delayMs?: number;
+  /** `false` shows the whole text at once — e.g. a ref that was already there on load. */
+  animate?: boolean;
   className?: string;
 };
 
@@ -16,13 +18,15 @@ export function Typewriter({
   text,
   speedMs = 55,
   delayMs = 0,
+  animate = true,
   className,
 }: TypewriterProps): ReactNode {
   const reduced = usePrefersReducedMotion();
-  const [count, setCount] = useState(reduced ? text.length : 0);
+  const instant = reduced || !animate;
+  const [count, setCount] = useState(instant ? text.length : 0);
 
   useEffect(() => {
-    if (reduced) {
+    if (instant) {
       setCount(text.length);
       return;
     }
@@ -40,7 +44,7 @@ export function Typewriter({
       window.clearTimeout(start);
       window.clearInterval(interval);
     };
-  }, [text, speedMs, delayMs, reduced]);
+  }, [text, speedMs, delayMs, instant]);
 
   const typing = count < text.length;
   return (

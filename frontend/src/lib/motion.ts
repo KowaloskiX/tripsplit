@@ -38,14 +38,15 @@ export function interpolate(from: number, to: number, progress: number): number 
 
 /**
  * Animates a number towards `target` over `durationMs` (requestAnimationFrame). The first
- * render shows `target` straight away unless `fromZero` is set; reduced motion never animates.
+ * render shows `target` straight away unless a `from` is given (count up on mount); later
+ * changes always animate from the shown value. Reduced motion never animates.
  */
 export function useCountUp(
   target: number,
-  { durationMs = 600, fromZero = false }: { durationMs?: number; fromZero?: boolean } = {},
+  { durationMs = 600, from }: { durationMs?: number; from?: number } = {},
 ): number {
   const reduced = usePrefersReducedMotion();
-  const [shown, setShown] = useState(fromZero && !reduced ? 0 : target);
+  const [shown, setShown] = useState(from !== undefined && !reduced ? from : target);
   const shownRef = useRef(shown);
   shownRef.current = shown;
 

@@ -18,7 +18,7 @@ type DigitRollProps = {
 export function DigitRoll({ value, minDigits = 1, className }: DigitRollProps): ReactNode {
   const digits = digitsOf(value, minDigits);
   return (
-    <span className={cn("ticket-mono inline-flex", className)}>
+    <span className={cn("ticket-mono inline-flex align-bottom", className)}>
       <span className="sr-only">{Math.floor(value)}</span>
       <span aria-hidden className="inline-flex">
         {digits.map((digit, place) => (
@@ -51,8 +51,8 @@ type CountUpProps = {
   /** Turns the in-between numbers into text, e.g. `formatMoney`. */
   format: (value: number) => string;
   durationMs?: number;
-  /** Count from zero on mount (a reveal) instead of only on change. */
-  fromZero?: boolean;
+  /** Count from this value on mount (e.g. the old amount) instead of only on change. */
+  from?: number;
   className?: string;
 };
 
@@ -61,10 +61,10 @@ export function CountUp({
   value,
   format,
   durationMs = 700,
-  fromZero = false,
+  from,
   className,
 }: CountUpProps): ReactNode {
-  const shown = useCountUp(value, { durationMs, fromZero });
+  const shown = useCountUp(value, from === undefined ? { durationMs } : { durationMs, from });
   return (
     <span className={cn("tabular-nums", className)}>
       <span className="sr-only">{format(value)}</span>
