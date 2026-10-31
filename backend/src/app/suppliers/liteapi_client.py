@@ -136,6 +136,18 @@ class LiteApiClient:
         params = {"countryCode": country_code, "cityName": city_name, "limit": str(limit)}
         return await self._call("GET", API_URL, "/data/hotels", params=params, retry=True)
 
+    async def hotels_near(
+        self, latitude: float, longitude: float, radius_m: int, limit: int
+    ) -> Result[Any, LiteApiFailure]:
+        """Hotels within `radius_m` of a point — for a city LiteAPI names differently."""
+        params = {
+            "latitude": f"{latitude:.4f}",
+            "longitude": f"{longitude:.4f}",
+            "radius": str(radius_m),
+            "limit": str(limit),
+        }
+        return await self._call("GET", API_URL, "/data/hotels", params=params, retry=True)
+
     async def rates(self, body: Json) -> Result[Any, LiteApiFailure]:
         return await self._call(
             "POST", API_URL, "/hotels/rates", body=body, retry=True, timeout_s=RATES_TIMEOUT_S

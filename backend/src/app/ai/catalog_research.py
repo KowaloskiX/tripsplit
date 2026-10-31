@@ -34,7 +34,7 @@ from dataclasses import replace
 from datetime import timedelta
 
 from app.ai.itinerary import fits_calendar, leg_fits, travel_time
-from app.ai.places import destination_of, travel_modes
+from app.ai.places import destination_of, origin_of, travel_modes
 from app.ai.research import (
     PackageItemPlan,
     PackagePlan,
@@ -203,7 +203,8 @@ class CatalogResearcher:
 
     async def research(self, brief: TripBrief) -> list[PackagePlan]:
         text = f"{brief.title} {brief.brief}"
-        destination = destination_of(brief.destination, text)
+        brief = replace(brief, origin=origin_of(brief.origin, text))
+        destination = destination_of(brief.destination, text, brief.origin)
         outbound, back = travel_modes(brief.transport_mode, text)
         transports, stays, activities = await asyncio.gather(
             self._transports(brief, destination, outbound, back),

@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from app.core.domain.places import city_named
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
@@ -74,6 +75,18 @@ STATION_ALIASES: dict[str, str] = {
     "wien": "Wien Hbf",
     "budapest": "Budapest-Keleti",
 }
+
+
+def station_query(name: str) -> str:
+    """What to ask PKP's station search for: an alias, else the catalogue city's main station
+    ("Poznania" -> "Poznań Główny"), else the name itself — a concrete station name
+    ("Warszawa Wschodnia") is never replaced by the city's main one."""
+    alias = STATION_ALIASES.get(name.strip().casefold())
+    if alias is not None:
+        return alias
+    city = city_named(name)
+    return city.pkp_station if city is not None and city.pkp_station else name
+
 
 CAPABILITIES = SupplierCapabilities(
     kind=BookingKind.TRANSPORT,
@@ -166,8 +179,7 @@ class PkpIntercitySupplier:
             self.log.seconds = round(self.log.seconds + time.monotonic() - started, 1)
 
     async def _station(self, name: str) -> Station | None:
-        query = STATION_ALIASES.get(name.strip().casefold(), name)
-        return await self.client.station(query)
+        return await self.client.station(station_query(name))
 
     async def _search(self, request: SearchRequest) -> list[Offer]:
         origin, destination = await asyncio.gather(
