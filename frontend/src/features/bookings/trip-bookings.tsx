@@ -2,12 +2,11 @@ import type { ReactNode } from "react";
 
 import { ErrorCallout } from "@/components/ui/callout";
 import { apiErrorMessage } from "@/lib/api";
-
+import { formatMoney } from "@/lib/money";
 import { BasketCard } from "./basket-card";
 import { BookEverything } from "./book-everything";
 import { BookingsList } from "./bookings-list";
 import { DisruptionPanel } from "./disruption-panel";
-import { formatMoney } from "./money";
 import { useTripBookings } from "./queries";
 
 const TRIP_STATUS_LABEL: Record<string, string> = {

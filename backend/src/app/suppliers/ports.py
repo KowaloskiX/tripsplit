@@ -17,6 +17,7 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Protocol
 
+from app.core.domain.itinerary import describe_leg
 from app.core.domain.result import Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
@@ -53,9 +54,8 @@ class Segment:
     arrives_at: datetime
 
     def describe(self) -> str:
-        return (
-            f"{self.number} {self.origin} -> {self.destination} "
-            f"{self.departs_at:%Y-%m-%d %H:%M}-{self.arrives_at:%H:%M}"
+        return describe_leg(
+            self.number, self.origin, self.destination, self.departs_at, self.arrives_at
         )
 
 

@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 
 import type { BatchItemResponse, BookingError } from "@/lib/api";
 
+import { bookingTitle } from "./booking-title";
+
 /** Why one booking of a batch did not go ahead, in a sentence for the organizer. */
 export const REFUSAL_LABEL: Partial<Record<BookingError, string>> = {
   price_changed: "the price changed — everyone tops up first, then book again",
@@ -22,7 +24,8 @@ export function BatchRefusals({ items }: { items: readonly BatchItemResponse[] }
     <ul className="space-y-1 text-sm text-warn" aria-label="Not done">
       {refused.map((item) => (
         <li key={item.booking.id}>
-          {item.booking.title}: {item.error ? (REFUSAL_LABEL[item.error] ?? item.error) : ""}
+          {bookingTitle(item.booking.title)}:{" "}
+          {item.error ? (REFUSAL_LABEL[item.error] ?? item.error) : ""}
         </li>
       ))}
     </ul>

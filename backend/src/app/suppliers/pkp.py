@@ -31,6 +31,7 @@ from app.core.domain.trips import (
     TravelPreferences,
 )
 from app.core.domain.trust import LinkKind, OfferLink, Provenance, ProvenanceSource
+from app.suppliers.demo_rail import purchase_url as demo_purchase_url
 from app.suppliers.intercity import (
     MAX_PASSENGERS_PER_PURCHASE,
     Connection,
@@ -265,6 +266,22 @@ class PkpIntercitySupplier:
                     best[travel_class] = quote
         return best
 
+    def _demo_purchase_url(
+        self, legs: list[LegQuote], origin: Station, destination: Station, request: SearchRequest
+    ) -> str | None:
+        """In a demo: the fake rail site's search for this journey at PKP's real fare."""
+        if self.purchase_site is None:
+            return None
+        total = sum(leg.total_minor for leg in legs)
+        return demo_purchase_url(
+            self.purchase_site,
+            origin=origin.name,
+            destination=destination.name,
+            depart=_local(legs[0].departs_at).date(),
+            back=_local(legs[-1].departs_at).date() if len(legs) > 1 else None,
+            fare_minor=round(total / max(request.party_size, 1)),
+        )
+
     def _offer(
         self,
         legs: list[LegQuote],
@@ -276,7 +293,7 @@ class PkpIntercitySupplier:
         trip = "return" if len(legs) > 1 else "one way"
         label = f"{first.travel_class}. class"
         title = (
-            f"{CARRIER} {first.connection} {origin.name} -> {destination.name} ({label}, {trip})"
+            f"{CARRIER} {first.connection} · {origin.name} → {destination.name} · {label} · {trip}"
         )
         split = "+".join(str(n) for n in first.passengers)
         segments = tuple(
@@ -304,7 +321,7 @@ class PkpIntercitySupplier:
             seller=CARRIER,
             segments=segments,
             refundable=False,
-            purchase_url=self.purchase_site
+            purchase_url=self._demo_purchase_url(legs, origin, destination, request)
             or results_url(
                 first.departs_at.date(), first.from_code, first.to_code, f"{first.departs_at:%H:%M}"
             ),

@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from app.agent.launcher import LaunchSpec
 from app.core.config import Settings, get_settings
 from app.core.deps import SettingsDep
+from app.core.domain.bookings import format_money
 from app.core.domain.errors import BookingError, TripError
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import SupplierCapabilities
@@ -489,11 +490,13 @@ async def test_six_travellers_become_two_train_purchases_with_their_own_vaults(
     chosen = next(p for p in room["proposals"] if p["chosen"])
     train_item = next(i for i in chosen["items"] if i.get("mode") == TransportMode.RAIL)
     assert sum(t.amount_minor for t in trains) == train_item["price_minor"]
-    assert [t.title.endswith(s) for t, s in zip(trains, ("1-3)", "4-6)"), strict=True)] == [
+    assert [t.title.endswith(s) for t, s in zip(trains, ("1\u20133", "4\u20136"), strict=True)] == [
         True,
         True,
     ]
-    assert all(t.supplier_url == "http://localhost:8400/api/demo-supplier/rail" for t in trains)
+    assert all(
+        t.supplier_url.startswith("http://localhost:8400/api/demo-supplier/rail?") for t in trains
+    )
     assert all(len(b.passenger_user_ids) == 6 for b in bookings if b.mode is not TransportMode.RAIL)
 
     await _pay_everyone(organizer, friend, trip_id)
@@ -510,6 +513,8 @@ async def test_six_travellers_become_two_train_purchases_with_their_own_vaults(
         assert [vault[f"passenger_{n}_first_name"] for n in (1, 2, 3)] == expected
         assert vault["email"] == "anna@example.com"
         assert "Passengers on this purchase: 3." in spec.goal
+        # The agent checks the supplier's total against what the group paid (QA finding 1).
+        assert f"Expected total: {format_money(train.amount_minor, 'PLN')}" in spec.goal
 
 
 async def test_five_travellers_are_one_train_purchase(
@@ -521,7 +526,7 @@ async def test_five_travellers_are_one_train_purchase(
     trains = [b for b in await _bookings(trip_id) if b.mode is TransportMode.RAIL]
     assert len(trains) == 1
     assert len(trains[0].passenger_user_ids) == 5
-    assert "(passengers" not in trains[0].title
+    assert "passengers" not in trains[0].title
 
 
 # ---- leaving a trip ---------------------------------------------------------------------

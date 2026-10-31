@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import type { RoomResponse } from "@/lib/api";
 
+import { detailsNeeded } from "./details-needed";
 import { useMyTravellerDetails } from "./queries";
 import { TravellerChecklist } from "./traveller-checklist";
 import { TravellerDetailsForm } from "./traveller-details-form";
@@ -23,8 +24,13 @@ export function TravellerDetailsPanel({ room }: { room: RoomResponse }): ReactNo
       <div className="space-y-4 p-4">
         <TravellerChecklist members={room.members} />
         {me && (
-          <details open={!me.traveller_details_complete} className="border-t border-line pt-3">
-            <summary className="cursor-pointer font-mono text-xs text-muted">your details</summary>
+          <details
+            open={detailsNeeded(room.trip.status, me.traveller_details_complete)}
+            className="border-t border-line pt-3"
+          >
+            <summary className="cursor-pointer font-mono text-xs text-muted">
+              {me.traveller_details_complete ? "your travel details" : "Add your travel details"}
+            </summary>
             <div className="pt-3">
               <TravellerDetailsForm tripId={room.trip.id} current={mine.data} />
             </div>

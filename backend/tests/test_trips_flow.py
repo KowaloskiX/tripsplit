@@ -288,9 +288,14 @@ async def test_the_demo_rail_supplier_sends_only_the_train_to_the_fake_site(
     assert trip_oid is not None
     by_kind = {b.kind: b for b in await BookingRepository().for_trip(trip_oid)}
     train = by_kind.pop(BookingKind.TRANSPORT)
-    assert train.supplier_url == "http://localhost:8000/api/demo-supplier/rail"
+    # A return is one order on the site: its search opens with both dates filled in.
+    assert train.supplier_url == (
+        "http://localhost:8000/api/demo-supplier/rail"
+        "?from=Warszawa&to=Prague&date=2026-11-20&return=2026-11-22"
+    )
     assert train.supplier_id == "demo_rail"
     assert "Stop at the summary before paying." in train.goal
+    assert "Return date: 2026-11-22" in train.goal
     assert by_kind, "the package has more than a train"
     assert all("demo-supplier" not in b.supplier_url for b in by_kind.values())
 

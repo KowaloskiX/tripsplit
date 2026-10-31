@@ -34,7 +34,12 @@ const ACTIVE_LABEL: Partial<Record<TripStatus, string>> = {
 
 const ALERT: ReadonlySet<TripStatus> = new Set(["disrupted", "rebooking"]);
 
-export function stepsFor(status: TripStatus): Step[] {
+/**
+ * `topUp`: the trip is paying again after a disruption made it dearer — the payment step is a
+ * "Top-up" (an alert), and the booking step ahead of it is "Rebooking".
+ */
+export function stepsFor(status: TripStatus, { topUp = false }: { topUp?: boolean } = {}): Step[] {
+  if (topUp && status === "paying") return topUpSteps();
   const current = STEP_OF[status];
   return STEPS.map((step, index) => {
     const done =
@@ -54,6 +59,34 @@ export function stepsFor(status: TripStatus): Step[] {
   });
 }
 
-export function StatusStepper({ status }: { status: TripStatus }): ReactNode {
-  return <Stepper steps={stepsFor(status)} label="Trip progress" />;
+function topUpSteps(): Step[] {
+  return STEPS.map((step, index) => {
+    if (index < 2) return { key: step.key, label: step.label, state: "done" };
+    if (index === 2) return { key: step.key, label: "Top-up", state: "alert" };
+    return { key: step.key, label: index === 3 ? "Rebooking" : step.label, state: "upcoming" };
+  });
+}
+
+/**
+ * A trip back in `paying` with money already in owes a top-up, not a first payment: only a
+ * re-split after a disruption (or a member leaving) asks people who paid for more.
+ */
+export function owesTopUp(
+  status: TripStatus,
+  contributions: readonly { paid_minor: number; outstanding_minor: number }[],
+): boolean {
+  return (
+    status === "paying" &&
+    contributions.some((share) => share.paid_minor > 0 && share.outstanding_minor > 0)
+  );
+}
+
+export function StatusStepper({
+  status,
+  topUp = false,
+}: {
+  status: TripStatus;
+  topUp?: boolean;
+}): ReactNode {
+  return <Stepper steps={stepsFor(status, { topUp })} label="Trip progress" />;
 }

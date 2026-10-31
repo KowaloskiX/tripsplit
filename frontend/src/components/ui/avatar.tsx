@@ -42,7 +42,7 @@ export function Avatar({ name, size = "md", className }: AvatarProps): ReactNode
       aria-hidden
       className={cn(
         "inline-flex shrink-0 select-none items-center justify-center rounded-full font-medium text-pastel-ink ring-2 ring-surface",
-        size === "sm" ? "size-7 text-[11px]" : "size-9 text-xs",
+        size === "sm" ? "size-8 text-[11px]" : "size-9 text-xs",
         paletteOf(name),
         className,
       )}
@@ -60,6 +60,10 @@ type AvatarStackProps = {
   label?: string;
 };
 
+// A small overlap: with the 2 px ring, a bigger one covered the right half of the previous
+// circle's second initial ("ON" read as "OI").
+const STACK_OVERLAP = "-ml-1";
+
 export function AvatarStack({ people, max = 5, label }: AvatarStackProps): ReactNode {
   const shown = people.slice(0, max);
   const rest = people.length - shown.length;
@@ -74,13 +78,13 @@ export function AvatarStack({ people, max = 5, label }: AvatarStackProps): React
           key={person.id}
           name={person.name}
           size="sm"
-          className={index > 0 ? "-ml-1.5" : ""}
+          className={index > 0 ? STACK_OVERLAP : ""}
         />
       ))}
       {rest > 0 && (
         <span
           aria-hidden
-          className="-ml-1.5 inline-flex size-7 items-center justify-center rounded-full bg-surface-sunken text-[11px] font-semibold text-muted ring-2 ring-surface"
+          className={`${STACK_OVERLAP} inline-flex size-8 items-center justify-center rounded-full bg-surface-sunken text-[11px] font-semibold text-muted ring-2 ring-surface`}
         >
           +{rest}
         </span>
