@@ -124,6 +124,7 @@ def get_booking_service(database: DbDep, settings: SettingsDep) -> BookingServic
         headful=settings.agent_headful,
         quotes=build_quote_provider(settings),
         price_tolerance_percent=settings.price_tolerance_percent,
+        payments=build_payment_provider(settings),
     )
 
 

@@ -14,7 +14,18 @@ class PaymentReceipt:
     paid_minor: int
 
 
+@dataclass(frozen=True, slots=True)
+class RefundReceipt:
+    # The provider's reference of the refund ("fake_refund_…" today, a Stripe refund id later).
+    provider_ref: str
+    refunded_minor: int
+
+
 class PaymentProvider(Protocol):
     async def charge(
         self, trip_id: str, user_id: str, amount_minor: int, currency: str
     ) -> PaymentReceipt: ...
+
+    async def refund(
+        self, trip_id: str, user_id: str, amount_minor: int, currency: str
+    ) -> RefundReceipt: ...

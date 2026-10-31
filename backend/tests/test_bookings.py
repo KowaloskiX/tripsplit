@@ -433,8 +433,9 @@ async def test_dearer_rebooking_resplits_exactly_and_asks_for_top_ups(
 
     old = await Booking.get(identifier_of(train))
     assert old is not None and old.status is BookingStatus.CANCELLED
-    replacement_view = body["replacement"]
-    assert isinstance(replacement_view, dict)
+    replacements = body["replacements"]
+    assert isinstance(replacements, list) and len(replacements) == 1
+    replacement_view = replacements[0]
     replacement = await Booking.get(replacement_view["id"])
     assert replacement is not None
     assert replacement.replaces_booking_id == identifier_of(train)
@@ -465,8 +466,9 @@ async def test_cheaper_rebooking_marks_refunds_and_goes_straight_to_rebooking(
     assert isinstance(shares, list)
     assert shares[0]["status"] == ContributionStatus.REFUND_DUE
 
-    replacement = body["replacement"]
-    assert isinstance(replacement, dict)
+    replacements = body["replacements"]
+    assert isinstance(replacements, list)
+    replacement = replacements[0]
     start = await client.post(
         f"/api/trips/{trip.id}/bookings/{replacement['id']}/start", headers=_csrf(client)
     )
@@ -495,7 +497,7 @@ async def test_a_confirmed_train_can_be_disrupted_before_the_stay_is_booked(
     trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKING)
     await train.set({"status": BookingStatus.CONFIRMED})
     body = await _disrupt(client, trip, 5)
-    assert body["cancelled_booking_id"] == str(train.id)
+    assert body["cancelled_booking_ids"] == [str(train.id)]
 
 
 async def _orphan(
@@ -527,6 +529,18 @@ async def test_an_orphaned_run_with_a_result_is_applied(
     assert item["confirmation_ref"] == "SIM-1"
     assert item["run"]["status"] == "finished"
     assert EventKind.BOOKING_CONFIRMED in await _kinds(trip)
+
+
+async def test_a_purchase_reported_without_an_approval_is_not_confirmed(
+    booking_app: FastAPI, client: AsyncClient, runs_dir: Path
+) -> None:
+    trip, train, run_dir = await _orphan(client, runs_dir, BookingStatus.AWAITING_APPROVAL)
+    _write(run_dir / "result.json", {"outcome": "done", "reason": "ok", "steps": 9})
+
+    listing = (await client.get(f"/api/trips/{trip.id}/bookings")).json()
+    item = next(b for b in listing["bookings"] if b["id"] == str(train.id))
+    assert item["status"] == BookingStatus.HANDOFF
+    assert EventKind.BOOKING_CONFIRMED not in await _kinds(trip)
 
 
 async def test_a_lost_run_fails_its_booking(

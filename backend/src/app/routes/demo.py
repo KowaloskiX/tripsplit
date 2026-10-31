@@ -98,8 +98,11 @@ async def simulate_disruption(
         raise booking_failure(result.error)
     outcome = result.value
     return DisruptionResponse(
-        cancelled_booking_id=to_text(identifier_of(outcome.cancelled)),
-        replacement=booking_response(BookingWithRun(booking=outcome.replacement, run=None)),
+        cancelled_booking_ids=[to_text(identifier_of(booking)) for booking in outcome.cancelled],
+        replacements=[
+            booking_response(BookingWithRun(booking=booking, run=None))
+            for booking in outcome.replacements
+        ],
         trip_status=outcome.trip.status,
         previous_total_minor=outcome.previous_total_minor,
         total_minor=outcome.trip.total_minor,

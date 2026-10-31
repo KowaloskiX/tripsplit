@@ -90,6 +90,7 @@ class EventKind(StrEnum):
     DISRUPTION = "disruption"
     RESPLIT = "resplit"
     PRICE_CHANGED = "price_changed"  # the supplier re-quoted a booking before the purchase
+    REFUND_ISSUED = "refund_issued"  # an overpayment went back to the member
 
 
 def split_evenly(total_minor: int, members: int) -> list[int]:

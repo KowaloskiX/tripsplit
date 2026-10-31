@@ -107,8 +107,10 @@ class ShareChangeResponse(BaseModel):
 
 
 class DisruptionResponse(BaseModel):
-    cancelled_booking_id: str
-    replacement: BookingResponse
+    # A train for a party above the supplier's cap is several purchases: every one of them is
+    # cancelled and replaced (same order in both lists).
+    cancelled_booking_ids: list[str]
+    replacements: list[BookingResponse]
     trip_status: TripStatus
     previous_total_minor: int
     total_minor: int
