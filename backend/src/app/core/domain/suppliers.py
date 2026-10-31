@@ -23,6 +23,7 @@ class TravellerField(StrEnum):
     NATIONALITY = "nationality"
     DOCUMENT_NUMBER = "document_number"
     DOCUMENT_EXPIRY = "document_expiry"
+    GENDER = "gender"
 
 
 DEFAULT_QUOTE_TTL = timedelta(minutes=30)

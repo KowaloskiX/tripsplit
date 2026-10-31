@@ -8,10 +8,18 @@ just which fields are present.
 
 from dataclasses import dataclass
 from datetime import date
+from enum import StrEnum
 
 from app.core.domain.suppliers import TravellerField
 
 _VISIBLE_DOCUMENT_CHARS = 2
+
+
+class Gender(StrEnum):
+    """As on the travel document; airlines ask for it (and derive the title from it)."""
+
+    FEMALE = "female"
+    MALE = "male"
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +29,7 @@ class TravellerDetails:
     nationality: str | None = None  # ISO 3166-1 alpha-2, e.g. "PL"
     document_number: str | None = None
     document_expiry: date | None = None
+    gender: Gender | None = None
 
     def __repr__(self) -> str:
         # The dataclass default would print the document number into any log or traceback.
@@ -36,6 +45,7 @@ class TravellerDetails:
             TravellerField.NATIONALITY: bool(self.nationality),
             TravellerField.DOCUMENT_NUMBER: bool(self.document_number),
             TravellerField.DOCUMENT_EXPIRY: self.document_expiry is not None,
+            TravellerField.GENDER: self.gender is not None,
         }
         return frozenset(field for field, ok in present.items() if ok)
 

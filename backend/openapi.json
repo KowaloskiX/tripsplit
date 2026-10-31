@@ -729,6 +729,15 @@
         "title": "EventResponse",
         "type": "object"
       },
+      "Gender": {
+        "description": "As on the travel document; airlines ask for it (and derive the title from it).",
+        "enum": [
+          "female",
+          "male"
+        ],
+        "title": "Gender",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1467,6 +1476,16 @@
             ],
             "title": "Full Name"
           },
+          "gender": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "nationality": {
             "anyOf": [
               {
@@ -1524,6 +1543,16 @@
             "title": "Full Name",
             "type": "string"
           },
+          "gender": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Gender"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "nationality": {
             "anyOf": [
               {
@@ -1549,6 +1578,7 @@
           "nationality",
           "document_number_masked",
           "document_expiry",
+          "gender",
           "provided"
         ],
         "title": "TravellerDetailsResponse",
@@ -1561,7 +1591,8 @@
           "date_of_birth",
           "nationality",
           "document_number",
-          "document_expiry"
+          "document_expiry",
+          "gender"
         ],
         "title": "TravellerField",
         "type": "string"

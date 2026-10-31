@@ -22,6 +22,7 @@ PASSPORT: dict[str, Any] = {
     "nationality": "pl",
     "document_number": "eh 123 4567",
     "document_expiry": "2031-01-01",
+    "gender": "female",
 }
 
 

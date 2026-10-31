@@ -398,6 +398,13 @@ export type EventResponse = {
 };
 
 /**
+ * Gender
+ *
+ * As on the travel document; airlines ask for it (and derive the title from it).
+ */
+export type Gender = 'female' | 'male';
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -851,6 +858,7 @@ export type TravellerDetailsRequest = {
      * Full Name
      */
     full_name?: string | null;
+    gender?: Gender | null;
     /**
      * Nationality
      */
@@ -877,6 +885,7 @@ export type TravellerDetailsResponse = {
      * Full Name
      */
     full_name: string;
+    gender: Gender | null;
     /**
      * Nationality
      */
@@ -892,7 +901,7 @@ export type TravellerDetailsResponse = {
  *
  * A piece of traveller data a supplier may require per passenger.
  */
-export type TravellerField = 'full_name' | 'date_of_birth' | 'nationality' | 'document_number' | 'document_expiry';
+export type TravellerField = 'full_name' | 'date_of_birth' | 'nationality' | 'document_number' | 'document_expiry' | 'gender';
 
 /**
  * TripBookingsResponse
