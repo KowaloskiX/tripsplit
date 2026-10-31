@@ -6,8 +6,77 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { authLogin, authLogout, authRegister, authSession, contributionsPay, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, tripsCreate, tripsFeed, tripsJoin, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
-import type { AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
+import { agentRunsFrame, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsList, bookingsStart, contributionsPay, demoDisruption, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, tripsCreate, tripsFeed, tripsJoin, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
+import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
+
+export type QueryKey<TOptions extends Options> = [
+    Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
+        _id: string;
+        _infinite?: boolean;
+        tags?: ReadonlyArray<string>;
+    }
+];
+
+const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
+    QueryKey<TOptions>[0]
+] => {
+    const params: QueryKey<TOptions>[0] = { _id: id, baseUrl: options?.baseUrl || (options?.client ?? client).getConfig().baseUrl } as QueryKey<TOptions>[0];
+    if (infinite) {
+        params._infinite = infinite;
+    }
+    if (tags) {
+        params.tags = tags;
+    }
+    if (options?.body) {
+        params.body = options.body;
+    }
+    if (options?.headers) {
+        params.headers = options.headers;
+    }
+    if (options?.path) {
+        params.path = options.path;
+    }
+    if (options?.query) {
+        params.query = options.query;
+    }
+    return [params];
+};
+
+export const agentRunsFrameQueryKey = (options: Options<AgentRunsFrameData>) => createQueryKey('agentRunsFrame', options);
+
+/**
+ * Run Frame
+ */
+export const agentRunsFrameOptions = (options: Options<AgentRunsFrameData>) => queryOptions<unknown, AgentRunsFrameError, unknown, ReturnType<typeof agentRunsFrameQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await agentRunsFrame({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: agentRunsFrameQueryKey(options)
+});
+
+export const agentRunsStatusQueryKey = (options: Options<AgentRunsStatusData>) => createQueryKey('agentRunsStatus', options);
+
+/**
+ * Run Status
+ */
+export const agentRunsStatusOptions = (options: Options<AgentRunsStatusData>) => queryOptions<AgentRunsStatusResponse, AgentRunsStatusError, AgentRunsStatusResponse, ReturnType<typeof agentRunsStatusQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await agentRunsStatus({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: agentRunsStatusQueryKey(options)
+});
 
 /**
  * Login
@@ -58,39 +127,6 @@ export const authRegisterMutation = (options?: Partial<Options<AuthRegisterData>
         }
     };
     return mutationOptions;
-};
-
-export type QueryKey<TOptions extends Options> = [
-    Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
-        _id: string;
-        _infinite?: boolean;
-        tags?: ReadonlyArray<string>;
-    }
-];
-
-const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
-    QueryKey<TOptions>[0]
-] => {
-    const params: QueryKey<TOptions>[0] = { _id: id, baseUrl: options?.baseUrl || (options?.client ?? client).getConfig().baseUrl } as QueryKey<TOptions>[0];
-    if (infinite) {
-        params._infinite = infinite;
-    }
-    if (tags) {
-        params.tags = tags;
-    }
-    if (options?.body) {
-        params.body = options.body;
-    }
-    if (options?.headers) {
-        params.headers = options.headers;
-    }
-    if (options?.path) {
-        params.path = options.path;
-    }
-    if (options?.query) {
-        params.query = options.query;
-    }
-    return [params];
 };
 
 export const authSessionQueryKey = (options?: Options<AuthSessionData>) => createQueryKey('authSession', options);
@@ -237,6 +273,58 @@ export const tripsRoomOptions = (options: Options<TripsRoomData>) => queryOption
     queryKey: tripsRoomQueryKey(options)
 });
 
+export const bookingsListQueryKey = (options: Options<BookingsListData>) => createQueryKey('bookingsList', options);
+
+/**
+ * List Bookings
+ */
+export const bookingsListOptions = (options: Options<BookingsListData>) => queryOptions<BookingsListResponse, BookingsListError, BookingsListResponse, ReturnType<typeof bookingsListQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await bookingsList({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: bookingsListQueryKey(options)
+});
+
+/**
+ * Approve Booking
+ */
+export const bookingsApproveMutation = (options?: Partial<Options<BookingsApproveData>>): UseMutationOptions<BookingsApproveResponse, BookingsApproveError, Options<BookingsApproveData>> => {
+    const mutationOptions: UseMutationOptions<BookingsApproveResponse, BookingsApproveError, Options<BookingsApproveData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await bookingsApprove({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Start Booking
+ */
+export const bookingsStartMutation = (options?: Partial<Options<BookingsStartData>>): UseMutationOptions<BookingsStartResponse, BookingsStartError, Options<BookingsStartData>> => {
+    const mutationOptions: UseMutationOptions<BookingsStartResponse, BookingsStartError, Options<BookingsStartData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await bookingsStart({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 /**
  * Pay My Share
  *
@@ -246,6 +334,25 @@ export const contributionsPayMutation = (options?: Partial<Options<Contributions
     const mutationOptions: UseMutationOptions<ContributionsPayResponse, ContributionsPayError, Options<ContributionsPayData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await contributionsPay({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Simulate Disruption
+ *
+ * The demo's last scene: the train is delayed, the agent rebooks and re-splits.
+ */
+export const demoDisruptionMutation = (options?: Partial<Options<DemoDisruptionData>>): UseMutationOptions<DemoDisruptionResponse, DemoDisruptionError, Options<DemoDisruptionData>> => {
+    const mutationOptions: UseMutationOptions<DemoDisruptionResponse, DemoDisruptionError, Options<DemoDisruptionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await demoDisruption({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

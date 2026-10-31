@@ -9,6 +9,12 @@ import contextlib
 import os
 
 
+def profile_dir_from_env():
+    """`AGENT_PROFILE_DIR`, absolute, or None — Camoufox then starts a throwaway profile."""
+    raw = os.getenv("AGENT_PROFILE_DIR", "").strip()
+    return os.path.abspath(os.path.expanduser(raw)) if raw else None
+
+
 class Browser:
     def __init__(self, headless=None):
         self.engine = os.getenv("ENGINE", "camoufox").lower()
@@ -26,11 +32,21 @@ class Browser:
 
             # humanize=True adds human-like cursor movement; os spoofs the fingerprint. A single
             # OS, not a list: the current browserforge data yields no fingerprint for a list.
-            self._ctx = Camoufox(
-                headless=self.headless, humanize=True, os=os.getenv("CAMOUFOX_OS", "macos")
-            )
+            options = {
+                "headless": self.headless,
+                "humanize": True,
+                "os": os.getenv("CAMOUFOX_OS", "macos"),
+            }
+            profile_dir = profile_dir_from_env()
+            if profile_dir:
+                # A persistent context reuses the cookies/logins saved by `agent-login`. The
+                # launch returns a BrowserContext (not a Browser) that already has a page.
+                os.makedirs(profile_dir, exist_ok=True)
+                options.update(persistent_context=True, user_data_dir=profile_dir)
+            self._ctx = Camoufox(**options)
             self.browser = self._ctx.__enter__()
-            self.page = self.browser.new_page()
+            pages = getattr(self.browser, "pages", None) if profile_dir else None
+            self.page = pages[0] if pages else self.browser.new_page()
         else:
             from playwright.sync_api import sync_playwright
 

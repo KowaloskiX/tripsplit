@@ -7,7 +7,7 @@ new error is one line in one file.
 
 from starlette import status
 
-from app.core.domain.errors import AuthError, TripError
+from app.core.domain.errors import AuthError, BookingError, TripError
 from app.core.domain.result import Ok, Result
 from app.core.errors_http import DomainHTTPError
 
@@ -58,3 +58,32 @@ def trip_value[T](result: Result[T, TripError]) -> T:
     if isinstance(result, Ok):
         return result.value
     raise trip_failure(result.error)
+
+
+_BOOKING_STATUS: dict[BookingError, int] = {
+    BookingError.TRIP_NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    BookingError.BOOKING_NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    BookingError.RUN_NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    BookingError.FRAME_NOT_FOUND: status.HTTP_404_NOT_FOUND,
+    BookingError.NOT_ORGANIZER: status.HTTP_403_FORBIDDEN,
+    BookingError.TRIP_NOT_READY: status.HTTP_409_CONFLICT,
+    BookingError.BOOKING_NOT_STARTABLE: status.HTTP_409_CONFLICT,
+    BookingError.NOT_AWAITING_APPROVAL: status.HTTP_409_CONFLICT,
+    BookingError.NOTHING_TO_DISRUPT: status.HTTP_409_CONFLICT,
+}
+
+_BOOKING_MESSAGE: dict[BookingError, str] = {
+    BookingError.TRIP_NOT_FOUND: "No such trip.",
+    BookingError.BOOKING_NOT_FOUND: "No such booking.",
+    BookingError.RUN_NOT_FOUND: "No such agent run.",
+    BookingError.FRAME_NOT_FOUND: "The agent has not captured a frame yet.",
+    BookingError.NOT_ORGANIZER: "Only the trip organizer can do this.",
+    BookingError.TRIP_NOT_READY: "Booking starts only once everyone has paid their share.",
+    BookingError.BOOKING_NOT_STARTABLE: "This booking is already in progress or done.",
+    BookingError.NOT_AWAITING_APPROVAL: "This booking is not waiting for an approval.",
+    BookingError.NOTHING_TO_DISRUPT: "There is no confirmed booking to disrupt.",
+}
+
+
+def booking_failure(error: BookingError) -> DomainHTTPError:
+    return DomainHTTPError(error, _BOOKING_STATUS[error], _BOOKING_MESSAGE[error])

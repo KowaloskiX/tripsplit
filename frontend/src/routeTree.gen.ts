@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 import { Route as TTripIdIndexRouteImport } from './routes/t.$tripId.index'
+import { Route as TTripIdBookingsRouteImport } from './routes/t.$tripId.bookings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,6 +47,11 @@ const TTripIdIndexRoute = TTripIdIndexRouteImport.update({
   path: '/t/$tripId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TTripIdBookingsRoute = TTripIdBookingsRouteImport.update({
+  id: '/t/$tripId/bookings',
+  path: '/t/$tripId/bookings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
+  '/t/$tripId/bookings': typeof TTripIdBookingsRoute
   '/t/$tripId/': typeof TTripIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
+  '/t/$tripId/bookings': typeof TTripIdBookingsRoute
   '/t/$tripId': typeof TTripIdIndexRoute
 }
 export interface FileRoutesById {
@@ -70,14 +78,28 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
+  '/t/$tripId/bookings': typeof TTripIdBookingsRoute
   '/t/$tripId/': typeof TTripIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/app' | '/login' | '/register' | '/join/$inviteCode' | '/t/$tripId/'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/register'
+    | '/join/$inviteCode'
+    | '/t/$tripId/bookings'
+    | '/t/$tripId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/login' | '/register' | '/join/$inviteCode' | '/t/$tripId'
+  to:
+    | '/'
+    | '/app'
+    | '/login'
+    | '/register'
+    | '/join/$inviteCode'
+    | '/t/$tripId/bookings'
+    | '/t/$tripId'
   id:
     | '__root__'
     | '/'
@@ -85,6 +107,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/join/$inviteCode'
+    | '/t/$tripId/bookings'
     | '/t/$tripId/'
   fileRoutesById: FileRoutesById
 }
@@ -94,6 +117,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   JoinInviteCodeRoute: typeof JoinInviteCodeRoute
+  TTripIdBookingsRoute: typeof TTripIdBookingsRoute
   TTripIdIndexRoute: typeof TTripIdIndexRoute
 }
 
@@ -141,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TTripIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/t/$tripId/bookings': {
+      id: '/t/$tripId/bookings'
+      path: '/t/$tripId/bookings'
+      fullPath: '/t/$tripId/bookings'
+      preLoaderRoute: typeof TTripIdBookingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -150,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   JoinInviteCodeRoute: JoinInviteCodeRoute,
+  TTripIdBookingsRoute: TTripIdBookingsRoute,
   TTripIdIndexRoute: TTripIdIndexRoute,
 }
 export const routeTree = rootRouteImport

@@ -13,7 +13,9 @@ import argparse
 import contextlib
 import json
 import os
+import secrets
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
@@ -28,6 +30,13 @@ from app.agent.skills import notes_for
 from app.agent.vault import Vault
 
 RESULT_MARKER = "__AGENT_RESULT__ "
+
+# Human approval of the final pay click (`--await-approval`). The backend writes
+# `runs/<run_id>/approval.json` = {"approved": true|false}; the runner polls for it.
+APPROVAL_FILE = "approval.json"
+PAY_GOAL = "Submit the order / pay now and wait for the confirmation"
+PAY_MAX_STEPS = 10
+_DEFAULT_APPROVAL_TIMEOUT_S = 900.0
 
 # Checkout phases after which navigating back to the cart/login only restarts a loop.
 _ADVANCED_MILESTONES = ("delivery", "address", "payment", "review", "summary")
@@ -48,6 +57,8 @@ class RunRequest:
     # plain text so it picks the matching option.
     preferences: dict[str, str] = field(default_factory=dict)
     use_trajectory: bool = True
+    # After a stop-before-pay `done`, wait for a human decision instead of exiting.
+    await_approval: bool = False
 
 
 @dataclass
@@ -64,6 +75,50 @@ class RunResult:
     tokens: dict[str, int] = field(default_factory=dict)
     cost_usd: float = 0.0
     cache_hits: int = 0
+    # The supplier's booking number; `SIM-xxxxxx` when the final click is simulated.
+    confirmation_ref: str = ""
+
+
+def approval_timeout_s() -> float:
+    try:
+        return float(os.getenv("AGENT_APPROVAL_TIMEOUT_S", _DEFAULT_APPROVAL_TIMEOUT_S))
+    except ValueError:
+        return _DEFAULT_APPROVAL_TIMEOUT_S
+
+
+def final_click_mode() -> str:
+    """`simulate` (the default) never presses pay; only an explicit `real` does."""
+    mode = os.getenv("AGENT_FINAL_CLICK", "simulate").strip().lower()
+    return "real" if mode == "real" else "simulate"
+
+
+def read_approval(artifacts: str) -> bool | None:
+    """The decision in `approval.json`, or None while there is none (or it is unreadable)."""
+    try:
+        with open(os.path.join(artifacts, APPROVAL_FILE), encoding="utf-8") as fh:
+            payload = json.load(fh)
+    except (OSError, ValueError):
+        return None
+    approved = payload.get("approved") if isinstance(payload, dict) else None
+    return approved if isinstance(approved, bool) else None
+
+
+def wait_for_approval(
+    artifacts: str,
+    timeout_s: float,
+    poll_s: float = 1.0,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> bool | None:
+    """Poll for the human decision. True / False, or None when the timeout elapses."""
+    deadline = clock() + timeout_s
+    while True:
+        decision = read_approval(artifacts)
+        if decision is not None:
+            return decision
+        if clock() >= deadline:
+            return None
+        sleep(poll_s)
 
 
 def _cost_usd(tokens: dict[str, int]) -> float:
@@ -119,11 +174,10 @@ def run(req: RunRequest) -> RunResult:
             },
         )
 
-    try:
-        browser.start()
-        browser.goto(req.url)
-
-        for step in range(1, req.max_steps + 1):
+    def drive(goal: str, stop_before_pay: bool, first: int, last: int) -> None:
+        """Run steps `first..last` towards `goal`; sets `result.outcome` when it stops."""
+        nonlocal last_milestone, prev_sig, repeats, last_notes, ti, cache_hits, replay_on
+        for step in range(first, last + 1):
             # RECOVER (pre): clear overlays, then check for human-only gates.
             auto_dismiss(browser.page)
             blocked, reason = detect_block(browser.page)
@@ -164,8 +218,8 @@ def run(req: RunRequest) -> RunResult:
                     print(f"[cache] miss at step {step} -> self-heal via planner")
             if action is None:
                 action = planner.next_action(
-                    req.goal,
-                    req.stop_before_pay,
+                    goal,
+                    stop_before_pay,
                     page_render,
                     vault.planner_keys(),
                     history,
@@ -249,8 +303,42 @@ def run(req: RunRequest) -> RunResult:
             except Exception as exc:
                 print(f"  [act error] {exc!r:.160} — re-observing")
         else:
-            result.outcome, result.steps = "max_steps", req.max_steps
+            result.outcome, result.steps = "max_steps", last
             result.reason = "Hit the step cap without reaching a terminal state."
+
+    def finish_after_approval() -> None:
+        """The summary is ready: park the browser until a human decides, then pay or stop."""
+        nonlocal replay_on
+        result.outcome = "awaiting_approval"
+        status(result.steps, result.reason)
+        print(f"[approval] waiting for {os.path.join(artifacts, APPROVAL_FILE)}")
+        decision = wait_for_approval(artifacts, approval_timeout_s())
+        if decision is None:
+            result.outcome, result.reason = "handoff", "Nobody approved the summary in time."
+            return
+        if not decision:
+            result.outcome, result.reason = "handoff", "The organizer rejected the summary."
+            return
+        if final_click_mode() == "real":
+            # The pay steps must never land in the trajectory cache: a later stop-before-pay
+            # run replaying them would click "pay" without anyone approving it.
+            keep = len(recorded)
+            replay_on = False
+            result.outcome = "unknown"
+            drive(PAY_GOAL, False, result.steps + 1, result.steps + PAY_MAX_STEPS)
+            del recorded[keep:]
+            return
+        step = result.steps + 1
+        browser.screenshot(os.path.join(artifacts, f"{step:02d}-done.png"))
+        result.outcome, result.reason, result.steps = "done", "simulated confirmation", step
+        result.confirmation_ref = f"SIM-{secrets.token_hex(3).upper()}"
+
+    try:
+        browser.start()
+        browser.goto(req.url)
+        drive(req.goal, req.stop_before_pay, 1, req.max_steps)
+        if req.await_approval and req.stop_before_pay and result.outcome == "done":
+            finish_after_approval()
     except Exception as exc:
         result.outcome, result.reason = "error", repr(exc)[:300]
     finally:
@@ -297,6 +385,11 @@ def main() -> None:
     ap.add_argument("--vault", help="path to a JSON file with vault values (never committed)")
     ap.add_argument("--no-cache", action="store_true", help="ignore the trajectory cache")
     ap.add_argument("--json", action="store_true", help="emit a machine-readable result line")
+    ap.add_argument(
+        "--await-approval",
+        action="store_true",
+        help="at the summary, wait for runs/<id>/approval.json before paying (or simulating)",
+    )
     args = ap.parse_args()
 
     if args.planner:
@@ -316,6 +409,7 @@ def main() -> None:
             engine=args.engine,
             vault=vault,
             use_trajectory=not args.no_cache,
+            await_approval=args.await_approval,
         )
     )
     if args.json:

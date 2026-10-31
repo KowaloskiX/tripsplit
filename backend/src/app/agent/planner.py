@@ -256,7 +256,10 @@ class ClaudeCliPlanner(BasePlanner):
                     cwd=os.path.dirname(screenshot_path) if screenshot_path else None,
                 )
                 if proc.returncode != 0:
-                    raise RuntimeError(proc.stderr.strip()[-400:] or f"exit {proc.returncode}")
+                    # Claude Code reports API failures (429 spend limit, auth) in the JSON
+                    # envelope on stdout, with an empty stderr.
+                    detail = proc.stderr.strip() or _envelope_error(proc.stdout)
+                    raise RuntimeError(detail[-400:] or f"exit {proc.returncode}")
                 envelope = json.loads(proc.stdout)
                 usage = envelope.get("usage") or {}
                 self.tokens["in"] += int(usage.get("input_tokens") or 0)
@@ -296,6 +299,15 @@ def _sanitize(action):
     if action.get("action") in ("type", "select") and isinstance(t, str) and len(t) > 100:
         action["text"] = t[:100]
     return action
+
+
+def _envelope_error(stdout):
+    """The `result` text of a Claude Code JSON envelope, or "" when there is none."""
+    try:
+        envelope = json.loads(stdout or "")
+    except ValueError:
+        return ""
+    return str(envelope.get("result") or "") if isinstance(envelope, dict) else ""
 
 
 def _parse(text):

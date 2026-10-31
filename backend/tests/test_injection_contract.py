@@ -16,6 +16,7 @@ derived from input (the slug that lands in a URL) have a forced safe alphabet.
 """
 
 import inspect
+import re
 import typing
 from pathlib import Path
 
@@ -31,6 +32,11 @@ SOURCE_DIR = Path(__file__).resolve().parent.parent / "src" / "app"
 
 # Operators that execute JavaScript inside the database server.
 FORBIDDEN_MONGO_OPERATORS = ("$where", "$function", "$accumulator", "map_reduce", "mapReduce")
+
+
+# The builtins only: `asyncio.create_subprocess_exec(` runs a program, not Python source, and
+# a plain substring match flagged it. No identifier character may precede the name.
+_DYNAMIC_CODE_CALL = re.compile(r"(?<!\w)(?:eval|exec)\(")
 
 
 def _python_sources() -> list[Path]:
@@ -237,7 +243,7 @@ def test_no_dynamic_code_execution_in_sources() -> None:
     offenders = {
         str(path.relative_to(SOURCE_DIR))
         for path in _python_sources()
-        if any(call in path.read_text(encoding="utf-8") for call in ("eval(", "exec("))
+        if _DYNAMIC_CODE_CALL.search(path.read_text(encoding="utf-8"))
     }
     assert not offenders, f"dynamic code execution: {offenders}"
 
