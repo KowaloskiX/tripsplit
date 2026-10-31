@@ -6,6 +6,7 @@ an open endpoint for any origin.
 """
 
 from functools import lru_cache
+from typing import Literal
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,6 +22,9 @@ _LOCAL_ENVS: frozenset[str] = frozenset({"dev", "test"})
 _HOST_COOKIE_PREFIX = "__Host-"
 
 _MIN_AUTH_SECRET_LENGTH = 32
+
+type ResearcherKind = Literal["fixture", "claude-cli"]
+type PaymentsKind = Literal["fake"]
 
 
 class Settings(BaseSettings):
@@ -78,6 +82,14 @@ class Settings(BaseSettings):
     # Where to keep the counters. Empty = process memory (per-instance limit — fine for tests
     # and single-node). `redis://…` = one shared counter for every replica.
     rate_limit_storage_url: str = ""
+
+    # Who researches trip packages: `fixture` = deterministic offline packages (tests, offline
+    # demo); `claude-cli` = Claude Code in `-p` mode with web search, falling back to the
+    # fixture on any failure.
+    researcher: ResearcherKind = "fixture"
+    research_timeout_s: int = 300
+    # Who takes the money. `fake` always succeeds; Stripe plugs in behind the same port later.
+    payments: PaymentsKind = "fake"
 
     @field_validator("cors_origins")
     @classmethod

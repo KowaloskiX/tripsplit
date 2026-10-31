@@ -10,6 +10,144 @@
         ],
         "type": "string"
       },
+      "BookingKind": {
+        "enum": [
+          "train",
+          "stay",
+          "activity"
+        ],
+        "title": "BookingKind",
+        "type": "string"
+      },
+      "CastVoteRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "proposal_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Proposal Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id"
+        ],
+        "title": "CastVoteRequest",
+        "type": "object"
+      },
+      "ContributionResponse": {
+        "properties": {
+          "amount_minor": {
+            "title": "Amount Minor",
+            "type": "integer"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "outstanding_minor": {
+            "title": "Outstanding Minor",
+            "type": "integer"
+          },
+          "paid_minor": {
+            "title": "Paid Minor",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ContributionStatus"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "amount_minor",
+          "paid_minor",
+          "outstanding_minor",
+          "status"
+        ],
+        "title": "ContributionResponse",
+        "type": "object"
+      },
+      "ContributionStatus": {
+        "enum": [
+          "pending",
+          "paid",
+          "refund_due"
+        ],
+        "title": "ContributionStatus",
+        "type": "string"
+      },
+      "CreateTripRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "brief": {
+            "default": "",
+            "maxLength": 4000,
+            "title": "Brief",
+            "type": "string"
+          },
+          "budget_per_person_minor": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Per Person Minor"
+          },
+          "date_from": {
+            "format": "date",
+            "title": "Date From",
+            "type": "string"
+          },
+          "date_to": {
+            "format": "date",
+            "title": "Date To",
+            "type": "string"
+          },
+          "display_name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "group_size": {
+            "maximum": 20.0,
+            "minimum": 1.0,
+            "title": "Group Size",
+            "type": "integer"
+          },
+          "origin": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Origin",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "origin",
+          "date_from",
+          "date_to",
+          "group_size",
+          "display_name"
+        ],
+        "title": "CreateTripRequest",
+        "type": "object"
+      },
       "CurrentUserResponse": {
         "properties": {
           "email": {
@@ -34,6 +172,19 @@
           "organizations"
         ],
         "title": "CurrentUserResponse",
+        "type": "object"
+      },
+      "DemoResultResponse": {
+        "properties": {
+          "affected": {
+            "title": "Affected",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "affected"
+        ],
+        "title": "DemoResultResponse",
         "type": "object"
       },
       "DependencyState": {
@@ -92,6 +243,99 @@
         "title": "ErrorResponse",
         "type": "object"
       },
+      "EventActor": {
+        "enum": [
+          "agent",
+          "member",
+          "system"
+        ],
+        "title": "EventActor",
+        "type": "string"
+      },
+      "EventKind": {
+        "enum": [
+          "trip_created",
+          "member_joined",
+          "message",
+          "proposals_ready",
+          "vote_cast",
+          "proposal_chosen",
+          "contribution_paid",
+          "all_paid",
+          "booking_started",
+          "booking_awaiting_approval",
+          "booking_confirmed",
+          "booking_failed",
+          "disruption",
+          "resplit"
+        ],
+        "title": "EventKind",
+        "type": "string"
+      },
+      "EventResponse": {
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/EventActor"
+          },
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor Name"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Actor User Id"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EventKind"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "payload": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/JsonValue"
+            },
+            "title": "Payload",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "actor",
+          "message",
+          "payload",
+          "actor_user_id",
+          "actor_name",
+          "created_at"
+        ],
+        "title": "EventResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -123,6 +367,30 @@
         "title": "HealthStatus",
         "type": "object"
       },
+      "JoinTripRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "invite_code": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Invite Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "invite_code",
+          "display_name"
+        ],
+        "title": "JoinTripRequest",
+        "type": "object"
+      },
+      "JsonValue": {},
       "LoginRequest": {
         "additionalProperties": false,
         "properties": {
@@ -145,6 +413,36 @@
         ],
         "title": "LoginRequest",
         "type": "object"
+      },
+      "MemberResponse": {
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/MemberRole"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "display_name",
+          "role"
+        ],
+        "title": "MemberResponse",
+        "type": "object"
+      },
+      "MemberRole": {
+        "enum": [
+          "organizer",
+          "member"
+        ],
+        "title": "MemberRole",
+        "type": "string"
       },
       "MessageResponse": {
         "properties": {
@@ -184,6 +482,155 @@
           "role"
         ],
         "title": "OrganizationSummary",
+        "type": "object"
+      },
+      "PaymentResponse": {
+        "properties": {
+          "all_paid": {
+            "title": "All Paid",
+            "type": "boolean"
+          },
+          "paid_minor": {
+            "title": "Paid Minor",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TripStatus"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "status",
+          "paid_minor",
+          "all_paid"
+        ],
+        "title": "PaymentResponse",
+        "type": "object"
+      },
+      "PostMessageRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "PostMessageRequest",
+        "type": "object"
+      },
+      "ProposalItemResponse": {
+        "properties": {
+          "details": {
+            "title": "Details",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/BookingKind"
+          },
+          "price_minor": {
+            "title": "Price Minor",
+            "type": "integer"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "supplier": {
+            "title": "Supplier",
+            "type": "string"
+          },
+          "supplier_url": {
+            "title": "Supplier Url",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "supplier",
+          "supplier_url",
+          "price_minor",
+          "details",
+          "starts_at"
+        ],
+        "title": "ProposalItemResponse",
+        "type": "object"
+      },
+      "ProposalResponse": {
+        "properties": {
+          "chosen": {
+            "title": "Chosen",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "per_person_minor": {
+            "title": "Per Person Minor",
+            "type": "integer"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          },
+          "voted_by_me": {
+            "title": "Voted By Me",
+            "type": "boolean"
+          },
+          "votes": {
+            "title": "Votes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "items",
+          "total_minor",
+          "per_person_minor",
+          "votes",
+          "voted_by_me",
+          "chosen"
+        ],
+        "title": "ProposalResponse",
         "type": "object"
       },
       "ReadinessResponse": {
@@ -247,6 +694,98 @@
         "title": "Role",
         "type": "string"
       },
+      "RoomResponse": {
+        "properties": {
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/ContributionResponse"
+            },
+            "title": "Contributions",
+            "type": "array"
+          },
+          "invite_code": {
+            "title": "Invite Code",
+            "type": "string"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/MemberResponse"
+            },
+            "title": "Members",
+            "type": "array"
+          },
+          "my_contribution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContributionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "my_role": {
+            "$ref": "#/components/schemas/MemberRole"
+          },
+          "my_user_id": {
+            "title": "My User Id",
+            "type": "string"
+          },
+          "my_vote_proposal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "My Vote Proposal Id"
+          },
+          "paid_count": {
+            "title": "Paid Count",
+            "type": "integer"
+          },
+          "proposals": {
+            "items": {
+              "$ref": "#/components/schemas/ProposalResponse"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "trip": {
+            "$ref": "#/components/schemas/TripResponse"
+          }
+        },
+        "required": [
+          "trip",
+          "invite_code",
+          "my_user_id",
+          "my_role",
+          "members",
+          "proposals",
+          "my_vote_proposal_id",
+          "contributions",
+          "my_contribution",
+          "paid_count"
+        ],
+        "title": "RoomResponse",
+        "type": "object"
+      },
+      "SeedMembersRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "default": 5,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "title": "SeedMembersRequest",
+        "type": "object"
+      },
       "SessionResponse": {
         "description": "Response of `GET /api/auth/session` — `user: null` means \"not signed in\".",
         "properties": {
@@ -265,6 +804,143 @@
           "user"
         ],
         "title": "SessionResponse",
+        "type": "object"
+      },
+      "TripResponse": {
+        "properties": {
+          "brief": {
+            "title": "Brief",
+            "type": "string"
+          },
+          "budget_per_person_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Budget Per Person Minor"
+          },
+          "chosen_proposal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chosen Proposal Id"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "date_from": {
+            "format": "date",
+            "title": "Date From",
+            "type": "string"
+          },
+          "date_to": {
+            "format": "date",
+            "title": "Date To",
+            "type": "string"
+          },
+          "group_size": {
+            "title": "Group Size",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "organizer_id": {
+            "title": "Organizer Id",
+            "type": "string"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TripStatus"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "origin",
+          "brief",
+          "date_from",
+          "date_to",
+          "group_size",
+          "budget_per_person_minor",
+          "currency",
+          "status",
+          "organizer_id",
+          "chosen_proposal_id",
+          "total_minor"
+        ],
+        "title": "TripResponse",
+        "type": "object"
+      },
+      "TripStatus": {
+        "description": "collecting -> proposing -> voting -> paying -> booking -> booked -> done,\nwith booked -> disrupted -> rebooking -> booked for post-purchase care.",
+        "enum": [
+          "collecting",
+          "proposing",
+          "voting",
+          "paying",
+          "booking",
+          "booked",
+          "disrupted",
+          "rebooking",
+          "done"
+        ],
+        "title": "TripStatus",
+        "type": "string"
+      },
+      "TripStatusResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/TripStatus"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "status"
+        ],
+        "title": "TripStatusResponse",
+        "type": "object"
+      },
+      "TripSummaryResponse": {
+        "properties": {
+          "my_role": {
+            "$ref": "#/components/schemas/MemberRole"
+          },
+          "trip": {
+            "$ref": "#/components/schemas/TripResponse"
+          }
+        },
+        "required": [
+          "trip",
+          "my_role"
+        ],
+        "title": "TripSummaryResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -561,6 +1237,756 @@
         "summary": "Readiness",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/trips": {
+      "get": {
+        "operationId": "trips-list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TripSummaryResponse"
+                  },
+                  "title": "Response Trips-List",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Trips",
+        "tags": [
+          "trips"
+        ]
+      },
+      "post": {
+        "operationId": "trips-create",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTripRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Trip",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/trips/join": {
+      "post": {
+        "description": "Idempotent: a member opening the invite link again just gets the trip back.",
+        "operationId": "trips-join",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinTripRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Join Trip",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}": {
+      "get": {
+        "description": "The whole room in one response — the UI polls this one endpoint.",
+        "operationId": "trips-room",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoomResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Room",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/contributions/pay": {
+      "post": {
+        "description": "Charges the caller's outstanding share; the last payment moves the trip to booking.",
+        "operationId": "contributions-pay",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pay My Share",
+        "tags": [
+          "contributions"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/demo/pay-all": {
+      "post": {
+        "operationId": "demo-pay-all",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Pay All",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/demo/seed-members": {
+      "post": {
+        "operationId": "demo-seed-members",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SeedMembersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Seed Members",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/demo/vote-all": {
+      "post": {
+        "operationId": "demo-vote-all",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CastVoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DemoResultResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vote All",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/feed": {
+      "get": {
+        "operationId": "trips-feed",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "after",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EventResponse"
+                  },
+                  "title": "Response Trips-Feed",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Feed",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/messages": {
+      "post": {
+        "operationId": "trips-post-message",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PostMessageRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Message",
+        "tags": [
+          "trips"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/proposals/generate": {
+      "post": {
+        "description": "Starts the research and returns at once; the packages arrive in the feed.",
+        "operationId": "proposals-generate",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Generate Proposals",
+        "tags": [
+          "proposals"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/votes": {
+      "post": {
+        "operationId": "proposals-vote",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CastVoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cast Vote",
+        "tags": [
+          "proposals"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/voting/close": {
+      "post": {
+        "operationId": "proposals-close-voting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TripStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Close Voting",
+        "tags": [
+          "proposals"
         ]
       }
     }

@@ -1,0 +1,20 @@
+"""The payment port. The domain asks for money and gets a receipt; who moves it is a detail.
+
+Stripe arrives later behind this exact signature — the contribution service does not change.
+"""
+
+from dataclasses import dataclass
+from typing import Protocol
+
+
+@dataclass(frozen=True, slots=True)
+class PaymentReceipt:
+    # The provider's reference ("fake_…" today, a Stripe id later), stored on the contribution.
+    provider_ref: str
+    paid_minor: int
+
+
+class PaymentProvider(Protocol):
+    async def charge(
+        self, trip_id: str, user_id: str, amount_minor: int, currency: str
+    ) -> PaymentReceipt: ...

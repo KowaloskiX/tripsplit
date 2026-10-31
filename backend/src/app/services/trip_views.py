@@ -1,0 +1,200 @@
+"""What the trip services return: plain read models with string identifiers.
+
+A service never returns a Beanie document (it carries internal fields and `ObjectId`s) nor an
+API schema (HTTP must not leak down). These dataclasses sit in between; the routes validate
+them into response schemas with `from_attributes`.
+"""
+
+from dataclasses import dataclass
+from datetime import date, datetime
+from typing import Any
+
+from beanie import PydanticObjectId
+
+from app.core.domain.trips import (
+    BookingKind,
+    ContributionStatus,
+    EventActor,
+    EventKind,
+    MemberRole,
+    TripStatus,
+)
+from app.db.identifiers import identifier_of, to_text
+from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember
+
+
+@dataclass(frozen=True, slots=True)
+class TripView:
+    id: str
+    title: str
+    origin: str
+    brief: str
+    date_from: date
+    date_to: date
+    group_size: int
+    budget_per_person_minor: int | None
+    currency: str
+    status: TripStatus
+    organizer_id: str
+    chosen_proposal_id: str | None
+    total_minor: int
+
+
+@dataclass(frozen=True, slots=True)
+class TripSummaryView:
+    trip: TripView
+    my_role: MemberRole
+
+
+@dataclass(frozen=True, slots=True)
+class MemberView:
+    user_id: str
+    display_name: str
+    role: MemberRole
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalItemView:
+    kind: BookingKind
+    title: str
+    supplier: str
+    supplier_url: str
+    price_minor: int
+    details: str
+    starts_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
+class ProposalView:
+    id: str
+    title: str
+    summary: str
+    items: tuple[ProposalItemView, ...]
+    total_minor: int
+    per_person_minor: int
+    votes: int
+    voted_by_me: bool
+    chosen: bool
+
+
+@dataclass(frozen=True, slots=True)
+class ContributionView:
+    user_id: str
+    display_name: str
+    amount_minor: int
+    paid_minor: int
+    outstanding_minor: int
+    status: ContributionStatus
+
+
+@dataclass(frozen=True, slots=True)
+class RoomView:
+    """Everything the trip room renders, in one response."""
+
+    trip: TripView
+    invite_code: str
+    my_user_id: str
+    my_role: MemberRole
+    members: tuple[MemberView, ...]
+    proposals: tuple[ProposalView, ...]
+    my_vote_proposal_id: str | None
+    contributions: tuple[ContributionView, ...]
+    my_contribution: ContributionView | None
+    paid_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class EventView:
+    id: str
+    kind: EventKind
+    actor: EventActor
+    message: str
+    payload: dict[str, Any]
+    actor_user_id: str | None
+    actor_name: str | None
+    created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class TripStatusView:
+    trip_id: str
+    status: TripStatus
+
+
+def _optional_text(identifier: PydanticObjectId | None) -> str | None:
+    return to_text(identifier) if identifier is not None else None
+
+
+def trip_view(trip: Trip) -> TripView:
+    return TripView(
+        id=to_text(identifier_of(trip)),
+        title=trip.title,
+        origin=trip.origin,
+        brief=trip.brief,
+        date_from=trip.date_from,
+        date_to=trip.date_to,
+        group_size=trip.group_size,
+        budget_per_person_minor=trip.budget_per_person_minor,
+        currency=trip.currency,
+        status=trip.status,
+        organizer_id=to_text(trip.organizer_id),
+        chosen_proposal_id=_optional_text(trip.chosen_proposal_id),
+        total_minor=trip.total_minor,
+    )
+
+
+def member_view(member: TripMember) -> MemberView:
+    return MemberView(
+        user_id=to_text(member.user_id), display_name=member.display_name, role=member.role
+    )
+
+
+def proposal_view(
+    proposal: Proposal, *, votes: int, voted_by_me: bool, chosen: bool
+) -> ProposalView:
+    return ProposalView(
+        id=to_text(identifier_of(proposal)),
+        title=proposal.title,
+        summary=proposal.summary,
+        items=tuple(
+            ProposalItemView(
+                kind=item.kind,
+                title=item.title,
+                supplier=item.supplier,
+                supplier_url=item.supplier_url,
+                price_minor=item.price_minor,
+                details=item.details,
+                starts_at=item.starts_at,
+            )
+            for item in proposal.items
+        ),
+        total_minor=proposal.total_minor,
+        per_person_minor=proposal.per_person_minor,
+        votes=votes,
+        voted_by_me=voted_by_me,
+        chosen=chosen,
+    )
+
+
+def contribution_view(contribution: Contribution, display_name: str) -> ContributionView:
+    return ContributionView(
+        user_id=to_text(contribution.user_id),
+        display_name=display_name,
+        amount_minor=contribution.amount_minor,
+        paid_minor=contribution.paid_minor,
+        outstanding_minor=max(contribution.amount_minor - contribution.paid_minor, 0),
+        status=contribution.status,
+    )
+
+
+def event_view(event: TripEvent, names: dict[PydanticObjectId, str]) -> EventView:
+    return EventView(
+        id=to_text(identifier_of(event)),
+        kind=event.kind,
+        actor=event.actor,
+        message=event.message,
+        payload=event.payload,
+        actor_user_id=_optional_text(event.actor_user_id),
+        actor_name=names.get(event.actor_user_id) if event.actor_user_id is not None else None,
+        created_at=event.created_at,
+    )

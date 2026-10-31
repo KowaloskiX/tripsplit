@@ -10,6 +10,16 @@ class AuthError(StrEnum):
     ACCOUNT_DISABLED = "account_disabled"
 
 
+class TripError(StrEnum):
+    # A trip the caller is not a member of is reported as missing — existence is not leaked.
+    NOT_FOUND = "trip_not_found"
+    PROPOSAL_NOT_FOUND = "proposal_not_found"
+    NOT_ORGANIZER = "not_organizer"
+    INVALID_STATE = "invalid_trip_state"
+    NO_PROPOSALS = "no_proposals"
+    ALREADY_PAID = "already_paid"
+
+
 class ApiError(StrEnum):
     """Edge-layer errors — they do not belong to any business domain."""
 

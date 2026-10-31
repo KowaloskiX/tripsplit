@@ -5,14 +5,20 @@ from typing import Annotated
 from fastapi import Depends, Request
 from starlette import status
 
+from app.ai.researchers import build_researcher
 from app.core.config import Settings
-from app.core.deps import SettingsDep
+from app.core.deps import BackgroundRunnerDep, SettingsDep
 from app.core.domain.errors import AuthError
 from app.core.domain.identity import AuthenticatedUser
 from app.core.domain.result import Ok
 from app.core.errors_http import DomainHTTPError
 from app.db.deps import DbDep
+from app.payments.providers import build_payment_provider
 from app.services.auth import AuthService
+from app.services.contributions import ContributionService
+from app.services.demo import DemoService
+from app.services.proposals import ProposalService
+from app.services.trips import TripService
 
 CSRF_HEADER_NAME = "X-CSRF-Token"
 
@@ -59,3 +65,27 @@ async def _resolve_optional_user(
 
 CurrentUser = Annotated[AuthenticatedUser, Depends(get_current_user)]
 OptionalUser = Annotated[AuthenticatedUser | None, Depends(get_optional_user)]
+
+
+def get_trip_service(database: DbDep) -> TripService:
+    return TripService(database)
+
+
+def get_proposal_service(
+    database: DbDep, settings: SettingsDep, runner: BackgroundRunnerDep
+) -> ProposalService:
+    return ProposalService(database, build_researcher(settings), runner)
+
+
+def get_contribution_service(settings: SettingsDep) -> ContributionService:
+    return ContributionService(build_payment_provider(settings))
+
+
+def get_demo_service(database: DbDep, settings: SettingsDep) -> DemoService:
+    return DemoService(database, get_contribution_service(settings))
+
+
+TripServiceDep = Annotated[TripService, Depends(get_trip_service)]
+ProposalServiceDep = Annotated[ProposalService, Depends(get_proposal_service)]
+ContributionServiceDep = Annotated[ContributionService, Depends(get_contribution_service)]
+DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]

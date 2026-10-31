@@ -7,9 +7,17 @@ the answer to "which endpoints do we expose" is a single file rather than a tree
 from fastapi import APIRouter
 
 from app.routes.auth import router as auth_router
+from app.routes.contributions import router as contributions_router
+from app.routes.demo import router as demo_router
 from app.routes.health import router as health_router
+from app.routes.proposals import router as proposals_router
+from app.routes.trips import router as trips_router
 
 # Everything under /api — same origin as the frontend, so the session cookie is first-party.
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router)
 api_router.include_router(auth_router)
+api_router.include_router(trips_router)
+api_router.include_router(proposals_router)
+api_router.include_router(contributions_router)
+api_router.include_router(demo_router)

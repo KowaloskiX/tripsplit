@@ -50,6 +50,25 @@ class TripRepository:
     ) -> Trip:
         return await self.update(trip, {"status": status}, session=session)
 
+    async def transition_status(
+        self,
+        trip_id: PydanticObjectId,
+        expected: TripStatus,
+        target: TripStatus,
+        session: AsyncClientSession | None = None,
+    ) -> bool:
+        """Compare-and-set on the status: `True` only for the ONE caller that moved it.
+
+        Two members paying the last shares at the same moment must not both announce
+        "everyone paid" — the filter on the expected status makes the transition happen once.
+        """
+        result = await Trip.get_pymongo_collection().update_one(
+            {"_id": trip_id, "status": expected},
+            {"$set": {"status": target, "updated_at": utc_now()}},
+            session=session,
+        )
+        return result.modified_count == 1
+
 
 class MemberRepository:
     async def add(

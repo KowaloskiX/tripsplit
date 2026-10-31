@@ -1,0 +1,93 @@
+"""HTTP for trips: create, list, join, the room state and the feed. Zero business logic."""
+
+from datetime import datetime
+from typing import Annotated, Any
+
+from fastapi import APIRouter, Query
+from starlette import status
+
+from app.core.errors_http import ErrorResponse
+from app.routes.dependencies import CurrentUser, TripServiceDep
+from app.routes.errors import trip_value
+from app.schemas.trips import (
+    CreateTripRequest,
+    EventResponse,
+    JoinTripRequest,
+    PostMessageRequest,
+    RoomResponse,
+    TripStatusResponse,
+    TripSummaryResponse,
+)
+from app.services.trips import NewTrip
+
+router = APIRouter(prefix="/trips", tags=["trips"])
+
+NOT_FOUND: dict[int | str, dict[str, Any]] = {status.HTTP_404_NOT_FOUND: {"model": ErrorResponse}}
+
+
+@router.post("", operation_id="trips-create", status_code=status.HTTP_201_CREATED)
+async def create_trip(
+    payload: CreateTripRequest, service: TripServiceDep, user: CurrentUser
+) -> TripStatusResponse:
+    result = await service.create(
+        user.id,
+        NewTrip(
+            title=payload.title,
+            origin=payload.origin,
+            brief=payload.brief,
+            date_from=payload.date_from,
+            date_to=payload.date_to,
+            group_size=payload.group_size,
+            budget_per_person_minor=payload.budget_per_person_minor,
+            display_name=payload.display_name,
+        ),
+    )
+    return TripStatusResponse.model_validate(trip_value(result))
+
+
+@router.get("", operation_id="trips-list")
+async def list_trips(service: TripServiceDep, user: CurrentUser) -> list[TripSummaryResponse]:
+    return [TripSummaryResponse.model_validate(view) for view in await service.list_mine(user.id)]
+
+
+@router.post(
+    "/join",
+    operation_id="trips-join",
+    responses={**NOT_FOUND, status.HTTP_409_CONFLICT: {"model": ErrorResponse}},
+)
+async def join_trip(
+    payload: JoinTripRequest, service: TripServiceDep, user: CurrentUser
+) -> TripStatusResponse:
+    """Idempotent: a member opening the invite link again just gets the trip back."""
+    result = await service.join(payload.invite_code, user.id, payload.display_name)
+    return TripStatusResponse.model_validate(trip_value(result))
+
+
+@router.get("/{trip_id}", operation_id="trips-room", responses=NOT_FOUND)
+async def read_room(trip_id: str, service: TripServiceDep, user: CurrentUser) -> RoomResponse:
+    """The whole room in one response — the UI polls this one endpoint."""
+    return RoomResponse.model_validate(trip_value(await service.room(trip_id, user.id)))
+
+
+@router.get("/{trip_id}/feed", operation_id="trips-feed", responses=NOT_FOUND)
+async def read_feed(
+    trip_id: str,
+    service: TripServiceDep,
+    user: CurrentUser,
+    after: Annotated[datetime | None, Query()] = None,
+) -> list[EventResponse]:
+    events = trip_value(await service.feed(trip_id, user.id, after))
+    return [EventResponse.model_validate(event) for event in events]
+
+
+@router.post(
+    "/{trip_id}/messages",
+    operation_id="trips-post-message",
+    status_code=status.HTTP_201_CREATED,
+    responses=NOT_FOUND,
+)
+async def post_message(
+    trip_id: str, payload: PostMessageRequest, service: TripServiceDep, user: CurrentUser
+) -> EventResponse:
+    event = trip_value(await service.post_message(trip_id, user.id, payload.text))
+    return EventResponse.model_validate(event)

@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.background import BackgroundRunner
 from app.core.config import Settings, get_settings
 from app.core.errors_http import register_error_handlers
 from app.core.http_security import (
@@ -50,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            await app.state.background.cancel_all()
             await database.dispose()
 
     app = FastAPI(
@@ -66,6 +68,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # Rate-limit storage also goes on `app.state`: the readiness probe must ping THIS object,
     # not a freshly built connection next to it.
+    # Set here rather than in `lifespan`, so test clients (which skip the lifespan) get it too.
+    app.state.background = BackgroundRunner()
+
     rate_limit_storage = build_rate_limit_storage(resolved)
     app.state.rate_limit_storage = rate_limit_storage
 
