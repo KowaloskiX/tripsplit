@@ -95,6 +95,8 @@ class PlannedAttraction:
     link: str = ""
     place: str = ""
     fixed_at: datetime | None = None
+    # A food market or a beer garden: a visit over lunch or dinner time IS the meal.
+    is_meal: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -263,6 +265,12 @@ def _visit(cursor: _Cursor, attraction: PlannedAttraction, start: datetime) -> N
     # A held slot is never moved, even when it overlaps: time only moves forward.
     cursor.now, cursor.at, cursor.place = max(cursor.now, end), attraction.point, attraction.title
     cursor.visits += 1
+    if attraction.is_meal:
+        day = start.date()
+        if start < _at(day, LUNCH[1]) + LUNCH[2] and end > _at(day, LUNCH[0]):
+            cursor.lunch_done = True
+        elif start < _at(day, DINNER[1]) + DINNER[2] and end > _at(day, DINNER[0]):
+            cursor.dinner_done = True
 
 
 def _meal(cursor: _Cursor, meal: tuple[time, time, timedelta], title: str) -> bool:

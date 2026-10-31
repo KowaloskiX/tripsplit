@@ -190,6 +190,18 @@ class CompleteManually:
     ref: str
 
 
+@dataclass(frozen=True, slots=True)
+class VoteAttractions:
+    """After the package vote: `{attraction title: voters}`; `None` voters = everyone."""
+
+    votes: Mapping[str, Sequence[str] | None]
+
+
+@dataclass(frozen=True, slots=True)
+class PlanDays:
+    """The organizer plans the days from the attraction votes (and queues tickets)."""
+
+
 # ---- expectations -------------------------------------------------------------------------
 
 
@@ -291,6 +303,15 @@ class ExpectPot:
 
 
 @dataclass(frozen=True, slots=True)
+class ExpectPlanned:
+    """`title` is a visit in the day plan; `tickets` = its ticket status (`to_buy`,
+    `buying`, `booked`, `needs_help`), `None` = no tickets needed."""
+
+    title: str
+    tickets: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class ExpectError:
     """The NEXT step must fail with this domain error code (e.g. `trip_not_ready`)."""
 
@@ -315,6 +336,8 @@ type Action = (
     | EnterTravellerDetails
     | Leave
     | CompleteManually
+    | VoteAttractions
+    | PlanDays
 )
 type Expectation = (
     ExpectStatus
@@ -329,6 +352,7 @@ type Expectation = (
     | ExpectAgentMessage
     | ExpectWallet
     | ExpectPot
+    | ExpectPlanned
     | ExpectError
 )
 type Step = Action | Expectation
@@ -346,6 +370,7 @@ EXPECTATIONS = (
     ExpectAgentMessage,
     ExpectWallet,
     ExpectPot,
+    ExpectPlanned,
     ExpectError,
 )
 

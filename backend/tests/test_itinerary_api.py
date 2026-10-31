@@ -168,9 +168,7 @@ async def test_the_plan_queues_tickets_and_resplits(
     trip_oid = to_object_id(trip_id)
     assert trip_oid is not None
     tickets = [
-        b
-        for b in await BookingRepository().for_trip(trip_oid)
-        if b.supplier_id == "sim_tickets"
+        b for b in await BookingRepository().for_trip(trip_oid) if b.supplier_id == "sim_tickets"
     ]
     assert len(tickets) == 1
     (ticket,) = tickets
@@ -195,9 +193,7 @@ async def test_the_plan_queues_tickets_and_resplits(
     again = await organizer.post(f"/api/trips/{trip_id}/itinerary/generate")
     assert again.status_code == 200
     tickets = [
-        b
-        for b in await BookingRepository().for_trip(trip_oid)
-        if b.supplier_id == "sim_tickets"
+        b for b in await BookingRepository().for_trip(trip_oid) if b.supplier_id == "sim_tickets"
     ]
     assert len(tickets) == 1
     assert (await _room(organizer, trip_id))["trip"]["total_minor"] == before + 14_000
@@ -207,9 +203,7 @@ async def test_the_plan_queues_tickets_and_resplits(
         await member.post(f"/api/trips/{trip_id}/attractions/{museum['attraction_id']}/vote")
     await organizer.post(f"/api/trips/{trip_id}/itinerary/generate")
     assert not [
-        b
-        for b in await BookingRepository().for_trip(trip_oid)
-        if b.supplier_id == "sim_tickets"
+        b for b in await BookingRepository().for_trip(trip_oid) if b.supplier_id == "sim_tickets"
     ]
     room = await _room(organizer, trip_id)
     assert room["trip"]["total_minor"] == before

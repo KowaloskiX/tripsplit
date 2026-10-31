@@ -1,6 +1,7 @@
 """The day plan's scheduling rules and the attraction readers — pure, no database."""
 
 from datetime import date, datetime, time, timedelta
+from itertools import pairwise
 
 import pytest
 
@@ -75,7 +76,7 @@ def all_visits(plan: list[PlanDay]) -> list[str]:
 
 def assert_no_overlap(day: PlanDay) -> None:
     timed = sorted(day.items, key=lambda item: item.start)
-    for first, second in zip(timed, timed[1:], strict=False):
+    for first, second in pairwise(timed):
         assert first.end <= second.start, f"{first.title} overlaps {second.title}"
 
 
@@ -268,3 +269,13 @@ def test_coordinates_are_read_defensively() -> None:
     assert coordinate(True, 90) is None
     assert coordinate("north", 90) is None
     assert coordinate(200.0, 180) is None
+
+
+def test_a_food_market_over_lunch_is_lunch() -> None:
+    market = PlannedAttraction(
+        "market", "Market", near(0.2), 90, OpeningHours(time(12), time(20)), is_meal=True
+    )
+    plan = build_plan(TripFrame(SAT, SAT, base=CENTRE), [market, attraction("museum")])
+    (day,) = plan
+    assert [i.title for i in day.items if i.kind is ItemKind.MEAL] == ["Dinner"]
+    assert "market" in visits(day)

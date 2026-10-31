@@ -25,6 +25,7 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 
 from app.ai.itinerary import directions
 from app.core.domain.attractions import (
+    AttractionKind,
     OpeningHours,
     Tally,
     TicketStatus,
@@ -235,6 +236,7 @@ def planned(candidate: AttractionCandidate, fixed_at: datetime | None) -> Planne
         ticketed=candidate.bookable,
         link=candidate.website,
         fixed_at=fixed_at,
+        is_meal=candidate.kind is AttractionKind.FOOD,
     )
 
 
