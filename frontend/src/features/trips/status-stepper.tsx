@@ -23,6 +23,8 @@ const STEP_OF: Record<TripStatus, number> = {
   disrupted: 3,
   rebooking: 3,
   done: 4,
+  // The funding deadline passed: the escrow refunded everyone, the paying step stays red.
+  expired: 2,
 };
 
 /** Off-happy-path statuses rename the step they sit on, so the stepper never lies. */
@@ -30,9 +32,10 @@ const ACTIVE_LABEL: Partial<Record<TripStatus, string>> = {
   proposing: "Researching",
   disrupted: "Disrupted",
   rebooking: "Rebooking",
+  expired: "Expired",
 };
 
-const ALERT: ReadonlySet<TripStatus> = new Set(["disrupted", "rebooking"]);
+const ALERT: ReadonlySet<TripStatus> = new Set(["disrupted", "rebooking", "expired"]);
 
 export function stepsFor(status: TripStatus): Step[] {
   const current = STEP_OF[status];

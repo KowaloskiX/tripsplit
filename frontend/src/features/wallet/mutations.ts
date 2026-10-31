@@ -5,6 +5,7 @@ import {
   contributionsTopUpAndPayMutation,
   tripsFeedQueryKey,
   tripsRoomQueryKey,
+  walletKycMutation,
   walletReadQueryKey,
   walletTopUpMutation,
 } from "@/lib/api";
@@ -43,5 +44,20 @@ export function useTopUpAndPay(tripId: string) {
   return useMutation({
     ...contributionsTopUpAndPayMutation(),
     onSuccess: () => refreshAfterPayment(queryClient, tripId),
+  });
+}
+
+/** Simulated ID verification at the payment partner; verified about a second later. */
+export function useVerifyIdentity() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    ...walletKycMutation(),
+    onSuccess: async () => {
+      await refreshAfterPayment(queryClient);
+      // The partner verifies asynchronously: read the wallet again once it has.
+      window.setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: walletReadQueryKey() });
+      }, 1_300);
+    },
   });
 }

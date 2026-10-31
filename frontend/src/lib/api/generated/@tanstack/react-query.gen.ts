@@ -6,8 +6,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { agentRunsFrame, agentRunsGraph, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsApproveAll, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, bookingsStartAll, contributionsPay, contributionsTopUpAndPay, demoDirectorProgress, demoDirectorStart, demoDirectorStop, demoDisruption, demoLeave, demoPayAll, demoPhones, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom, walletRead, walletTopUp, walletTopUpStatus } from '../sdk.gen';
-import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsGraphData, AgentRunsGraphError, AgentRunsGraphResponse, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveAllData, BookingsApproveAllError, BookingsApproveAllResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartAllData, BookingsStartAllError, BookingsStartAllResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, ContributionsTopUpAndPayData, ContributionsTopUpAndPayError, ContributionsTopUpAndPayResponse, DemoDirectorProgressData, DemoDirectorProgressError, DemoDirectorProgressResponse, DemoDirectorStartData, DemoDirectorStartError, DemoDirectorStartResponse, DemoDirectorStopData, DemoDirectorStopError, DemoDirectorStopResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoPhonesData, DemoPhonesError, DemoPhonesResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse, WalletReadData, WalletReadResponse, WalletTopUpData, WalletTopUpError, WalletTopUpResponse, WalletTopUpStatusData, WalletTopUpStatusError, WalletTopUpStatusResponse } from '../types.gen';
+import { agentRunsFrame, agentRunsGraph, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsApproveAll, bookingsCheckDisruptions, bookingsCompleteManually, bookingsList, bookingsStart, bookingsStartAll, contributionsPay, contributionsTopUpAndPay, demoDirectorProgress, demoDirectorStart, demoDirectorStop, demoDisruption, demoLeave, demoPayAll, demoPhones, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, travellerDetailsRead, travellerDetailsUpdate, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom, tripsSetPayBy, walletKyc, walletRead, walletTopUp, walletTopUpStatus } from '../sdk.gen';
+import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsGraphData, AgentRunsGraphError, AgentRunsGraphResponse, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveAllData, BookingsApproveAllError, BookingsApproveAllResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCheckDisruptionsData, BookingsCheckDisruptionsError, BookingsCheckDisruptionsResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartAllData, BookingsStartAllError, BookingsStartAllResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, ContributionsTopUpAndPayData, ContributionsTopUpAndPayError, ContributionsTopUpAndPayResponse, DemoDirectorProgressData, DemoDirectorProgressError, DemoDirectorProgressResponse, DemoDirectorStartData, DemoDirectorStartError, DemoDirectorStartResponse, DemoDirectorStopData, DemoDirectorStopError, DemoDirectorStopResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoPhonesData, DemoPhonesError, DemoPhonesResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TravellerDetailsReadData, TravellerDetailsReadResponse, TravellerDetailsUpdateData, TravellerDetailsUpdateError, TravellerDetailsUpdateResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse, TripsSetPayByData, TripsSetPayByError, TripsSetPayByResponse, WalletKycData, WalletKycError, WalletKycResponse, WalletReadData, WalletReadResponse, WalletTopUpData, WalletTopUpError, WalletTopUpResponse, WalletTopUpStatusData, WalletTopUpStatusError, WalletTopUpStatusResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -780,6 +780,25 @@ export const tripsPostMessageMutation = (options?: Partial<Options<TripsPostMess
 };
 
 /**
+ * Set Pay By
+ *
+ * The organizer moves the funding deadline (PAYING only, must be in the future).
+ */
+export const tripsSetPayByMutation = (options?: Partial<Options<TripsSetPayByData>>): UseMutationOptions<TripsSetPayByResponse, TripsSetPayByError, Options<TripsSetPayByData>> => {
+    const mutationOptions: UseMutationOptions<TripsSetPayByResponse, TripsSetPayByError, Options<TripsSetPayByData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await tripsSetPayBy({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Generate Proposals
  *
  * Starts the research and returns at once; the packages arrive in the feed.
@@ -851,6 +870,25 @@ export const walletReadOptions = (options?: Options<WalletReadData>) => queryOpt
     },
     queryKey: walletReadQueryKey(options)
 });
+
+/**
+ * Verify Identity
+ *
+ * Simulated ID verification at the payment partner: pending now, verified in ~1 s.
+ */
+export const walletKycMutation = (options?: Partial<Options<WalletKycData>>): UseMutationOptions<WalletKycResponse, WalletKycError, Options<WalletKycData>> => {
+    const mutationOptions: UseMutationOptions<WalletKycResponse, WalletKycError, Options<WalletKycData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await walletKyc({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Top Up

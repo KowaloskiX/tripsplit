@@ -8,10 +8,17 @@ import { apiErrorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
+import { KycForm } from "./kyc-card";
 import { useTopUp } from "./mutations";
 import { PaymentMethodForm } from "./payment-method-form";
 import { useTopUpStatus } from "./queries";
-import { amountError, type PaymentDetails, parseAmountMinor, TOP_UP_PRESETS_MINOR } from "./schema";
+import {
+  amountError,
+  isKycRequired,
+  type PaymentDetails,
+  parseAmountMinor,
+  TOP_UP_PRESETS_MINOR,
+} from "./schema";
 import { useRefreshWhenSettled } from "./settle";
 import { Sheet } from "./sheet";
 import { TopUpProgress } from "./top-up-progress";
@@ -123,6 +130,7 @@ export function TopUpSheet({ open, onClose }: { open: boolean; onClose: () => vo
             onCustom={setCustom}
           />
           {topUp.error && <ErrorCallout>{apiErrorMessage(topUp.error)}</ErrorCallout>}
+          {isKycRequired(topUp.error) && <KycForm onDone={() => topUp.reset()} />}
           <PaymentMethodForm
             submitLabel={
               invalid || amountMinor === null ? "Top up" : `Top up ${formatMoney(amountMinor)}`

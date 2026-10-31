@@ -61,7 +61,7 @@ describe("TransactionList", () => {
 });
 
 describe("TripPotCard", () => {
-  it("shows what the pot holds", () => {
+  it("shows what the trip escrow holds and who holds it", () => {
     render(
       <TripPotCard
         currency="PLN"
@@ -70,10 +70,13 @@ describe("TripPotCard", () => {
           spent_minor: 330_556,
           refunded_minor: 25_394,
           held_minor: 0,
+          pay_by: "2099-01-01T12:00:00Z",
         }}
       />,
     );
-    expect(screen.getByText("Trip wallet")).toBeInTheDocument();
-    expect(screen.getByText("Spent on bookings")).toBeInTheDocument();
+    expect(screen.getByText("Trip escrow")).toBeInTheDocument();
+    expect(screen.getByText("Paid to suppliers")).toBeInTheDocument();
+    expect(screen.getByText(/simulated licensed partner/)).toBeInTheDocument();
+    expect(screen.getByText(/goes back automatically/)).toBeInTheDocument();
   });
 });

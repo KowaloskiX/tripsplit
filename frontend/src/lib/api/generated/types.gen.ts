@@ -91,7 +91,7 @@ export type BatchResponse = {
 /**
  * BookingError
  */
-export type BookingError = 'trip_not_found' | 'booking_not_found' | 'run_not_found' | 'frame_not_found' | 'graph_not_found' | 'not_organizer' | 'trip_not_ready' | 'booking_not_startable' | 'not_awaiting_approval' | 'nothing_to_disrupt' | 'sold_out' | 'price_changed' | 'booking_not_completable' | 'traveller_details_missing' | 'quote_expired' | 'supplier_unknown';
+export type BookingError = 'trip_not_found' | 'booking_not_found' | 'run_not_found' | 'frame_not_found' | 'graph_not_found' | 'not_organizer' | 'trip_not_ready' | 'booking_not_startable' | 'not_awaiting_approval' | 'nothing_to_disrupt' | 'sold_out' | 'price_changed' | 'booking_not_completable' | 'traveller_details_missing' | 'quote_expired' | 'supplier_unknown' | 'payment_failed';
 
 /**
  * BookingKind
@@ -109,6 +109,10 @@ export type BookingResponse = {
      * Amount Minor
      */
     amount_minor: number;
+    /**
+     * Card Last4
+     */
+    card_last4?: string | null;
     channel: SupplierChannel;
     /**
      * Confirmation Ref
@@ -128,6 +132,11 @@ export type BookingResponse = {
      * Passenger User Ids
      */
     passenger_user_ids: Array<string>;
+    payment_kind?: PurchasePayment | null;
+    /**
+     * Payment Ref
+     */
+    payment_ref?: string | null;
     /**
      * Replaces Booking Id
      */
@@ -506,7 +515,7 @@ export type EventActor = 'agent' | 'member' | 'system';
 /**
  * EventKind
  */
-export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued' | 'hold_placed' | 'hold_expired' | 'traveller_details_missing';
+export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued' | 'hold_placed' | 'hold_expired' | 'traveller_details_missing' | 'escrow_opened' | 'supplier_paid' | 'funding_expired';
 
 /**
  * EventResponse
@@ -667,6 +676,61 @@ export type JoinTripRequest = {
 };
 
 export type JsonValue = unknown;
+
+/**
+ * KycLevel
+ */
+export type KycLevel = 'none' | 'light';
+
+/**
+ * KycRequest
+ *
+ * "ID verification" (simulated): verified about a second later. The document number is
+ * optional, passed to the partner, never stored by TripSplit.
+ */
+export type KycRequest = {
+    /**
+     * Birth Date
+     */
+    birth_date: string;
+    /**
+     * Document Number
+     */
+    document_number?: string | null;
+    /**
+     * Legal Name
+     */
+    legal_name: string;
+};
+
+/**
+ * KycResponse
+ */
+export type KycResponse = {
+    /**
+     * Document Masked
+     */
+    document_masked?: string | null;
+    level: KycLevel;
+    /**
+     * Limit Minor
+     */
+    limit_minor: number;
+    /**
+     * Remaining Minor
+     */
+    remaining_minor: number | null;
+    status: KycStatus;
+    /**
+     * Topped Up Minor
+     */
+    topped_up_minor: number;
+};
+
+/**
+ * KycStatus
+ */
+export type KycStatus = 'not_started' | 'pending' | 'verified';
 
 /**
  * LiveStatusResponse
@@ -897,8 +961,8 @@ export type PostMessageRequest = {
 /**
  * PotResponse
  *
- * The trip wallet: paid in from members' wallets, spent on confirmed bookings, paid back,
- * and what it still holds.
+ * The trip escrow at the payment partner: paid in from members' wallets, paid to
+ * suppliers (payouts + virtual-card spends), refunded, and what the partner still holds.
  */
 export type PotResponse = {
     /**
@@ -906,17 +970,41 @@ export type PotResponse = {
      */
     collected_minor: number;
     /**
+     * Escrow Wallet Id
+     */
+    escrow_wallet_id?: string | null;
+    /**
+     * Funded Minor
+     */
+    funded_minor?: number;
+    /**
+     * Held By
+     */
+    held_by?: string;
+    /**
      * Held Minor
      */
     held_minor: number;
+    /**
+     * Pay By
+     */
+    pay_by?: string | null;
     /**
      * Refunded Minor
      */
     refunded_minor: number;
     /**
+     * Reserved Minor
+     */
+    reserved_minor?: number;
+    /**
      * Spent Minor
      */
     spent_minor: number;
+    /**
+     * Target Minor
+     */
+    target_minor?: number;
 };
 
 /**
@@ -1000,6 +1088,13 @@ export type ProposalResponse = {
      */
     votes: number;
 };
+
+/**
+ * PurchasePayment
+ *
+ * How the escrow paid one booking.
+ */
+export type PurchasePayment = 'payout' | 'virtual_card';
 
 /**
  * ReadinessResponse
@@ -1180,6 +1275,16 @@ export type SegmentResponse = {
  */
 export type SessionResponse = {
     user: CurrentUserResponse | null;
+};
+
+/**
+ * SetPayByRequest
+ */
+export type SetPayByRequest = {
+    /**
+     * Pay By
+     */
+    pay_by: string;
 };
 
 /**
@@ -1417,6 +1522,10 @@ export type TripResponse = {
      * Origin
      */
     origin: string;
+    /**
+     * Pay By
+     */
+    pay_by?: string | null;
     status: TripStatus;
     /**
      * Title
@@ -1435,7 +1544,7 @@ export type TripResponse = {
  * collecting -> proposing -> voting -> paying -> booking -> booked -> done,
  * with booked -> disrupted -> rebooking -> booked for post-purchase care.
  */
-export type TripStatus = 'collecting' | 'proposing' | 'voting' | 'paying' | 'booking' | 'booked' | 'disrupted' | 'rebooking' | 'done';
+export type TripStatus = 'collecting' | 'proposing' | 'voting' | 'paying' | 'booking' | 'booked' | 'disrupted' | 'rebooking' | 'done' | 'expired';
 
 /**
  * TripStatusResponse
@@ -1496,6 +1605,15 @@ export type WalletResponse = {
      * Currency
      */
     currency: string;
+    /**
+     * Held By
+     */
+    held_by: string;
+    kyc: KycResponse;
+    /**
+     * Partner Wallet Id
+     */
+    partner_wallet_id: string | null;
     /**
      * Transactions
      */
@@ -2795,6 +2913,48 @@ export type TripsPostMessageResponses = {
 
 export type TripsPostMessageResponse = TripsPostMessageResponses[keyof TripsPostMessageResponses];
 
+export type TripsSetPayByData = {
+    body: SetPayByRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/pay-by';
+};
+
+export type TripsSetPayByErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Unprocessable Entity
+     */
+    422: ErrorResponse;
+};
+
+export type TripsSetPayByError = TripsSetPayByErrors[keyof TripsSetPayByErrors];
+
+export type TripsSetPayByResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type TripsSetPayByResponse = TripsSetPayByResponses[keyof TripsSetPayByResponses];
+
 export type ProposalsGenerateData = {
     body?: never;
     path: {
@@ -2937,6 +3097,31 @@ export type WalletReadResponses = {
 
 export type WalletReadResponse = WalletReadResponses[keyof WalletReadResponses];
 
+export type WalletKycData = {
+    body: KycRequest;
+    path?: never;
+    query?: never;
+    url: '/api/wallet/kyc';
+};
+
+export type WalletKycErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type WalletKycError = WalletKycErrors[keyof WalletKycErrors];
+
+export type WalletKycResponses = {
+    /**
+     * Successful Response
+     */
+    202: KycResponse;
+};
+
+export type WalletKycResponse = WalletKycResponses[keyof WalletKycResponses];
+
 export type WalletTopUpData = {
     body: TopUpRequest;
     path?: never;
@@ -2945,6 +3130,10 @@ export type WalletTopUpData = {
 };
 
 export type WalletTopUpErrors = {
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
     /**
      * Unprocessable Entity
      */

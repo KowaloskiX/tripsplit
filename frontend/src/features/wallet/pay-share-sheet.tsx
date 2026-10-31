@@ -5,11 +5,12 @@ import { ErrorCallout } from "@/components/ui/callout";
 import { apiErrorMessage } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
+import { KycForm } from "./kyc-card";
 import { usePayFromWallet, useTopUpAndPay } from "./mutations";
 import { usePayShareStore } from "./pay-share-store";
 import { PaymentMethodForm } from "./payment-method-form";
 import { useTopUpStatus, useWallet } from "./queries";
-import { MIN_TOP_UP_MINOR, type PaymentDetails } from "./schema";
+import { isKycRequired, MIN_TOP_UP_MINOR, type PaymentDetails } from "./schema";
 import { useRefreshWhenSettled } from "./settle";
 import { Sheet } from "./sheet";
 import { TopUpProgress } from "./top-up-progress";
@@ -108,6 +109,7 @@ export function PayShareSheet({
             </div>
           </dl>
           {error && <ErrorCallout>{apiErrorMessage(error)}</ErrorCallout>}
+          {isKycRequired(error) && <KycForm onDone={() => topUpAndPay.reset()} />}
           {wallet.data && missing === 0 ? (
             <Button
               size="lg"
