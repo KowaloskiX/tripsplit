@@ -1,6 +1,7 @@
 """Package rules and the research adapters — no database, no network."""
 
 import json
+from dataclasses import replace
 from datetime import date, datetime
 
 import pytest
@@ -8,7 +9,13 @@ import pytest
 from app.ai.claude_research import ClaudeCliResearcher, parse_packages
 from app.ai.fixture_research import FixtureResearcher
 from app.ai.research import TripBrief
-from app.core.domain.packages import booking_goal, format_money, per_person, pick_winner
+from app.core.domain.packages import (
+    booking_goal,
+    format_money,
+    is_over_budget,
+    per_person,
+    pick_winner,
+)
 from app.core.domain.trips import BookingKind
 
 BRIEF = TripBrief(
@@ -77,6 +84,36 @@ async def test_fixture_packages_are_deterministic_and_priced_for_the_group() -> 
     assert totals == sorted(totals), "budget -> comfort -> splurge"
     assert "Praha hl.n." in first[0].items[0].title
     assert all(item.supplier_url.startswith("https://") for p in first for item in p.items)
+
+
+async def test_the_prague_train_is_the_real_pkp_ec_offer_scaled_per_traveller() -> None:
+    train = (await FixtureResearcher().research(BRIEF))[0].items[0]
+    assert train.kind is BookingKind.TRAIN
+    assert train.supplier == "PKP Intercity"
+    assert "EC 131 Batory" in train.title and "2nd class" in train.title
+    assert "EC 117 Silesia" in train.details
+    # 466.95 + 802.80 PLN per three passengers, twice.
+    assert train.price_minor == 253_950
+    assert train.starts_at is not None and train.starts_at.strftime("%H:%M") == "07:52"
+    four = await FixtureResearcher().research(replace(BRIEF, travellers=4))
+    assert four[0].items[0].price_minor == 4 * 42_325
+
+
+def test_is_over_budget() -> None:
+    assert is_over_budget(30_001, 30_000) is True
+    assert is_over_budget(30_000, 30_000) is False
+    assert is_over_budget(99_999, None) is False
+
+
+async def test_a_budget_trims_the_cheaper_packages_to_fit() -> None:
+    fits = await FixtureResearcher().research(replace(BRIEF, budget_per_person_minor=55_000))
+    budget, comfort, splurge = fits
+    assert "dorm beds" in budget.title
+    assert per_person(budget.total_minor, 6) <= 55_000
+    assert all(item.kind is not BookingKind.ACTIVITY for item in comfort.items)
+    assert any(item.kind is BookingKind.ACTIVITY for item in splurge.items)
+    unconstrained = await FixtureResearcher().research(BRIEF)
+    assert "private rooms" in unconstrained[0].items[1].title
 
 
 def _envelope(packages: object) -> bytes:

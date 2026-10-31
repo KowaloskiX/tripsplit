@@ -128,6 +128,8 @@ class ProposalResponse(_ReadModel):
     items: list[ProposalItemResponse]
     total_minor: int
     per_person_minor: int
+    # More per person than the trip's budget — shown as a badge on the package card.
+    over_budget: bool
     votes: int
     voted_by_me: bool
     chosen: bool

@@ -85,6 +85,8 @@ class Proposal(TimestampMixin, Document):
     items: list[ProposalItem] = Field(default_factory=list)
     total_minor: int = Field(ge=0)
     per_person_minor: int = Field(ge=0)
+    # Costs more per person than the brief's budget (False when the brief has none).
+    over_budget: bool = False
     image_url: str | None = None
 
     class Settings:

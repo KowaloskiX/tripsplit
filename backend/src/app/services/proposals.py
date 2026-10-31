@@ -13,7 +13,7 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from app.ai.research import PackagePlan, PackageResearcher, TripBrief
 from app.core.background import BackgroundRunner
 from app.core.domain.errors import TripError
-from app.core.domain.packages import format_money, per_person, pick_winner
+from app.core.domain.packages import format_money, is_over_budget, per_person, pick_winner
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.trips import EventActor, EventKind, TripStatus, split_evenly
 from app.db.client import Database
@@ -132,7 +132,7 @@ class ProposalService:
     async def _store(
         self, trip_id: PydanticObjectId, brief: TripBrief, plans: list[PackagePlan]
     ) -> None:
-        proposals = [_proposal(trip_id, plan, brief.travellers) for plan in plans]
+        proposals = [_proposal(trip_id, plan, brief) for plan in plans]
 
         async def write(session: AsyncClientSession) -> None:
             await self.votes.delete_for_trip(trip_id, session=session)
@@ -144,12 +144,21 @@ class ProposalService:
             if not moved:
                 raise _StatusChanged
             cheapest = min(proposal.per_person_minor for proposal in proposals)
+            message = (
+                f"{len(proposals)} packages are ready — from "
+                f"{format_money(cheapest, brief.currency)} per person. Vote for your favourite!"
+            )
+            budget = brief.budget_per_person_minor
+            if budget is not None and all(proposal.over_budget for proposal in proposals):
+                message += (
+                    f" Heads-up: none fits the budget of {format_money(budget, brief.currency)} "
+                    "per person — these are the cheapest options I found."
+                )
             await self.events.add(
                 trip_id,
                 EventKind.PROPOSALS_READY,
                 EventActor.AGENT,
-                f"{len(proposals)} packages are ready — from "
-                f"{format_money(cheapest, brief.currency)} per person. Vote for your favourite!",
+                message,
                 payload={"proposal_ids": [to_text(identifier_of(p)) for p in proposals]},
                 session=session,
             )
@@ -254,6 +263,22 @@ class ProposalService:
                 "I will book as soon as everyone has paid their share.",
                 session=session,
             )
+            if winner.over_budget and trip.budget_per_person_minor is not None:
+                await self.events.add(
+                    trip_oid,
+                    EventKind.MESSAGE,
+                    EventActor.AGENT,
+                    f"Heads-up: “{winner.title}” is over your budget — "
+                    f"{format_money(winner.per_person_minor, trip.currency)} per person against "
+                    f"{format_money(trip.budget_per_person_minor, trip.currency)} planned.",
+                    payload={
+                        "over_budget": True,
+                        "proposal_id": to_text(winner_id),
+                        "per_person_minor": winner.per_person_minor,
+                        "budget_per_person_minor": trip.budget_per_person_minor,
+                    },
+                    session=session,
+                )
 
         try:
             await self.db.in_transaction(write)
@@ -271,7 +296,8 @@ class ProposalService:
         return proposal
 
 
-def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, travellers: int) -> Proposal:
+def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, brief: TripBrief) -> Proposal:
+    share = per_person(plan.total_minor, brief.travellers)
     return Proposal(
         trip_id=trip_id,
         title=plan.title,
@@ -289,5 +315,6 @@ def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, travellers: int) -> 
             for item in plan.items
         ],
         total_minor=plan.total_minor,
-        per_person_minor=per_person(plan.total_minor, travellers),
+        per_person_minor=share,
+        over_budget=is_over_budget(share, brief.budget_per_person_minor),
     )

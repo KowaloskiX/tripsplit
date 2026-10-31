@@ -73,6 +73,7 @@ class ProposalView:
     items: tuple[ProposalItemView, ...]
     total_minor: int
     per_person_minor: int
+    over_budget: bool
     votes: int
     voted_by_me: bool
     chosen: bool
@@ -173,6 +174,7 @@ def proposal_view(
         ),
         total_minor=proposal.total_minor,
         per_person_minor=proposal.per_person_minor,
+        over_budget=proposal.over_budget,
         votes=votes,
         voted_by_me=voted_by_me,
         chosen=chosen,

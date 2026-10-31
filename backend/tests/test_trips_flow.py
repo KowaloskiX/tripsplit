@@ -235,6 +235,37 @@ async def test_odd_split_sums_to_the_total(app: FastAPI, member_factory: MemberF
     assert max(shares) - min(shares) <= 1
 
 
+async def test_packages_are_flagged_over_budget_and_closing_on_one_warns(
+    app: FastAPI, member_factory: MemberFactory
+) -> None:
+    organizer = await member_factory("organizer@example.com")
+    trip_id = await _create_trip(organizer, budget_per_person_minor=55_000)
+    proposals = await _research(app, organizer, trip_id)
+    assert [p["over_budget"] for p in proposals] == [False, True, True]
+    assert all(p["over_budget"] == (p["per_person_minor"] > 55_000) for p in proposals)
+
+    await organizer.post(f"/api/trips/{trip_id}/votes", {"proposal_id": proposals[1]["id"]})
+    assert (await organizer.post(f"/api/trips/{trip_id}/voting/close")).status_code == 200
+    feed = (await organizer.get(f"/api/trips/{trip_id}/feed")).json()
+    (warning,) = [e for e in feed if e["payload"].get("over_budget")]
+    assert warning["kind"] == EventKind.MESSAGE
+    assert warning["actor"] == "agent"
+    assert "is over your budget" in warning["message"]
+    assert "550.00 PLN planned" in warning["message"]
+
+
+async def test_no_budget_means_nothing_is_over_budget(
+    app: FastAPI, member_factory: MemberFactory
+) -> None:
+    organizer = await member_factory("organizer@example.com")
+    trip_id = await _create_trip(organizer)
+    proposals = await _research(app, organizer, trip_id)
+    assert not any(p["over_budget"] for p in proposals)
+    assert (await organizer.post(f"/api/trips/{trip_id}/voting/close")).status_code == 200
+    feed = (await organizer.get(f"/api/trips/{trip_id}/feed")).json()
+    assert not any(e["payload"].get("over_budget") for e in feed)
+
+
 async def test_demo_supplier_url_redirects_only_the_train(
     app: FastAPI, settings: Settings, member_factory: MemberFactory
 ) -> None:

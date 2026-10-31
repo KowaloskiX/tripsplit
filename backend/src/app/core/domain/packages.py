@@ -20,6 +20,11 @@ def per_person(total_minor: int, people: int) -> int:
     return -(-total_minor // people)
 
 
+def is_over_budget(per_person_minor: int, budget_per_person_minor: int | None) -> bool:
+    """A package costs more per person than the brief allows; no budget = never over."""
+    return budget_per_person_minor is not None and per_person_minor > budget_per_person_minor
+
+
 def format_money(amount_minor: int, currency: str) -> str:
     """`123456, "PLN"` -> `"1234.56 PLN"` — for agent messages in the feed."""
     return f"{amount_minor // 100}.{amount_minor % 100:02d} {currency}"
