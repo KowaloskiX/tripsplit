@@ -131,7 +131,7 @@ def resplit_message(plan: Resplit, currency: str) -> str:
         f"({format_delta(first.delta_minor, currency)})."
     )
     if plan.owes:
-        message += " Please top up the difference — I buy once everyone has paid."
+        message += " Please top up the difference. I will buy once everyone has paid."
     elif plan.refunds:
         message += " The difference will be refunded."
     return message

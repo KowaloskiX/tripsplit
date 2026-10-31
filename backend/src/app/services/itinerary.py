@@ -357,7 +357,7 @@ def plan_message(days: Sequence[ItineraryDay]) -> str:
     body = ", ".join(steps) if steps else "free time"
     return (
         f"Here is the plan for {busiest.day:%A}: {body}. {len(days)} day(s), {visits} "
-        "attraction(s) in total — open the plan for every day."
+        "attraction(s) in total. Open the plan for every day."
     )
 
 
@@ -572,7 +572,7 @@ class ItineraryService:
                 trip_oid,
                 EventKind.ALL_PAID,
                 EventActor.AGENT,
-                "Everyone paid — the agent can book now.",
+                "Everyone paid. The agent can book now.",
                 payload={"total_minor": split.total_minor},
                 session=session,
             )

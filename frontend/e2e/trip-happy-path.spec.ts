@@ -56,7 +56,7 @@ test.describe("a group trip from chat to tickets", () => {
     // .first(): the all-paid celebration stamp briefly repeats the count.
     await expect(page.getByText(`${GROUP}/${GROUP} paid`).first()).toBeVisible();
     await expect(
-      page.getByText("Everyone paid — the organizer can start the bookings"),
+      page.getByText("Everyone paid. The organizer can start the bookings"),
     ).toBeVisible();
 
     await page.goto(`/t/${tripId}/bookings`);

@@ -10,7 +10,7 @@ import { useSpeechInput } from "./use-speech-input";
 
 const LANG_NAME = { "pl-PL": "Polish", "en-US": "English" } as const;
 
-export const UNSUPPORTED_HINT = "Voice input needs Chrome, Edge or Safari — type instead.";
+export const UNSUPPORTED_HINT = "Voice input needs Chrome, Edge or Safari. Type instead.";
 
 export type MicButtonProps = {
   /** The live transcript — fill the input with it as words arrive. */

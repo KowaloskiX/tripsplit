@@ -1,27 +1,10 @@
 """Auth cryptography: passwords (argon2id) and session tokens. No HTTP, no database.
 
-**Why the public API is `async` even though crypto does no I/O.** argon2 is deliberately
-expensive: measured at ~40 ms of pure CPU per hash and per verification. Called directly
-inside an `async def` it blocks the **entire** event loop — 20 concurrent logins serialized
-into ~1.6 s, and an innocent `/api/health` degraded 29-fold. That is why the blocking
-variants are private (impossible to call by accident) and the public ones offload to threads.
-
-**Why a semaphore rather than plain `to_thread`.** Two reasons:
-1. argon2id is memory-hard — 64 MiB per call. anyio's default pool has 40 slots, i.e. up to
-   ~2.5 GiB at peak: trading a CPU stall for memory exhaustion.
-2. argon2 has **its own** parallelism (`parallelism=4`), so every hash occupies 4 CPU
-   threads. Running 8 at once on 8 cores starves the event-loop thread.
-
-Limit = `cores / parallelism`. Measured on 8 cores, 20 verifications:
-
-| limit | total time | MAX loop lag |
-|------:|-----------:|-------------:|
-|     1 |     838 ms |       1.9 ms |
-|     2 |     661 ms |       4.4 ms |
-|     4 |     617 ms |      10.4 ms |
-|     8 |     767 ms |      57.5 ms |
-
-A limit of 2 (= 8/4) gives near-best throughput at negligible lag — hence the formula.
+The public API is async because argon2 costs ~40 ms of CPU per call and would block the event
+loop; the blocking variants are private and the public ones run in threads. A limiter caps
+concurrency at `cores / parallelism`: argon2id uses 64 MiB per call (anyio's 40-slot pool
+could reach ~2.5 GiB) and 4 threads per hash (more would starve the loop thread). Measured on
+8 cores, a limit of 2 gave near-best throughput with ~4 ms max loop lag.
 """
 
 import hashlib

@@ -644,7 +644,7 @@ class BookingService:
         await self._say(
             trip,
             EventKind.BOOKING_STARTED,
-            f"On it — buying {_what_is_bought(booking, party)} on {booking.supplier} directly.",
+            f"Buying {_what_is_bought(booking, party)} on {booking.supplier} directly.",
             booking,
         )
         await self._say(
@@ -703,7 +703,7 @@ class BookingService:
         await self._say(
             trip,
             EventKind.BOOKING_STARTED,
-            f"On it — buying {_what_is_bought(booking, party)} on {booking.supplier}.",
+            f"Buying {_what_is_bought(booking, party)} on {booking.supplier}.",
             booking,
         )
 
@@ -898,7 +898,7 @@ class BookingService:
             # approval marks the booking APPROVED first. A purchase reported without it is
             # not trusted blindly — a human checks it on the supplier site.
             status = BookingStatus.HANDOFF
-            reason = f"The agent reported a purchase nobody approved — check it. {reason}"
+            reason = f"The agent reported a purchase nobody approved. Please check it. {reason}"
         confirmation = str((raw or {}).get("confirmation_ref") or "") or None
         changes: dict[str, Any] = {"status": status}
         if status is BookingStatus.CONFIRMED:
@@ -1250,7 +1250,7 @@ class BookingService:
                 target,
                 repriced_minor(target.amount_minor, price_change_percent),
                 note=(
-                    f"REBOOKING: the original {noun} is delayed by {delay_minutes} min — choose "
+                    f"REBOOKING: the original {noun} is delayed by {delay_minutes} min. Choose "
                     "the next later departure on the same route and date."
                 ),
             )
@@ -1306,7 +1306,7 @@ class BookingService:
             await self._say(
                 trip,
                 EventKind.DISRUPTION,
-                f"{booking.supplier}: {notice.message} I could not find a replacement — please "
+                f"{booking.supplier}: {notice.message} I could not find a replacement. Please "
                 "rebook it by hand.",
                 booking,
             )

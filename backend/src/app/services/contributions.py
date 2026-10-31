@@ -143,7 +143,7 @@ class ContributionService:
                 trip_oid,
                 EventKind.ALL_PAID,
                 EventActor.AGENT,
-                "Everyone paid — the agent can book now.",
+                "Everyone paid. The agent can book now.",
                 payload={"total_minor": sum(c.paid_minor for c in contributions)},
             )
             if self.on_fully_paid is not None:

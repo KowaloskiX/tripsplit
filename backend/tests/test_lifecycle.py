@@ -299,7 +299,7 @@ async def test_a_price_rise_resplits_exactly_and_sends_the_trip_back_to_paying(
 
     (event,) = await _events(trip, EventKind.PRICE_CHANGED)
     assert event.message == (
-        "PKP Intercity raised the price of EC 131 from 1 200.00 to 1 246.70 PLN — "
+        "PKP Intercity raised the price of EC 131 from 1 200.00 to 1 246.70 PLN, "
         "23.35 PLN more each. Top up and I will buy it."
     )
     assert event.payload["previous_amount_minor"] == TRAIN_MINOR

@@ -73,7 +73,7 @@ export function CreateTripForm({ defaultDisplayName = "" }: CreateTripFormProps)
       <Field
         htmlFor="brief"
         label="Brief for the agent"
-        hint="Where, what vibe, what matters — the agent turns this into packages."
+        hint="Where, what vibe, what matters. The agent turns this into packages."
         error={errors.brief?.message}
       >
         <Textarea

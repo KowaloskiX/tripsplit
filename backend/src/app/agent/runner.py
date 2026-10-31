@@ -1,28 +1,12 @@
-"""The loop: observe -> decide -> act -> recover, until done / handoff / step cap.
+"""The agent loop: observe -> decide -> act -> recover, until done, handoff or the step cap.
 
-DECIDE is a cascade, cheapest and most certain first:
+DECIDE tries, cheapest first: the rest of a pending macro plan (re-validated per step), a
+recorded FLOW (`flows.py`), the RULE layer (`rules.py` + `site_profiles.py`), then the LLM
+PLANNER, which returns a short plan for the page. `--mode` limits the layers (`auto`,
+`replay`, `rules`, `llm`, `planner`); `--max-llm-calls` caps the model.
 
-  1. a pending macro plan  — the rest of a plan the planner returned last step, each action
-                             re-validated against the fresh page before it runs;
-  2. the FLOW              — a compiled, parametrised recording of a past success
-                             (`flows.py`); a step whose target is gone is a miss;
-  3. the RULE LAYER        — deterministic, structural decisions (`rules.py`) driven by the
-                             typed site profile (`site_profiles.py`);
-  4. the PLANNER           — an LLM, only when 1-3 have no confident action. It returns a
-                             short plan for the page (macro planning), not one action.
-
-`--mode` picks which layers may run: `auto` (all), `replay` (flow + rules, no LLM), `rules`
-(rules only, no LLM), `llm` (rules + planner, no flow) and `planner` (the LLM alone — the
-pre-engine behaviour, kept as an eval baseline). `--max-llm-calls` caps the model.
-
-Two entry points:
-  - `run(RunRequest)` — called by a service (in a worker thread or subprocess).
-  - `main()` — the `agent-run` CLI for development and recon:
-        uv run agent-run --url https://www.saucedemo.com --goal "..." --run-id demo
-
-Per step the runner writes `runs/<run_id>/NN.png`, `status.json` (milestone, step, cost) and
-a continuously refreshed `live.jpg` (a CDP screencast on Chromium, a screenshot every ~300 ms
-on Camoufox/Firefox). A caller streams those to the UI.
+Entry points: `run(RunRequest)` for services and `main()` for the `agent-run` CLI. Each step
+writes `runs/<run_id>/NN.png`, `status.json` and a refreshed `live.jpg` for the UI.
 """
 
 import argparse

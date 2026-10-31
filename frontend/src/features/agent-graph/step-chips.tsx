@@ -60,8 +60,8 @@ const SOURCE_ICON: Record<StepSource, LucideIcon> = {
   human: UserCheck,
 };
 const SOURCE_TITLE: Record<StepSource, string> = {
-  flow: "Replayed from a recorded flow — no LLM call",
-  rule: "Decided by a deterministic rule — no LLM call",
+  flow: "Replayed from a recorded flow, no LLM call",
+  rule: "Decided by a deterministic rule, no LLM call",
   llm: "Decided by the LLM planner",
   human: "Decided by a person",
 };

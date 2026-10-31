@@ -52,13 +52,13 @@ describe("useSpeakArrivals + SpeakerToggle", () => {
       <Room
         messages={[
           ...history,
-          { id: "2", text: "Everyone paid — booking now." },
+          { id: "2", text: "Everyone paid, booking now." },
           { id: "3", text: "Pociąg EC 131 jest zarezerwowany." },
         ]}
       />,
     );
     expect(spokenTexts(synthesis)).toEqual([
-      "Everyone paid — booking now.",
+      "Everyone paid, booking now.",
       "Pociąg EC 131 jest zarezerwowany.",
     ]);
     const [english, polish] = synthesis.speak.mock.calls.map(([utterance]) => utterance);

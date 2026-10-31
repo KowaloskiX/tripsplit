@@ -43,7 +43,7 @@ function at(ms: number): CSSProperties {
   return { "--delay": `${ms}ms` } as CSSProperties;
 }
 
-/** "From group chat to tickets", each word rising out of a blur in turn. */
+/** "From group chat to tickets", one word at a time. */
 export function HeroHeadline({ id }: { id?: string }): ReactNode {
   return (
     <h1 id={id} className="display mt-8 max-w-5xl text-[clamp(3.4rem,10vw,7.5rem)] text-balance">
@@ -90,11 +90,7 @@ export function LandingHero(): ReactNode {
   );
 }
 
-/**
- * The product in one picture, drawn in HTML: a chat thread turning into a ticket. Plays once
- * when it scrolls into view — the bubbles arrive, the agent types and answers, then the ticket
- * prints out of a slot and its stub tears along the perforation.
- */
+/** A chat thread turning into a ticket, drawn in HTML; plays once when scrolled into view. */
 export function ChatToTicket(): ReactNode {
   return (
     <Reveal
@@ -123,7 +119,7 @@ export function ChatToTicket(): ReactNode {
               >
                 <p className="ticket-mono text-[11px] uppercase text-agent-tag">tripsplit agent</p>
                 <p className="mt-1 text-[15px] text-agent-fg">
-                  3 packages from 593 zł each. Vote, then pay your share — I&apos;ll book.
+                  3 packages from 593 zł each. Vote, then pay your share and I&apos;ll book.
                 </p>
               </div>
             </div>

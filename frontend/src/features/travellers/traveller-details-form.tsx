@@ -70,7 +70,7 @@ export function TravellerDetailsForm({ tripId, current }: TravellerDetailsFormPr
         <Field
           htmlFor="traveller-document"
           label="Passport / ID number"
-          hint={current?.document_number_masked ? "Stored — type a new one to replace it." : ""}
+          hint={current?.document_number_masked ? "Stored. Type a new one to replace it." : ""}
           error={errors.documentNumber?.message}
         >
           <Input
@@ -90,7 +90,7 @@ export function TravellerDetailsForm({ tripId, current }: TravellerDetailsFormPr
         <Field
           htmlFor="traveller-gender"
           label="Gender"
-          hint="As on the document — airlines ask for it."
+          hint="As on the document. Airlines ask for it."
           error={errors.gender?.message}
         >
           <select

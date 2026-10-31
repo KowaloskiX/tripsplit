@@ -46,11 +46,11 @@ const LEVEL_TICK_MS = 120;
 const LEVEL_FLOOR = 0.18;
 
 const ERROR_TEXT: Partial<Record<RecognitionErrorCode, string>> = {
-  "not-allowed": "Microphone access is blocked — allow it in the address bar.",
-  "service-not-allowed": "Microphone access is blocked — allow it in the address bar.",
-  "no-speech": "I didn't hear anything — try again.",
+  "not-allowed": "Microphone access is blocked. Allow it in the address bar.",
+  "service-not-allowed": "Microphone access is blocked. Allow it in the address bar.",
+  "no-speech": "I didn't hear anything. Try again.",
   "audio-capture": "No microphone found.",
-  network: "The speech service is unreachable — type instead.",
+  network: "The speech service is unreachable. Type instead.",
   "language-not-supported": "This browser can't recognise that language.",
 };
 
@@ -139,7 +139,7 @@ export function useSpeechInput({
       const denied = event.error === "not-allowed" || event.error === "service-not-allowed";
       setStatus(denied ? "denied" : "error");
       setError(
-        ERROR_TEXT[event.error as RecognitionErrorCode] ?? "Voice input failed — type instead.",
+        ERROR_TEXT[event.error as RecognitionErrorCode] ?? "Voice input failed. Type instead.",
       );
     };
     rec.onend = () => {
@@ -162,7 +162,7 @@ export function useSpeechInput({
       // Starting twice, or a browser that refuses outside a gesture.
       recognition.current = null;
       setStatus("error");
-      setError("Voice input could not start — try again.");
+      setError("Voice input could not start. Try again.");
       return;
     }
     armSilence(noSpeechMs);
