@@ -127,6 +127,72 @@
         "title": "ApproveRequest",
         "type": "object"
       },
+      "BatchItemResponse": {
+        "properties": {
+          "booking": {
+            "$ref": "#/components/schemas/BookingResponse"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BookingError"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "booking",
+          "error"
+        ],
+        "title": "BatchItemResponse",
+        "type": "object"
+      },
+      "BatchResponse": {
+        "description": "Every booking a \"book everything\" / \"approve the basket\" click touched.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "trip_status": {
+            "$ref": "#/components/schemas/TripStatus"
+          }
+        },
+        "required": [
+          "trip_status",
+          "items"
+        ],
+        "title": "BatchResponse",
+        "type": "object"
+      },
+      "BookingError": {
+        "enum": [
+          "trip_not_found",
+          "booking_not_found",
+          "run_not_found",
+          "frame_not_found",
+          "graph_not_found",
+          "not_organizer",
+          "trip_not_ready",
+          "booking_not_startable",
+          "not_awaiting_approval",
+          "nothing_to_disrupt",
+          "sold_out",
+          "price_changed",
+          "booking_not_completable",
+          "traveller_details_missing",
+          "quote_expired",
+          "supplier_unknown"
+        ],
+        "title": "BookingError",
+        "type": "string"
+      },
       "BookingKind": {
         "description": "What a purchase is, independent of who sells it. How a transport moves is its\n`TransportMode`; the supplier behind it is a plugin (see `app.suppliers.ports`).",
         "enum": [
@@ -755,6 +821,100 @@
         "title": "EventResponse",
         "type": "object"
       },
+      "FlowEdgeResponse": {
+        "properties": {
+          "from": {
+            "title": "From",
+            "type": "string"
+          },
+          "to": {
+            "title": "To",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "FlowEdgeResponse",
+        "type": "object"
+      },
+      "FlowGraphResponse": {
+        "description": "The run's plan, `runs/<id>/flow_graph.json`: what the agent intends to do, node by node.",
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/FlowEdgeResponse"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/FlowNodeResponse"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "FlowGraphResponse",
+        "type": "object"
+      },
+      "FlowNodeResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "inputs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Inputs",
+            "type": "array"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outputs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Outputs",
+            "type": "array"
+          },
+          "stage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "label",
+          "stage",
+          "inputs",
+          "outputs"
+        ],
+        "title": "FlowNodeResponse",
+        "type": "object"
+      },
       "Gender": {
         "description": "As on the travel document; airlines ask for it (and derive the title from it).",
         "enum": [
@@ -826,6 +986,14 @@
             "title": "Cost Usd",
             "type": "number"
           },
+          "flow_steps": {
+            "title": "Flow Steps",
+            "type": "integer"
+          },
+          "llm_calls": {
+            "title": "Llm Calls",
+            "type": "integer"
+          },
           "milestone": {
             "anyOf": [
               {
@@ -859,8 +1027,23 @@
             "title": "Reason",
             "type": "string"
           },
+          "rule_steps": {
+            "title": "Rule Steps",
+            "type": "integer"
+          },
           "step": {
             "title": "Step",
+            "type": "integer"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/RunStepResponse"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "tokens": {
+            "title": "Tokens",
             "type": "integer"
           }
         },
@@ -870,7 +1053,12 @@
           "step",
           "reason",
           "outcome",
-          "cost_usd"
+          "cost_usd",
+          "steps",
+          "flow_steps",
+          "rule_steps",
+          "llm_calls",
+          "tokens"
         ],
         "title": "LiveStatusResponse",
         "type": "object"
@@ -1313,6 +1501,91 @@
         ],
         "title": "RunStatusResponse",
         "type": "object"
+      },
+      "RunStepResponse": {
+        "properties": {
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "iteration": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Iteration"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RunStepSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStepStatus"
+          }
+        },
+        "required": [
+          "index",
+          "node_id",
+          "kind",
+          "status",
+          "duration_ms",
+          "source",
+          "iteration"
+        ],
+        "title": "RunStepResponse",
+        "type": "object"
+      },
+      "RunStepSource": {
+        "description": "Where a step's decision came from.",
+        "enum": [
+          "flow",
+          "rule",
+          "llm",
+          "human"
+        ],
+        "title": "RunStepSource",
+        "type": "string"
+      },
+      "RunStepStatus": {
+        "description": "One step of an agent run, as `status.json` reports it.",
+        "enum": [
+          "pending",
+          "running",
+          "done",
+          "failed",
+          "healed"
+        ],
+        "title": "RunStepStatus",
+        "type": "string"
       },
       "SeedMembersRequest": {
         "additionalProperties": false,
@@ -1944,6 +2217,61 @@
         ]
       }
     },
+    "/api/agent-runs/{run_id}/graph": {
+      "get": {
+        "description": "The run's plan, for the live pipeline view. 404 until the agent has written it.",
+        "operationId": "agent-runs-graph",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]{1,64}$",
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlowGraphResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Graph",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
     "/api/agent-runs/{run_id}/status": {
       "get": {
         "operationId": "agent-runs-status",
@@ -2539,6 +2867,79 @@
         ]
       }
     },
+    "/api/trips/{trip_id}/bookings/approve-all": {
+      "post": {
+        "description": "Approves every summary awaiting approval at once — refused unless every share is paid.",
+        "operationId": "bookings-approve-all",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve All Bookings",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
     "/api/trips/{trip_id}/bookings/disruptions/check": {
       "post": {
         "description": "Asks the suppliers that report disruptions about the trip's bought bookings; every\nnotice with a replacement is rebooked and re-split. Empty = nothing happened.",
@@ -2611,6 +3012,79 @@
           }
         },
         "summary": "Check Disruptions",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/bookings/start-all": {
+      "post": {
+        "description": "\"Book everything\": starts every startable booking; refusals are reported per booking.",
+        "operationId": "bookings-start-all",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start All Bookings",
         "tags": [
           "bookings"
         ]

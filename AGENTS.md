@@ -93,6 +93,34 @@ DUFFEL_LIVE=1 uv run pytest tests/test_duffel.py                    # + the live
 uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
 ```
 
+## Demo on real data
+
+The app itself (not only the harness) can run on real suppliers. In the repo-root `.env`:
+
+```bash
+SUPPLIERS=pkp_intercity,duffel,sim_stay,sim_activity   # + liteapi once feat/liteapi is merged
+DUFFEL_API_KEY=duffel_test_...                          # a TEST token; live is refused
+DEMO_SUPPLIER_URL=http://localhost:8000
+HOLDS=off
+PKP_TRANSPORT=browser                                   # the default
+```
+
+- **Real:** PKP Intercity train search and re-quotes (unofficial e-IC JSON gateway through one
+  shared headless Camoufox in the API process — ~5 s warm-up on the first PKP call, then about
+  1 s per call; a 6-person return trip needs ~25 s of research), Duffel flight search, quotes and
+  orders in **test mode** (Duffel Airways etc., nothing is charged).
+- **Simulated:** stays and activities (`sim_*`), the group's payments (`PAYMENTS=fake`) and the
+  train *purchase* — with `DEMO_SUPPLIER_URL` set, train bookings point the agent at our own
+  demo rail site, never at intercity.pl.
+- **No real money moves anywhere.** Duffel test orders are free, payments are fake, and the
+  agent stops before any real payment page.
+- `HOLDS=off`: nothing is held at voting close; each purchase re-quotes right before it starts
+  (a moved price re-splits the shares, `price_changed`), and an API supplier books when the
+  basket is approved (Duffel instant order). `HOLDS=on` restores holds at voting close.
+- One click each in the room: **Book everything** (`POST /trips/{id}/bookings/start-all`) and
+  **Approve basket** (`POST /trips/{id}/bookings/approve-all`, refused unless every share is
+  paid). The live agent panel draws the run's plan from `GET /agent-runs/{run_id}/graph`.
+
 ## API bridge
 
 ```bash
@@ -118,10 +146,12 @@ Both artifacts are committed. Never hand-edit the generated client.
 - **Refunds are paid out when the trip reaches BOOKED** (`BookingService._settle_refunds`
   through `PaymentProvider.refund`, one `refund_issued` event each) — not at re-split time,
   because a later rebooking could still need the money.
-- **Demo bookings go to the fake rail supplier only if `DEMO_SUPPLIER_URL` is set** (dev/test,
-  e.g. `http://localhost:8000`): train bookings created at voting close then point at
-  `/api/demo-supplier/rail`. The stay and activity still point at real suppliers — do not start
-  them in a demo.
+- **Demo bookings go to the fake rail site only if `DEMO_SUPPLIER_URL` is set** (dev/test,
+  e.g. `http://localhost:8000`): it enables the `demo_rail` supplier AND makes `pkp_intercity`
+  offers point their purchase at `/api/demo-supplier/rail` (real PKP price, fake checkout — the
+  site lists its own three trains, so the agent books the closest one there). Without it, a PKP
+  booking would send the agent to the real intercity.pl. Agent-channel stays/activities (e.g.
+  `sim_stay_site`) still point at real sites — do not start them in a demo.
 - **Bookings stuck after a backend restart heal on the next listing:** a still-alive agent
   (`agent.pid`) is re-attached, a `result.json` is applied, anything else fails the booking.
 

@@ -14,15 +14,21 @@ from app.routes.errors import booking_failure
 from app.schemas.bookings import (
     AgentRunResponse,
     ApproveRequest,
+    BatchItemResponse,
+    BatchResponse,
     BookingResponse,
     CompleteManuallyRequest,
     DisruptionResponse,
+    FlowEdgeResponse,
+    FlowGraphResponse,
+    FlowNodeResponse,
     LiveStatusResponse,
     RunStatusResponse,
+    RunStepResponse,
     ShareChangeResponse,
     TripBookingsResponse,
 )
-from app.services.bookings import AgentRunRecord, BookingWithRun, Disruption
+from app.services.bookings import AgentRunRecord, Batch, BookingWithRun, Disruption
 
 router = APIRouter(tags=["bookings"])
 
@@ -118,6 +124,50 @@ async def list_bookings(
     )
 
 
+def batch_response(batch: Batch) -> BatchResponse:
+    return BatchResponse(
+        trip_status=batch.trip.status,
+        items=[
+            BatchItemResponse(
+                booking=booking_response(BookingWithRun(booking=item.booking, run=item.run)),
+                error=item.error,
+            )
+            for item in batch.items
+        ],
+    )
+
+
+@router.post(
+    "/trips/{trip_id}/bookings/start-all",
+    operation_id="bookings-start-all",
+    status_code=status.HTTP_202_ACCEPTED,
+    responses=_ORGANIZER_ACTION,
+)
+async def start_all_bookings(
+    trip_id: str, user: CurrentUser, service: BookingServiceDep
+) -> BatchResponse:
+    """ "Book everything": starts every startable booking; refusals are reported per booking."""
+    result = await service.start_all(trip_id, user.id)
+    if not isinstance(result, Ok):
+        raise booking_failure(result.error)
+    return batch_response(result.value)
+
+
+@router.post(
+    "/trips/{trip_id}/bookings/approve-all",
+    operation_id="bookings-approve-all",
+    responses=_ORGANIZER_ACTION,
+)
+async def approve_all_bookings(
+    trip_id: str, user: CurrentUser, service: BookingServiceDep
+) -> BatchResponse:
+    """Approves every summary awaiting approval at once — refused unless every share is paid."""
+    result = await service.approve_all(trip_id, user.id)
+    if not isinstance(result, Ok):
+        raise booking_failure(result.error)
+    return batch_response(result.value)
+
+
 @router.post(
     "/trips/{trip_id}/bookings/{booking_id}/start",
     operation_id="bookings-start",
@@ -205,7 +255,48 @@ async def run_status(
             reason=live.reason,
             outcome=live.outcome,
             cost_usd=live.cost_usd,
+            steps=[
+                RunStepResponse(
+                    index=step.index,
+                    node_id=step.node_id,
+                    kind=step.kind,
+                    status=step.status,
+                    duration_ms=step.duration_ms,
+                    source=step.source,
+                    iteration=step.iteration,
+                )
+                for step in live.steps
+            ],
+            flow_steps=live.flow_steps,
+            rule_steps=live.rule_steps,
+            llm_calls=live.llm_calls,
+            tokens=live.tokens,
         ),
+    )
+
+
+@router.get("/agent-runs/{run_id}/graph", operation_id="agent-runs-graph", responses=_NOT_FOUND)
+async def run_graph(
+    run_id: RunId, user: CurrentUser, service: BookingServiceDep
+) -> FlowGraphResponse:
+    """The run's plan, for the live pipeline view. 404 until the agent has written it."""
+    result = await service.graph(run_id, user.id)
+    if not isinstance(result, Ok):
+        raise booking_failure(result.error)
+    graph = result.value
+    return FlowGraphResponse(
+        nodes=[
+            FlowNodeResponse(
+                id=node.id,
+                type=node.type,
+                label=node.label,
+                stage=node.stage,
+                inputs=node.inputs,
+                outputs=node.outputs,
+            )
+            for node in graph.nodes
+        ],
+        edges=[FlowEdgeResponse(source=start, to=end) for start, end in graph.edges],
     )
 
 

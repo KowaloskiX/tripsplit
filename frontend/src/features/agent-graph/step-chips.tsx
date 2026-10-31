@@ -11,6 +11,7 @@ import {
   SquareMousePointer,
   TextCursorInput,
   Timer,
+  UserCheck,
   Workflow,
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -46,16 +47,23 @@ export const NODE_TYPE_LABEL: Record<FlowNodeType, string> = {
   other: "step",
 };
 
-const SOURCE_TONE: Record<StepSource, BadgeTone> = { flow: "sky", rule: "neutral", llm: "blush" };
+const SOURCE_TONE: Record<StepSource, BadgeTone> = {
+  flow: "sky",
+  rule: "neutral",
+  llm: "blush",
+  human: "lime",
+};
 const SOURCE_ICON: Record<StepSource, LucideIcon> = {
   flow: Repeat,
   rule: BadgeCheck,
   llm: Sparkles,
+  human: UserCheck,
 };
 const SOURCE_TITLE: Record<StepSource, string> = {
   flow: "Replayed from a recorded flow — no LLM call",
   rule: "Decided by a deterministic rule — no LLM call",
   llm: "Decided by the LLM planner",
+  human: "Decided by a person",
 };
 
 /** Where a step's decision came from: "replay", "rule" or "AI". */

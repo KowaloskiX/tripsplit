@@ -42,7 +42,9 @@ class Forward:
 class Backward:
     @iterative_migration()
     async def merge_names(self, input_document: User, output_document: User) -> None:
-        output_document.full_name = f"{input_document.first_name} {input_document.last_name}".strip()
+        output_document.full_name = (
+            f"{input_document.first_name} {input_document.last_name}".strip()
+        )
 ```
 
 ```bash

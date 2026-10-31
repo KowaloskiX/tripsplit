@@ -299,3 +299,13 @@ async def test_pkp_honours_the_groups_preferences() -> None:
     assert len(await pkp.search(asking(TravelPreferences(earliest_departure_hour=7)))) == 1
     assert len(await pkp.search(asking(TravelPreferences(max_transfers=0)))) == 1
     assert await pkp.search(asking(TravelPreferences(earliest_departure_hour=8))) == []
+
+
+async def test_in_a_demo_pkp_trains_are_bought_on_the_fake_rail_site() -> None:
+    """Prices from PKP, purchase on our own site: a demo never drives intercity.pl."""
+    registry = build_registry(["pkp_intercity"], "http://localhost:8000", pkp=RecordedTransport())
+    pkp = registry.get("pkp_intercity")
+    assert pkp is not None
+    request = SearchRequest("Warszawa", "Prague", date(2026, 11, 20), None, 6)
+    (offer,) = await pkp.search(request)
+    assert offer.purchase_url == "http://localhost:8000/api/demo-supplier/rail"

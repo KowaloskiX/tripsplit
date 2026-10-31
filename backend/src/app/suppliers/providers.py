@@ -8,6 +8,7 @@ from functools import lru_cache
 from app.core.config import PkpTransportKind, Settings
 from app.core.domain.result import Err
 from app.db.documents import utc_now
+from app.suppliers.demo_rail import BASE_PATH as DEMO_RAIL_PATH
 from app.suppliers.demo_rail import DemoRailSupplier
 from app.suppliers.duffel import SUPPLIER_ID as DUFFEL
 from app.suppliers.duffel import Clock, DuffelConfig, DuffelSupplier
@@ -74,7 +75,9 @@ def _adapter(
     if supplier_id in SIM_CAPABILITIES:
         return sim_supplier(supplier_id, utc_now)
     if supplier_id == PKP_INTERCITY:
-        return PkpIntercitySupplier(pkp or HttpTransport())
+        # In a demo (`demo_rail_url`) the agent buys PKP's trains on our fake rail site.
+        site = f"{demo_rail_url}{DEMO_RAIL_PATH}" if demo_rail_url is not None else None
+        return PkpIntercitySupplier(pkp or HttpTransport(), purchase_site=site)
     if supplier_id == DEMO_RAIL and demo_rail_url is not None:
         return DemoRailSupplier(demo_rail_url)
     if supplier_id == DUFFEL and duffel is not None:
