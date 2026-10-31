@@ -50,7 +50,7 @@ export function AmountPicker({
             className={cn(
               "h-12 rounded-[var(--radius-control)] border text-base font-medium tabular-nums transition duration-150",
               custom === "" && amountMinor === preset
-                ? "border-ink bg-ink text-bg"
+                ? "border-accent bg-accent text-accent-ink"
                 : "border-line text-ink hover:border-ink/40",
             )}
           >

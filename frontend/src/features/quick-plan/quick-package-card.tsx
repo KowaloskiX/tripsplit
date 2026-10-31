@@ -17,6 +17,12 @@ type QuickPackageCardProps = {
 };
 
 /** One package in the carousel: the hotel photo, how you get there, the price, "Take this". */
+/** "Budget: PKP Intercity train + …" -> "Budget"; the lines below say the rest. */
+function tierOf(title: string): string {
+  const tier = title.split(":", 1)[0]?.trim();
+  return tier && tier.length < title.length ? tier : title;
+}
+
 export function QuickPackageCard({
   pkg,
   currency,
@@ -29,17 +35,20 @@ export function QuickPackageCard({
       aria-label={pkg.title}
       data-example={example}
       className={cn(
-        "deal-in flex w-[84%] shrink-0 snap-center flex-col gap-3 rounded-[28px] bg-surface p-3 text-ink sm:w-[22.5rem]",
+        "deal-in flex w-[84%] shrink-0 snap-center flex-col gap-3 rounded-[var(--radius-panel)] bg-surface p-3 text-ink sm:w-[22.5rem]",
         // An example must never pass for a real offer: dashed, no shadow, muted.
-        example ? "border-2 border-dashed border-ink/25" : "border border-line shadow-card",
+        example ? "border border-dashed border-ink/25" : "border border-line shadow-card",
       )}
       style={{ "--i": index } as CSSProperties}
     >
       <PhotoStrip images={pkg.images} layout="cover" example={example} />
       <div className="space-y-2 px-1.5">
         {pkg.provenance && <ProvenancePill provenance={pkg.provenance} />}
-        <h3 className={cn("text-lg leading-snug tracking-[-0.02em]", example && "text-muted")}>
-          {pkg.title}
+        <h3
+          title={pkg.title}
+          className={cn("text-lg font-semibold leading-snug", example && "text-muted")}
+        >
+          {tierOf(pkg.title)}
         </h3>
         <p className="text-sm text-muted">{pkg.stay}</p>
         <ul className="space-y-1" aria-label="Getting there">

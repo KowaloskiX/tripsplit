@@ -43,7 +43,7 @@ export function TripList(): ReactNode {
               <Link
                 to="/t/$tripId"
                 params={{ tripId: trip.id }}
-                className="flex items-center gap-3 rounded-[20px] px-4 py-3.5 transition duration-150 hover:bg-surface-sunken"
+                className="flex items-center gap-3 rounded-xl px-4 py-3.5 transition duration-150 hover:bg-surface-sunken"
               >
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-base font-medium text-ink">

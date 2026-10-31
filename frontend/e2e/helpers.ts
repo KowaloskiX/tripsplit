@@ -55,6 +55,10 @@ export async function createTrip(page: Page, options: TripOptions = {}): Promise
   const { title = "Weekend in Prague", groupSize = 6, budget = "900" } = options;
   await page.goto("/app");
   await expect(page.getByRole("heading", { name: "Where to next?" })).toBeVisible();
+  // The long form is the fallback to the one-sentence plan, folded by default.
+  if (!(await page.getByLabel("Trip name").isVisible())) {
+    await page.getByText("Set every detail yourself").click();
+  }
   await page.getByLabel("Trip name").fill(title);
   await page
     .getByLabel("Brief for the agent")
@@ -100,6 +104,18 @@ export async function payMyShare(page: Page): Promise<void> {
 
 export async function fillMyTravellerDetails(page: Page, fullName: string): Promise<void> {
   const form = page.getByRole("form", { name: "Your traveller details" });
+  if (!(await form.isVisible())) {
+    // The room folds the whole section into one row until it is needed.
+    const section = page.locator("details", {
+      has: page.locator("summary", { hasText: "Traveller details" }),
+    });
+    if (
+      (await section.count()) > 0 &&
+      !(await section.first().evaluate((el) => (el as HTMLDetailsElement).open))
+    ) {
+      await section.first().locator("summary").first().click();
+    }
+  }
   if (!(await form.isVisible())) {
     // Collapsed before paying: "Add your travel details" (or "your travel details" once saved).
     await page.getByText(/your travel details$/i).click();

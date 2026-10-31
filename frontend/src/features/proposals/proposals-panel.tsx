@@ -21,15 +21,9 @@ export function leaderOf(proposals: readonly ProposalResponse[]): string | null 
   return leaders.length === 1 ? (leaders[0]?.id ?? null) : null;
 }
 
-/** Each card is dealt from a slightly different angle, like a hand of cards. */
+/** The cards fade up one after another. */
 function dealStyle(index: number): CSSProperties {
-  const rotations = [-5, 3, -2];
-  const offsets = [-28, 18, -10];
-  return {
-    "--i": index,
-    "--deal-rot": `${rotations[index % 3]}deg`,
-    "--deal-x": `${offsets[index % 3]}px`,
-  } as CSSProperties;
+  return { "--i": index } as CSSProperties;
 }
 
 export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
@@ -54,7 +48,13 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
   return (
     <Panel>
       <PanelHeader>
-        <span>{status === "voting" ? "Vote for a package" : "Packages"}</span>
+        <span>
+          {status === "voting"
+            ? "Vote for a package"
+            : room.proposals.some((p) => p.chosen)
+              ? "Your package"
+              : "Packages"}
+        </span>
         {status === "voting" && (
           <span>{room.proposals.reduce((sum, p) => sum + p.votes, 0)} votes</span>
         )}
@@ -81,7 +81,7 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
           ))}
 
         {proposals.length > 0 && status !== "proposing" && (
-          <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
             {proposals.map((proposal, index) => (
               <div key={proposal.id} className="deal-in min-w-0" style={dealStyle(index)}>
                 <ProposalCard

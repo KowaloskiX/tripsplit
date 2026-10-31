@@ -45,7 +45,7 @@ export function ResearchProgress({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div role="status" className="rounded-[24px] bg-agent-bg px-4 py-3.5 text-agent-fg">
+      <div role="status" className="rounded-xl bg-agent-bg px-4 py-3.5 text-agent-fg">
         <p className="flex items-center gap-2 text-[15px]">
           <span className="text-xs font-medium text-agent-tag">tripsplit agent</span>
           <TypingIndicator className="text-agent-tag" />
@@ -105,7 +105,7 @@ function TicketSkeleton({ index }: { index: number }): ReactNode {
       <div className="space-y-3 px-6 pt-6">
         <div className="shimmer h-5 w-1/2 rounded-full bg-surface-sunken" />
         {[0, 1, 2].map((row) => (
-          <div key={row} className="shimmer h-12 rounded-[20px] bg-surface-sunken" />
+          <div key={row} className="shimmer h-12 rounded-xl bg-surface-sunken" />
         ))}
       </div>
       <div className="perforation mx-6 mt-5" />

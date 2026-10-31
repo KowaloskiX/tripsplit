@@ -2,15 +2,16 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { FoldedSection } from "@/components/ui/disclosure";
 import { StatusScreen } from "@/components/ui/status-screen";
 import { sessionQueryOptions } from "@/features/auth";
 import { LiveMissionControl, TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel, DemoStage } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
-import { AttractionsPanel } from "@/features/itinerary";
+import { AttractionsPanel, showsAttractions } from "@/features/itinerary";
 import { ProposalsPanel } from "@/features/proposals";
-import { TravellerDetailsPanel } from "@/features/travellers";
+import { detailsNeeded, TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
 import { TripPotCard } from "@/features/wallet";
 import type { TripStatus } from "@/lib/api";
@@ -67,32 +68,41 @@ function RoomPage(): ReactNode {
     );
   }
 
+  const { trip } = room;
+  const status = trip.status;
   const showContributions = room.contributions.length > 0;
-  const showBookings = BOOKING_PHASE.has(room.trip.status);
-  const paying = room.trip.status === "paying";
+  const showBookings = BOOKING_PHASE.has(status);
+  const paying = status === "paying";
+  const deciding = !showBookings && status !== "expired";
+  const me = room.members.find((member) => member.user_id === room.my_user_id);
+  const ready = room.members.filter((member) => member.traveller_details_complete).length;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 sm:px-6 lg:py-10">
+    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 py-8 sm:px-6 lg:py-12">
       <RoomHeader room={room} />
       {import.meta.env.DEV && <DemoStage room={room} />}
-      {/* While the trip is buying, mission control takes the full width above the room. */}
-      {showBookings && <LiveMissionControl tripId={tripId} title={room.trip.title} />}
-      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-        {/* On a phone the stage card comes first: it is what needs doing now. */}
-        <div className="order-2 lg:sticky lg:top-24 lg:order-1">
-          <TripFeed tripId={tripId} myUserId={room.my_user_id} currency={room.trip.currency} />
-        </div>
-        <div className="order-1 flex flex-col gap-6 lg:order-2">
-          {showBookings && (
-            <section aria-labelledby="bookings-heading" className="space-y-3">
+      {/* Only while a purchase is actually running. */}
+      {showBookings && <LiveMissionControl tripId={tripId} title={trip.title} />}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-8 lg:grid-cols-[minmax(0,1fr)_21rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          {/* The stage card: the one thing that needs doing now. */}
+          {(deciding || paying) && !showContributions && <ProposalsPanel room={room} />}
+          {/* Kept in one JSX slot from paying on, so its "everyone paid" moment can play. */}
+          {showContributions && (
+            <div className={paying ? "order-1" : "order-2"}>
+              <ContributionsPanel room={room} />
+            </div>
+          )}
+          {showBookings && !paying && (
+            <section aria-labelledby="bookings-heading" className="order-1 space-y-3">
               <div className="flex items-baseline justify-between gap-3">
-                <h2 id="bookings-heading" className="text-2xl tracking-[-0.03em] text-ink">
-                  Bookings &amp; live agent
+                <h2 id="bookings-heading" className="display text-3xl text-ink">
+                  Bookings
                 </h2>
                 <Link
                   to="/t/$tripId/bookings"
                   params={{ tripId }}
-                  className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+                  className="text-sm font-medium text-muted underline-offset-4 hover:text-ink hover:underline"
                 >
                   Full screen
                 </Link>
@@ -100,29 +110,44 @@ function RoomPage(): ReactNode {
               <TripBookings tripId={tripId} />
             </section>
           )}
-          {/* While the group pays, the shares are the stage card; afterwards the bookings are.
-              Moved by CSS order, not by a second JSX slot: the panel stays mounted when the
-              last share lands, so its "everyone paid" moment can play. */}
-          {showContributions && (
-            <div className={paying ? "-order-1 flex flex-col gap-6" : "flex flex-col gap-6"}>
-              <ContributionsPanel room={room} />
-              <TripPotCard
-                pot={room.pot}
-                currency={room.trip.currency}
-                fundingOpen={room.trip.status === "paying"}
-              />
-            </div>
-          )}
-          {/* After the package vote — while the group pays, it never blocks the money. */}
-          <AttractionsPanel room={room} />
-          {/* Before buying, the packages/vote card is the stage action: the (long) details
-              form goes below it, collapsed. */}
-          {showBookings && <TravellerDetailsPanel room={room} />}
-          <ProposalsPanel room={room} />
-          {!showBookings && <TravellerDetailsPanel room={room} />}
-          {import.meta.env.DEV && <DemoPanel room={room} />}
+
+          {/* Everything else, folded into quiet rows. */}
+          <div className="order-3 flex flex-col gap-2">
+            {paying && <ProposalsPanel room={room} />}
+            {paying && (
+              <FoldedSection title="What will be booked" className="mt-4">
+                <TripBookings tripId={tripId} />
+              </FoldedSection>
+            )}
+            {showBookings && !paying && (
+              <FoldedSection title="The package">
+                <ProposalsPanel room={room} />
+              </FoldedSection>
+            )}
+            {showsAttractions(status) && (
+              <FoldedSection title="Things to do there" hint="vote and plan the days">
+                <AttractionsPanel room={room} />
+              </FoldedSection>
+            )}
+            <FoldedSection
+              title="Traveller details"
+              hint={`${ready}/${room.members.length} ready`}
+              open={me ? detailsNeeded(status, me.traveller_details_complete) : false}
+            >
+              <TravellerDetailsPanel room={room} embedded />
+            </FoldedSection>
+            {showContributions && (
+              <FoldedSection title="Trip money" hint="held by the payment partner">
+                <TripPotCard pot={room.pot} currency={trip.currency} fundingOpen={paying} />
+              </FoldedSection>
+            )}
+          </div>
         </div>
+        <aside aria-label="Group chat" className="lg:sticky lg:top-24">
+          <TripFeed tripId={tripId} myUserId={room.my_user_id} currency={trip.currency} />
+        </aside>
       </div>
+      {import.meta.env.DEV && <DemoPanel room={room} />}
     </div>
   );
 }

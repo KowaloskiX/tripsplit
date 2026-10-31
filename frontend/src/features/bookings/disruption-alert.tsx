@@ -32,7 +32,7 @@ export function DisruptionAlert({
   return (
     <div
       role="alert"
-      className="alert-in space-y-3 rounded-[24px] border border-danger/30 bg-danger-soft p-4"
+      className="alert-in space-y-3 rounded-xl border border-danger/30 bg-danger-soft p-4"
     >
       <p className="flex items-start gap-2.5 text-sm text-ink">
         <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden />

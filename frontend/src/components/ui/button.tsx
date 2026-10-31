@@ -6,9 +6,9 @@ import { cn } from "@/lib/utils";
 
 const button = cva(
   [
-    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium",
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-control)] font-medium",
     // A press sinks the pill a little and springs it back on release.
-    "transition duration-150 ease-[var(--ease-calm)] active:scale-[0.97] active:duration-75",
+    "transition duration-150 ease-[var(--ease-calm)] active:scale-[0.98] active:duration-75",
     "motion-reduce:active:scale-100",
     "disabled:pointer-events-none disabled:opacity-50",
   ],
@@ -18,15 +18,15 @@ const button = cva(
         /** Ink on the light page, white on the dark one. */
         solid: "bg-accent text-accent-ink hover:opacity-90",
         outline:
-          "border border-ink/15 bg-transparent text-ink hover:border-ink/40 hover:bg-ink/[0.03]",
+          "border border-line bg-surface text-ink hover:border-ink/25 hover:bg-surface-sunken",
         ghost: "text-muted hover:bg-surface-sunken hover:text-ink",
-        /** The one highlight: coral with white text — the action that matters on the page. */
-        sun: "bg-sun text-sun-ink hover:brightness-95",
+        /** The one highlight: deep brown with cream text — the action that matters on the page. */
+        sun: "bg-sun text-sun-ink hover:opacity-90",
         danger: "border border-danger/40 bg-transparent text-danger hover:bg-danger-soft",
       },
       size: {
-        lg: "h-12 px-6 text-base",
-        md: "h-11 px-5 text-sm",
+        lg: "h-11 px-6 text-[15px]",
+        md: "h-10 px-4 text-sm",
         sm: "h-9 px-3.5 text-[13px]",
         icon: "size-9",
       },

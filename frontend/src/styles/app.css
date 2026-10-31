@@ -1,80 +1,126 @@
 @import "tailwindcss";
-@import "@fontsource-variable/plus-jakarta-sans";
 @import "@fontsource-variable/geist-mono";
 @import "./motion.css";
+
+/* Satoshi (Indian Type Foundry, ITF Free Font License), self-hosted from Fontshare. */
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Satoshi";
+  src: url("/fonts/Satoshi-700.woff2") format("woff2");
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* Theme switching via a class on <html> — not prefers-color-scheme alone. A `.dark` subtree
    (the header, the landing hero) gets the night palette on its own. */
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * One place to reskin the whole app: change these values, not the components.
+ * One place to reskin the whole app: change these values, not the components. The source of
+ * truth is docs/design/tokens.json.
  *
- * Travel-search clean: a white page, near-black ink, light grey for quiet fills, and one coral
- * accent for the action that matters (always with white text). Photos carry the colour; the
- * pastels are only icon chips. Money keeps three states of its own: paid, owes, refund.
+ * Light, calm, low energy: a warm off-white page, near-black ink, one olive-green accent for
+ * buttons, links and active states, sand for secondary surfaces, chips and dividers. Kind fills
+ * are olive / sand / clay tints. Status colours stay muted.
+ *
+ * Contrast (WCAG AA): ink 15.6:1 and muted 6.4:1 on the page, muted 4.8:1 on full sand,
+ * cream on green 5.7:1, green on surface 6.0:1. Green text on full sand is 4.3:1: use it for
+ * large text only.
  */
 :root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-sunken: #f7f7f7;
-  --ink: #222222;
-  --muted: #6a6a6a;
-  --line: #ebebeb;
-  --accent: #222222;
-  --accent-ink: #ffffff;
-  --live: #222222;
+  --bg: #f5f3ec;
+  --surface: #fbfaf6;
+  --surface-sunken: #efe7d7;
+  --ink: #1c1a18;
+  --muted: #5e574d;
+  --line: #e6dac3;
+  --accent: #4f6814;
+  --accent-ink: #f5f3ec;
+  --live: #4f6814;
 
-  --sun: #ff385c;
-  --sun-ink: #ffffff;
-  --pastel-sea: #e3f5f2;
-  --pastel-apricot: #fff1e2;
-  --pastel-blush: #ffe9ed;
-  --pastel-ink: #222222;
+  --sun: #4f6814;
+  --sun-ink: #f5f3ec;
+  --pastel-sea: #e5e9d3;
+  --pastel-apricot: #efe5d1;
+  --pastel-blush: #f0ded1;
+  --pastel-ink: #1c1a18;
 
-  --success: #008a05;
-  --success-soft: #e8f6e8;
-  --warn: #b25e00;
-  --warn-soft: #fff4e5;
-  --danger: #c13515;
-  --danger-soft: #fff0ed;
-  --info: #006b75;
-  --info-soft: #e6f6f7;
+  --success: #3f5a12;
+  --success-soft: #e6ebd6;
+  --warn: #7f5417;
+  --warn-soft: #f3e7d0;
+  --danger: #9a3a28;
+  --danger-soft: #f5e2da;
+  --info: #3f5d68;
+  --info-soft: #e3eaea;
 
-  --agent-bg: #f7f7f7;
-  --agent-fg: #222222;
-  --agent-tag: #e00b41;
+  --agent-bg: #f1ecdf;
+  --agent-fg: #1c1a18;
+  --agent-tag: #4f6814;
 
-  --elev-card: 0 6px 16px rgb(0 0 0 / 0.12);
-  --elev-pop: 0 8px 28px rgb(0 0 0 / 0.28);
+  --elev-card: 0 1px 2px rgb(28 26 24 / 0.03);
+  --elev-pop: 0 12px 40px -12px rgb(28 26 24 / 0.18);
 }
 
 .dark {
-  --bg: #121212;
-  --surface: #1c1c1c;
-  --surface-sunken: #262626;
-  --ink: #f7f7f7;
-  --muted: #a0a0a0;
-  --line: #333333;
-  --accent: #f7f7f7;
-  --accent-ink: #121212;
-  --live: #ff385c;
+  --bg: #1a1916;
+  --surface: #22211d;
+  --surface-sunken: #2b2924;
+  --ink: #f1eee6;
+  --muted: #ada796;
+  --line: #3a372f;
+  --accent: #a9c46a;
+  --accent-ink: #1a1916;
+  --live: #a9c46a;
 
-  --success: #6fd36f;
-  --success-soft: #142a14;
-  --warn: #ffb35c;
-  --warn-soft: #2e1f0b;
-  --danger: #ff8a73;
-  --danger-soft: #34140d;
-  --info: #6fd3dc;
-  --info-soft: #0c2a2d;
+  --sun: #a9c46a;
+  --sun-ink: #1a1916;
+  --pastel-sea: #2c3022;
+  --pastel-apricot: #322c22;
+  --pastel-blush: #33271f;
+  --pastel-ink: #f1eee6;
 
-  --agent-bg: #262626;
-  --agent-fg: #f7f7f7;
-  --agent-tag: #ff6b86;
+  --success: #b8cf84;
+  --success-soft: #232a1a;
+  --warn: #e2b36f;
+  --warn-soft: #30261a;
+  --danger: #e8987f;
+  --danger-soft: #36201a;
+  --info: #9bb8c4;
+  --info-soft: #1e282b;
 
-  --elev-card: 0 0 0 1px #333333;
-  --elev-pop: 0 0 0 1px #3a3a3a, 0 24px 48px -16px rgb(0 0 0 / 0.8);
+  --agent-bg: #2b2924;
+  --agent-fg: #f1eee6;
+  --agent-tag: #a9c46a;
+
+  --elev-card: 0 0 0 1px #3a372f;
+  --elev-pop: 0 0 0 1px #3a372f, 0 24px 48px -16px rgb(0 0 0 / 0.7);
+}
+
+/* The warm sand scale, for large quiet surfaces (hero frames, bands). Light only: pair with a
+   `dark:` token. */
+@theme {
+  --color-sand-50: #fbfaf6;
+  --color-sand-100: #f6f1e6;
+  --color-sand-200: #efe6d5;
+  --color-sand-300: #e3d2b4;
+  --color-sand-600: #b59a6a;
 }
 
 @theme inline {
@@ -108,14 +154,15 @@
   --color-agent-fg: var(--agent-fg);
   --color-agent-tag: var(--agent-tag);
 
-  --font-sans:
-    "Plus Jakarta Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-serif: var(--font-sans);
+  --font-sans: "Satoshi", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Headings: Nohemi once a licensed file is in the repo; until then system-ui. */
+  --font-heading: "Nohemi", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: var(--font-heading);
   --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  --radius-control: 8px;
+  --radius-control: 16px;
   --radius-panel: 16px;
+  /* Spacing: Tailwind's default 0.25rem (4px) grid. */
   --radius-pill: 9999px;
 
   --shadow-card: var(--elev-card);
@@ -146,7 +193,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-ink);
+    outline: 2px solid var(--color-accent);
     outline-offset: 3px;
   }
 }
@@ -158,10 +205,11 @@
   color: var(--color-muted);
 }
 
-/* Display type: bold and tight, like a search site's big question. */
+/* Display type: the heading face, for page and section headlines only. */
 @utility display {
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.035em;
   line-height: 1.05;
 }
 

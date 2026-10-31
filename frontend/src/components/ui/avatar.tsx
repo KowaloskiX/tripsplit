@@ -2,15 +2,15 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-/** Pastel fills with black initials; a name always lands on the same one. */
+/** Warm muted fills with ink initials; a name always lands on the same one. */
 const PALETTE = [
   "bg-pastel-sea",
   "bg-pastel-apricot",
   "bg-pastel-blush",
-  "bg-[#e6dcff]",
-  "bg-[#ffe2c2]",
-  "bg-[#c9f2e2]",
-  "bg-[#efe8d6]",
+  "bg-info-soft",
+  "bg-warn-soft",
+  "bg-success-soft",
+  "bg-surface-sunken",
 ] as const;
 
 export function initialsOf(name: string): string {

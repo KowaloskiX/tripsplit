@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
+import { Disclosure } from "@/components/ui/disclosure";
 import { Panel } from "@/components/ui/panel";
 import { KIND_FILL, KindIcon } from "@/features/proposals";
 import { OfferTrust } from "@/features/trust";
@@ -79,7 +80,7 @@ export function BookingsList({
     return <p className="text-sm text-muted">Nothing to book yet. The group is still deciding.</p>;
   }
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {start.error && <ErrorCallout>{apiErrorMessage(start.error)}</ErrorCallout>}
       {trip.bookings.map((booking) => {
         const showRun = booking.run !== null && booking.status !== "cancelled";
@@ -96,21 +97,21 @@ export function BookingsList({
           >
             <AgentWorkingBar active={isWorking(booking.status)} />
             <ReplacedStamp status={booking.status} />
-            <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
+            <div className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
               <span
                 className={cn(
-                  "inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-pastel-ink",
+                  "inline-flex size-9 shrink-0 items-center justify-center rounded-xl text-pastel-ink",
                   KIND_FILL[booking.kind],
                   isWorking(booking.status) && "halo",
                 )}
               >
-                <KindIcon kind={booking.kind} mode={booking.mode} className="size-5" />
+                <KindIcon kind={booking.kind} mode={booking.mode} className="size-4" />
               </span>
-              <div className="min-w-0 flex-1 basis-48">
+              <div className="min-w-0 flex-1 basis-40">
                 <div className="flex min-w-0 items-start gap-2">
                   <p
                     title={bookingTitle(booking.title)}
-                    className="relative line-clamp-2 min-w-0 break-words text-base font-medium leading-snug tracking-[-0.01em] text-ink"
+                    className="relative line-clamp-1 min-w-0 break-words text-[15px] font-medium leading-snug text-ink"
                   >
                     {bookingTitle(booking.title)}
                     <StrikeLine active={booking.status === "cancelled"} />
@@ -121,13 +122,15 @@ export function BookingsList({
                     </Badge>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs tabular-nums text-muted">
-                  {booking.supplier} ·{" "}
-                  <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}
-                  {formatMoney(booking.amount_minor, trip.currency)}
-                  {passengersLabel(booking)}
+                <p className="mt-0.5 text-[13px] tabular-nums text-muted">
+                  {booking.supplier} · {formatMoney(booking.amount_minor, trip.currency)}
+                  {booking.status === "confirmed" && booking.confirmation_ref && (
+                    <>
+                      {" "}
+                      · ref <span className="ticket-mono">{booking.confirmation_ref}</span>
+                    </>
+                  )}
                 </p>
-                <PaymentLine booking={booking} />
                 {booking.hold_expires_at && LIVE_HOLD.has(booking.status) && (
                   <HoldCountdown expiresAt={booking.hold_expires_at} />
                 )}
@@ -143,20 +146,6 @@ export function BookingsList({
                 </Button>
               )}
             </div>
-            <OfferTrust
-              links={booking.links}
-              images={booking.images}
-              provenance={booking.provenance}
-              title={booking.title}
-              photos={booking.kind === "stay"}
-              className="px-4 pb-4 sm:px-6"
-            />
-            <BookingTicket booking={booking} currency={trip.currency} />
-            {canCompleteManually(trip, booking) && (
-              <div className="border-t border-line px-4 pt-3">
-                <ManualCompletionForm tripId={trip.trip_id} bookingId={booking.id} />
-              </div>
-            )}
             {directApproval && (
               <div className="border-t border-line p-3">
                 <DirectApprovalCard
@@ -166,21 +155,65 @@ export function BookingsList({
                 />
               </div>
             )}
-            {showRun && (
-              <div className="p-3 sm:p-4">
-                <div aria-hidden className="perforation mb-3" />
+            {canCompleteManually(trip, booking) && (
+              <div className="border-t border-line px-4 py-3 sm:px-5">
+                <Disclosure summary="Finish it by hand">
+                  <div className="pt-3">
+                    <ManualCompletionForm tripId={trip.trip_id} bookingId={booking.id} />
+                  </div>
+                </Disclosure>
+              </div>
+            )}
+            <div className="border-t border-line px-4 py-2.5 sm:px-5">
+              {showRun ? (
                 <LiveAgentPanel
                   tripId={trip.trip_id}
                   booking={booking}
                   currency={trip.currency}
                   isOrganizer={trip.is_organizer}
                   travellers={travellers}
-                />
-              </div>
-            )}
+                >
+                  <BookingExtras booking={booking} currency={trip.currency} />
+                </LiveAgentPanel>
+              ) : (
+                <Disclosure summary="Details">
+                  <BookingExtras booking={booking} currency={trip.currency} />
+                </Disclosure>
+              )}
+            </div>
           </Panel>
         );
       })}
+    </div>
+  );
+}
+
+/** What only matters on a closer look: how it is paid, links and photos, the ticket. */
+function BookingExtras({
+  booking,
+  currency,
+}: {
+  booking: BookingResponse;
+  currency: string;
+}): ReactNode {
+  return (
+    <div className="space-y-3 pt-3 pb-1">
+      <p className="text-xs text-muted">
+        Bought{" "}
+        {CHANNEL_LABEL[booking.channel] === "agent"
+          ? "by the agent"
+          : CHANNEL_LABEL[booking.channel]}
+        {passengersLabel(booking)}
+      </p>
+      <PaymentLine booking={booking} />
+      <OfferTrust
+        links={booking.links}
+        images={booking.images}
+        provenance={booking.provenance}
+        title={booking.title}
+        photos={booking.kind === "stay"}
+      />
+      <BookingTicket booking={booking} currency={currency} />
     </div>
   );
 }

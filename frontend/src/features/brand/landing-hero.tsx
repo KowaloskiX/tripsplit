@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
-import { ArrowRight, Check, TrainFront } from "lucide-react";
+import { ArrowRight, BedDouble, Check, TrainFront } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Reveal } from "@/components/ui/reveal";
-import { TypingIndicator } from "@/components/ui/typing-indicator";
 import { useSession } from "@/features/auth";
 
 /** Signed in -> straight to your trips; otherwise create an account first. */
@@ -18,34 +18,19 @@ export function StartTripButton({ className }: { className?: string }): ReactNod
   );
 }
 
-/** One staggered word of the headline; `--i` orders the cascade. */
-function Word({
-  index,
-  children,
-  className,
-}: {
-  index: number;
-  children: ReactNode;
-  className?: string;
-}): ReactNode {
-  return (
-    <span className={`word-rise ${className ?? ""}`} style={{ "--i": index } as CSSProperties}>
-      {children}
-    </span>
-  );
-}
-
-/** `style` for an element that starts `ms` into the illustration's choreography. */
+/** `style` for an element that starts `ms` into the entrance. */
 function at(ms: number): CSSProperties {
   return { "--delay": `${ms}ms` } as CSSProperties;
 }
 
-/** "From group chat to tickets", one word at a time. */
-export function HeroHeadline({ id }: { id?: string }): ReactNode {
+/** "From group chat to tickets" — the one serif headline. */
+export function HeroHeadline({ id, className }: { id?: string; className?: string }): ReactNode {
   return (
-    <h1 id={id} className="display max-w-4xl text-[clamp(2.75rem,7vw,5rem)] text-balance">
-      <Word index={0}>From</Word> <Word index={1}>group</Word> <Word index={2}>chat</Word>{" "}
-      <Word index={3}>to</Word> <Word index={4}>tickets</Word>
+    <h1
+      id={id}
+      className={`display rise-in text-[clamp(2.75rem,6vw,4.75rem)] text-balance text-ink ${className ?? ""}`}
+    >
+      From group chat to tickets
     </h1>
   );
 }
@@ -53,27 +38,103 @@ export function HeroHeadline({ id }: { id?: string }): ReactNode {
 export function LandingHero(): ReactNode {
   return (
     <section aria-labelledby="hero-heading" className="overflow-hidden bg-bg text-ink">
-      <div className="mx-auto flex max-w-6xl flex-col items-center px-4 pt-16 pb-20 text-center sm:px-6 sm:pt-24 sm:pb-28">
-        <HeroHeadline id="hero-heading" />
-        <p
-          className="rise-in mt-8 max-w-2xl text-lg leading-relaxed text-muted text-balance sm:text-2xl sm:leading-9"
-          style={at(560)}
-        >
-          Say where and when. Everyone pays their own share, then the agent books.
-        </p>
-        <div
-          className="rise-in mt-10 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row"
-          style={at(700)}
-        >
-          <StartTripButton className="w-full sm:w-auto" />
-          <Button variant="outline" size="lg" asChild className="w-full sm:w-auto">
-            <Link to="/login">I have an account</Link>
-          </Button>
+      <div className="mx-auto grid max-w-6xl items-center gap-14 px-4 pt-14 pb-20 sm:px-6 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:pt-28 lg:pb-32">
+        <div className="max-w-xl">
+          <p
+            className="rise-in inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-line bg-surface-sunken px-3 py-1.5 text-[13px] text-muted"
+            style={at(0)}
+          >
+            <span aria-hidden className="size-1.5 rounded-full bg-sand-600" />
+            Group trips, without the spreadsheet
+          </p>
+          <HeroHeadline id="hero-heading" className="mt-6" />
+          <p className="rise-in mt-6 max-w-md text-lg leading-relaxed text-muted" style={at(120)}>
+            Say where and when. Everyone pays their own share, then the agent books the train and
+            the stay.
+          </p>
+          <div
+            className="rise-in mt-10 flex flex-wrap items-center gap-x-6 gap-y-3"
+            style={at(220)}
+          >
+            <StartTripButton />
+            <Link
+              to="/login"
+              className="group inline-flex items-center gap-1.5 text-[15px] font-medium text-ink underline-offset-4 hover:underline"
+            >
+              I have an account
+              <ArrowRight
+                className="size-4 transition duration-200 group-hover:translate-x-0.5"
+                aria-hidden
+              />
+            </Link>
+          </div>
         </div>
 
-        <ChatToTicket />
+        <ProductVisual />
       </div>
     </section>
+  );
+}
+
+/** One calm product shot drawn in HTML: the trip room's package, shares and ticket. */
+function ProductVisual(): ReactNode {
+  return (
+    <figure
+      className="rise-in relative rounded-[calc(var(--radius-panel)+8px)] bg-sand-200 p-3 sm:p-5 dark:bg-surface-sunken"
+      style={at(280)}
+    >
+      <figcaption className="sr-only">
+        Illustration: a trip room where six friends picked a package, paid their shares and got the
+        train booked
+      </figcaption>
+      <div className="rounded-[var(--radius-panel)] border border-line bg-surface p-5 shadow-card sm:p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="display text-3xl text-ink">Weekend in Prague</p>
+            <p className="mt-1 text-[13px] text-muted">5 – 7 Dec · 6 people</p>
+          </div>
+          <div className="flex -space-x-2">
+            {["Maja Zielińska", "Kuba Mazur", "Ola Nowak"].map((name) => (
+              <Avatar key={name} name={name} size="sm" className="ring-2 ring-surface" />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-2.5 rounded-[var(--radius-control)] border border-line p-4">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[15px] font-semibold text-ink">Comfort</p>
+            <p className="text-[15px] font-semibold tabular-nums text-ink">593 zł / person</p>
+          </div>
+          <p className="flex items-center gap-2 text-sm text-muted">
+            <TrainFront className="size-3.5" aria-hidden /> PKP Intercity · Fri 06:47
+          </p>
+          <p className="flex items-center gap-2 text-sm text-muted">
+            <BedDouble className="size-3.5" aria-hidden /> Apartment in Vinohrady
+          </p>
+        </div>
+
+        <div className="mt-5">
+          <div className="flex items-baseline justify-between text-sm">
+            <span className="text-ink">Shares</span>
+            <span className="tabular-nums text-muted">6/6 paid</span>
+          </div>
+          <Progress value={6} max={6} tone="success" label="6 of 6 shares paid" className="mt-2" />
+        </div>
+
+        <div className="mt-5 flex items-center gap-3 rounded-[var(--radius-control)] bg-success-soft px-4 py-3 text-success">
+          <Check className="size-4 shrink-0" aria-hidden />
+          <p className="min-w-0 flex-1 text-sm">Train and stay booked</p>
+          <span className="ticket-mono text-xs">PNR K7Q2XD</span>
+        </div>
+      </div>
+
+      <div className="absolute -right-3 -bottom-6 hidden max-w-[15rem] rounded-[var(--radius-panel)] border border-line bg-surface px-4 py-3 shadow-pop sm:block lg:-right-6">
+        <p className="text-xs font-medium text-agent-tag">tripsplit agent</p>
+        <p className="mt-0.5 text-[13px] leading-snug text-ink">
+          Your train is late. I rebooked the 08:15, no extra cost.
+        </p>
+      </div>
+    </figure>
   );
 }
 
@@ -82,88 +143,49 @@ export function ChatToTicket(): ReactNode {
   return (
     <Reveal
       as="figure"
-      className="mt-16 grid w-full max-w-4xl items-center gap-6 text-left sm:mt-24 md:grid-cols-[1fr_auto_1fr]"
+      className="mt-16 grid w-full max-w-4xl items-center gap-6 text-left sm:mt-20 md:grid-cols-[1fr_auto_1fr]"
     >
       <figcaption className="sr-only">
         Illustration: a group chat about Prague turns into a booked train ticket
       </figcaption>
-      <div className="parallax [--parallax:-18px]">
-        <div className="rounded-[var(--radius-panel)] border border-line bg-surface p-5 shadow-card md:-rotate-2">
-          <p className="eyebrow">Group chat</p>
-          <div className="mt-4 space-y-3">
-            <ChatLine name="Maja Zielińska" text="Prague in December? 🍻" delayMs={250} />
-            <ChatLine name="Kuba Mazur" text="In, if it’s under 700 zł" delayMs={850} />
-            <div className="relative">
-              <span
-                className="cue typing-window absolute top-0 left-0 inline-flex h-11 items-center rounded-2xl rounded-tl-md bg-agent-bg px-4 text-agent-tag ring-1 ring-line"
-                style={{ ...at(1350), "--duration": "900ms" } as CSSProperties}
-              >
-                <TypingIndicator />
-              </span>
-              <div
-                className="cue bubble-in rounded-2xl rounded-tl-md bg-agent-bg px-4 py-3 ring-1 ring-line"
-                style={at(2200)}
-              >
-                <p className="text-xs font-medium text-agent-tag">tripsplit agent</p>
-                <p className="mt-1 text-[15px] text-agent-fg">
-                  3 packages from 593 zł each. Vote, then pay your share and I&apos;ll book.
-                </p>
-              </div>
-            </div>
+      <div className="rounded-[var(--radius-panel)] border border-line bg-surface p-5 shadow-card">
+        <p className="eyebrow">Group chat</p>
+        <div className="mt-4 space-y-3">
+          <ChatLine name="Maja Zielińska" text="Prague in December?" delayMs={250} />
+          <ChatLine name="Kuba Mazur" text="In, if it’s under 700 zł" delayMs={600} />
+          <div
+            className="cue bubble-in rounded-2xl rounded-tl-md bg-agent-bg px-4 py-3 ring-1 ring-line"
+            style={at(950)}
+          >
+            <p className="text-xs font-medium text-agent-tag">tripsplit agent</p>
+            <p className="mt-1 text-[15px] text-agent-fg">
+              3 packages from 593 zł each. Vote, then pay your share and I&apos;ll book.
+            </p>
           </div>
         </div>
       </div>
 
-      <span className="cue rise-in mx-auto" style={at(2600)}>
-        <ArrowRight
-          className="size-8 rotate-90 text-sun md:rotate-0"
-          strokeWidth={1.5}
-          aria-hidden
-        />
-      </span>
+      <ArrowRight
+        className="mx-auto size-6 rotate-90 text-muted md:rotate-0"
+        strokeWidth={1.5}
+        aria-hidden
+      />
 
-      <div className="parallax [--parallax:-48px]">
-        <div className="md:rotate-2">
-          {/* The printer's mouth the ticket feeds out of. */}
-          <div
-            aria-hidden
-            className="relative z-10 mx-1 h-2.5 rounded-full bg-surface-sunken ring-1 ring-line"
-          />
-          <div className="-mt-1.5 overflow-hidden px-1 pb-4">
-            <div className="cue ticket-print text-pastel-ink" style={at(2850)}>
-              <div className="rounded-t-[32px] bg-pastel-sea">
-                <div className="flex items-center justify-between px-6 pt-6">
-                  <span className="ticket-mono text-xs uppercase">Boarding · PKP Intercity</span>
-                  <TrainFront className="size-5" aria-hidden />
-                </div>
-                <div className="flex items-end justify-between gap-4 px-6 pt-4 pb-5">
-                  <div>
-                    <p className="ticket-mono text-3xl">WAW → PRG</p>
-                    <p className="ticket-mono mt-1 text-sm">EC 131 · 05 DEC · 06:47</p>
-                  </div>
-                  <p className="ticket-mono text-sm">×6</p>
-                </div>
-                <div className="perforation mx-5 [--color-line:rgb(0_0_0/0.35)]" />
-              </div>
-              <div
-                className="cue stub-tear relative rounded-b-[32px] bg-pastel-sea"
-                style={at(4000)}
-              >
-                <span className="absolute -top-3 -left-3 size-6 rounded-full bg-bg" />
-                <span className="absolute -top-3 -right-3 size-6 rounded-full bg-bg" />
-                <div className="flex items-center justify-between px-6 py-4">
-                  <span
-                    className="cue pop inline-flex items-center gap-1.5 rounded-full bg-pastel-ink px-3 py-1 text-xs text-sun"
-                    style={at(4300)}
-                  >
-                    <Check className="size-3.5" aria-hidden />
-                    6/6 paid
-                  </span>
-                  <span className="ticket-mono text-lg">593 zł / person</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div
+        className="cue rise-in rounded-[var(--radius-panel)] bg-pastel-sea p-6 text-pastel-ink"
+        style={at(1200)}
+      >
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-muted">PKP Intercity</span>
+          <TrainFront className="size-5" aria-hidden />
+        </div>
+        <p className="mt-4 text-3xl tracking-tight">WAW → PRG</p>
+        <p className="mt-1 text-sm text-muted">EC 131 · 05 Dec · 06:47 · ×6</p>
+        <div className="mt-5 flex items-center justify-between border-t border-pastel-ink/10 pt-4">
+          <span className="inline-flex items-center gap-1.5 text-sm text-success">
+            <Check className="size-4" aria-hidden /> 6/6 paid
+          </span>
+          <span className="text-sm tabular-nums">593 zł / person</span>
         </div>
       </div>
     </Reveal>

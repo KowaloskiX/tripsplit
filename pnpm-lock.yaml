@@ -27,9 +27,6 @@ importers:
       '@fontsource-variable/geist-mono':
         specifier: 5.2.7
         version: 5.2.7
-      '@fontsource-variable/plus-jakarta-sans':
-        specifier: 5.2.6
-        version: 5.2.6
       '@hookform/resolvers':
         specifier: ^5.6.0
         version: 5.6.0(@standard-schema/spec@1.1.0)(react-hook-form@7.84.0(react@19.2.8))(zod@4.4.3)
@@ -333,9 +330,6 @@ packages:
 
   '@fontsource-variable/geist-mono@5.2.7':
     resolution: {integrity: sha512-ZKlZ5sjtalb2TwXKs400mAGDlt/+2ENLNySPx0wTz3bP3mWARCsUW+rpxzZc7e05d2qGch70pItt3K4qttbIYA==}
-
-  '@fontsource-variable/plus-jakarta-sans@5.2.6':
-    resolution: {integrity: sha512-w0954jYDlHvzABXY5NgkBtitBiHcULblm1cScowZrRV5V6KtgB17Ubw3knFr82P3qvN48kgQk5DLPhB27OlTnQ==}
 
   '@hey-api/codegen-core@0.9.1':
     resolution: {integrity: sha512-s97jL1dgTMuiMHv2BZ1X4Tgd99Mf9GOvGdNqNcGwIMmnR+PgYNoraj4Zvp134MKsNCap/m7k0r0vKKnl56pj4w==}
@@ -2478,8 +2472,6 @@ snapshots:
   '@exodus/bytes@1.15.1': {}
 
   '@fontsource-variable/geist-mono@5.2.7': {}
-
-  '@fontsource-variable/plus-jakarta-sans@5.2.6': {}
 
   '@hey-api/codegen-core@0.9.1':
     dependencies:

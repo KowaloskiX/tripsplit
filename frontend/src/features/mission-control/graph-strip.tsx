@@ -22,7 +22,7 @@ function settled(status: StepStatus): boolean {
 export function GraphStrip({ steps }: { steps: readonly GraphStep[] }): ReactNode {
   const current = steps.find((step) => step.status === "running");
   return (
-    <div className="min-w-0 rounded-[20px] bg-surface-sunken px-3 py-3">
+    <div className="min-w-0 rounded-xl bg-surface-sunken px-3 py-3">
       <p className="sr-only" aria-live="polite">
         {current ? `Now: ${current.label}` : ""}
       </p>

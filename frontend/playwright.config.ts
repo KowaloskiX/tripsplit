@@ -46,6 +46,8 @@ export default defineConfig({
         // Every test registers a fresh user, far beyond the production login limit. Counters
         // stay in process memory: a shared Redis bucket would also count other local backends.
         LOGIN_RATE_LIMIT: "1000/minute",
+        // The specs click "Start booking" themselves; a dev .env may switch AUTO_BOOK on.
+        AUTO_BOOK: "false",
         GLOBAL_RATE_LIMIT: "10000/minute",
         RATE_LIMIT_STORAGE_URL: "",
       },

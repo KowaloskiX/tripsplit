@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { type ApiCall, type CallTone, callTone, formatCall } from "./model";
 
 const TONE: Record<CallTone, string> = {
-  ok: "text-sun",
+  ok: "text-success",
   redirect: "text-pastel-sea",
   client: "text-[#ffc56e]",
   server: "text-[#ff9b94]",
@@ -63,7 +63,7 @@ export function TerminalPane({ calls, className }: TerminalPaneProps): ReactNode
     <section
       aria-label="Supplier API calls"
       className={cn(
-        "dark flex min-h-0 flex-col overflow-hidden rounded-[28px] bg-agent-bg",
+        "dark flex min-h-0 flex-col overflow-hidden rounded-[var(--radius-panel)] bg-agent-bg",
         className,
       )}
     >

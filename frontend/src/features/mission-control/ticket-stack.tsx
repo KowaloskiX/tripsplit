@@ -36,7 +36,7 @@ export function TicketStack({ tickets, purchases }: TicketStackProps): ReactNode
     <section aria-label="Tickets" className="flex flex-col items-center gap-3">
       <div className="relative h-36 w-full max-w-sm">
         {tickets.length === 0 && (
-          <div className="absolute inset-0 rounded-[24px] border-2 border-dashed border-line" />
+          <div className="absolute inset-0 rounded-xl border-2 border-dashed border-line" />
         )}
         {tickets.map((ticket, index) => {
           const rest = REST[index % REST.length] ?? { rotate: 0, x: 0 };
@@ -45,7 +45,7 @@ export function TicketStack({ tickets, purchases }: TicketStackProps): ReactNode
               key={ticket.id}
               aria-label={`Ticket ${ticket.title}, booking ref ${ticket.ref}`}
               className={cn(
-                "absolute inset-x-0 top-0 rounded-[24px] p-4 text-pastel-ink shadow-pop",
+                "absolute inset-x-0 top-0 rounded-xl p-4 text-pastel-ink shadow-pop",
                 KIND_FILL[ticket.kind],
                 !seen.has(ticket.id) && "ticket-fly",
               )}
@@ -66,7 +66,7 @@ export function TicketStack({ tickets, purchases }: TicketStackProps): ReactNode
               <div className="perforation my-2.5 [--color-line:rgb(0_0_0/0.35)]" />
               <div className="flex items-center justify-between">
                 <span className="ticket-mono text-sm">{ticket.ref}</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2 py-0.5 text-xs text-sun">
+                <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2 py-0.5 text-xs text-bg">
                   <Check className="size-3" strokeWidth={3} aria-hidden />
                   booked
                 </span>

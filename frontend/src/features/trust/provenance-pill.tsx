@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { type Provenance, type ProvenanceKind, provenanceLabel } from "./model";
 
 const STYLE: Record<ProvenanceKind, string> = {
-  live: "bg-sun text-sun-ink",
+  live: "bg-success-soft text-success",
   test: "bg-info-soft text-info",
   sandbox: "bg-warn-soft text-warn",
   // Deliberately the weakest look: dashed, no fill — it must never pass for a real offer.

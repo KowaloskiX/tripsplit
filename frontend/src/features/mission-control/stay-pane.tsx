@@ -30,7 +30,7 @@ export function StayPane({ stay, currency, className }: StayPaneProps): ReactNod
   return (
     <section
       aria-label={`Stay: ${stay.title}`}
-      className={cn("min-w-0 space-y-3 rounded-[28px] bg-surface p-3", className)}
+      className={cn("min-w-0 space-y-3 rounded-[var(--radius-panel)] bg-surface p-3", className)}
     >
       <div className="flex items-center gap-3">
         <PhotoStrip

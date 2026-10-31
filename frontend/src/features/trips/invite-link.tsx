@@ -18,17 +18,16 @@ export function InviteLink({ inviteCode }: { inviteCode: string }): ReactNode {
   };
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-2">
-      <code className="min-w-0 flex-1 truncate rounded-full bg-surface-sunken px-3 py-1.5 font-mono text-xs text-muted">
-        {url}
-      </code>
+    <div className="flex min-w-0 items-center gap-2">
+      {/* The URL is read out, not shown: the button is what people use. */}
+      <code className="sr-only">{url}</code>
       <Button variant="outline" size="sm" onClick={() => void copy()} aria-label="Copy invite link">
         {copied ? (
           <Check className="size-3.5" aria-hidden />
         ) : (
           <Copy className="size-3.5" aria-hidden />
         )}
-        {copied ? "Copied" : "Copy"}
+        {copied ? "Copied" : "Invite friends"}
       </Button>
     </div>
   );

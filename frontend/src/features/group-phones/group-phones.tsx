@@ -76,7 +76,7 @@ export function GroupPhones({ phones, phase, currency = "PLN" }: GroupPhonesProp
   return (
     <section
       aria-label="The group's phones"
-      className="dark rounded-[40px] bg-bg px-4 py-6 text-ink sm:px-8 sm:py-8"
+      className="dark rounded-[var(--radius-panel)] bg-bg px-4 py-6 text-ink sm:px-8 sm:py-8"
     >
       {/* Phone: counter on top, phones in two rows of three. Desktop: one row, the counter
           in the middle of the group. */}
