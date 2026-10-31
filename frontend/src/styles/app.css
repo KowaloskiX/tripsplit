@@ -2,6 +2,7 @@
 @import "@fontsource-variable/instrument-sans";
 @import "@fontsource/instrument-serif/400-italic.css";
 @import "@fontsource/fragment-mono/400.css";
+@import "./motion.css";
 
 /* Theme switching via a class on <html> — not prefers-color-scheme alone. A `.dark` subtree
    (the header, the landing hero) gets the night palette on its own. */
@@ -120,6 +121,10 @@
   --shadow-pop: var(--elev-pop);
 
   --ease-calm: cubic-bezier(0.4, 0, 0.2, 1);
+  /* Overshoots a little and settles — progress, the stepper indicator, badges popping. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Leaves quickly, lands softly — entrances. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @layer base {

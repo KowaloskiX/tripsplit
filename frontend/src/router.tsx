@@ -57,6 +57,9 @@ export function getRouter() {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreload: "intent",
+    // Page changes cross-fade through the View Transitions API where the browser has it (the
+    // choreography and its reduced-motion fallback live in styles/motion.css).
+    defaultViewTransition: true,
     defaultNotFoundComponent: NotFound,
     defaultPendingComponent: RoutePending,
     // Wait before showing anything: a transition that resolves in 80 ms would otherwise flash a

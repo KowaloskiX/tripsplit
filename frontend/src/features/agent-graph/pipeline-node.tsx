@@ -120,6 +120,12 @@ export function PipelineNode({ node, state, last, children }: PipelineNodeProps)
             className="relative my-1 w-0.5 flex-1 overflow-hidden rounded-full bg-line"
           >
             <span className={cn("flow-fill absolute inset-0 rounded-full", LINE[state.status])} />
+            {/* While this step runs, a glow travels down the edge towards the next one. */}
+            {state.status === "running" && (
+              <span className="edge-travel absolute inset-0">
+                <span className="block h-2/5 w-full rounded-full bg-gradient-to-b from-transparent via-lime to-transparent" />
+              </span>
+            )}
           </span>
         )}
       </div>

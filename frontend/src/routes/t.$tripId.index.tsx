@@ -8,6 +8,7 @@ import { TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
+import { BookingStage } from "@/features/mission-control";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
@@ -77,12 +78,7 @@ function RoomPage(): ReactNode {
         <div className="order-2 lg:sticky lg:top-24 lg:order-1">
           <TripFeed tripId={tripId} myUserId={room.my_user_id} currency={room.trip.currency} />
         </div>
-        <div className="order-1 space-y-6 lg:order-2">
-          {/* While the group pays, the shares are the stage card; afterwards the bookings are. */}
-          {paying && showContributions && <ContributionsPanel room={room} />}
-          {paying && showContributions && (
-            <TripPotCard pot={room.pot} currency={room.trip.currency} />
-          )}
+        <div className="order-1 flex flex-col gap-6 lg:order-2">
           {showBookings && (
             <section aria-labelledby="bookings-heading" className="space-y-3">
               <div className="flex items-baseline justify-between gap-3">
@@ -97,12 +93,21 @@ function RoomPage(): ReactNode {
                   Full screen
                 </Link>
               </div>
-              <TripBookings tripId={tripId} />
+              {/* Mission control appears above the bookings once a `mission` prop is passed
+                  (MissionControlData); without one this is the plain booking UI. */}
+              <BookingStage>
+                <TripBookings tripId={tripId} />
+              </BookingStage>
             </section>
           )}
-          {!paying && showContributions && <ContributionsPanel room={room} />}
-          {!paying && showContributions && (
-            <TripPotCard pot={room.pot} currency={room.trip.currency} />
+          {/* While the group pays, the shares are the stage card; afterwards the bookings are.
+              Moved by CSS order, not by a second JSX slot: the panel stays mounted when the
+              last share lands, so its "everyone paid" moment can play. */}
+          {showContributions && (
+            <div className={paying ? "-order-1 flex flex-col gap-6" : "flex flex-col gap-6"}>
+              <ContributionsPanel room={room} />
+              <TripPotCard pot={room.pot} currency={room.trip.currency} />
+            </div>
           )}
           <TravellerDetailsPanel room={room} />
           <ProposalsPanel room={room} />

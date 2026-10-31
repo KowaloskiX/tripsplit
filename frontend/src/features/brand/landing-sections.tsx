@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { MessagesSquare, RefreshCw, ThumbsUp, Wallet } from "lucide-react";
-import type { ReactNode } from "react";
+import { type CSSProperties, type ReactNode, useRef } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Reveal } from "@/components/ui/reveal";
+import { useInView } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 import { StartTripButton } from "./landing-hero";
@@ -39,12 +41,14 @@ const STEPS = [
 
 function SectionTitle({ id, children }: { id: string; children: ReactNode }): ReactNode {
   return (
-    <h2
-      id={id}
-      className="display mx-auto max-w-3xl text-center text-[clamp(2.6rem,6vw,4.2rem)] text-balance text-ink"
-    >
-      {children}
-    </h2>
+    <Reveal>
+      <h2
+        id={id}
+        className="display mx-auto max-w-3xl text-center text-[clamp(2.6rem,6vw,4.2rem)] text-balance text-ink"
+      >
+        {children}
+      </h2>
+    </Reveal>
   );
 }
 
@@ -59,8 +63,10 @@ export function HowItWorks(): ReactNode {
       </SectionTitle>
       <ol className="mt-14 grid gap-4 sm:mt-20 md:grid-cols-2">
         {STEPS.map((step, index) => (
-          <li
+          <Reveal
+            as="li"
             key={step.title}
+            index={index % 2}
             className={cn(
               "flex min-h-72 flex-col justify-between rounded-[40px] p-8 text-pastel-ink sm:p-10",
               step.fill,
@@ -75,7 +81,7 @@ export function HowItWorks(): ReactNode {
               <h3 className="text-3xl tracking-[-0.03em] sm:text-4xl">{step.title}</h3>
               <p className="mt-3 max-w-md text-[17px] leading-relaxed opacity-75">{step.body}</p>
             </div>
-          </li>
+          </Reveal>
         ))}
       </ol>
     </section>
@@ -101,7 +107,7 @@ export function FairSplit(): ReactNode {
   return (
     <section aria-labelledby="split-heading" className="border-t border-line">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-2 lg:gap-20">
-        <div>
+        <Reveal>
           <p className="eyebrow">Nobody fronts the money</p>
           <h2
             id="split-heading"
@@ -114,44 +120,60 @@ export function FairSplit(): ReactNode {
             The agent books only once every share is paid, so no one spends weeks chasing friends.
             If the price drops or a train gets replaced, it re-splits and refunds the difference.
           </p>
-        </div>
+        </Reveal>
 
-        <figure
-          aria-label="Example: four of six shares paid"
-          className="rounded-[40px] bg-surface-sunken p-6 sm:p-8"
-        >
-          <div className="flex items-baseline justify-between">
-            <p className="text-2xl tracking-tight text-ink">Shares</p>
-            <p className="ticket-mono text-sm text-muted">3 558 zł</p>
-          </div>
-          <div className="mt-5 flex items-center gap-3">
-            <Progress value={4} max={6} tone="success" label="4 of 6 shares paid" />
-            <span className="ticket-mono shrink-0 text-sm text-ink">4/6 paid</span>
-          </div>
-          <ul className="mt-5 space-y-1">
-            {SHARES.map((share) => (
-              <li
-                key={share.name}
-                className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-2.5"
-              >
-                <Avatar name={share.name} size="sm" />
-                <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{share.name}</span>
-                <Badge tone={SHARE_BADGE[share.state].tone} className="ticket-mono">
-                  {SHARE_BADGE[share.state].label}
-                </Badge>
-              </li>
-            ))}
-          </ul>
-        </figure>
+        <SharesFigure />
       </div>
     </section>
+  );
+}
+
+/** The example shares: the bar fills and the badges pop in once it scrolls into view. */
+function SharesFigure(): ReactNode {
+  const ref = useRef<HTMLElement>(null);
+  const visible = useInView(ref, "0px 0px -15% 0px");
+  return (
+    <figure
+      ref={ref}
+      data-visible={visible}
+      aria-label="Example: four of six shares paid"
+      className="reveal rounded-[40px] bg-surface-sunken p-6 sm:p-8"
+      style={{ "--i": 1 } as CSSProperties}
+    >
+      <div className="flex items-baseline justify-between">
+        <p className="text-2xl tracking-tight text-ink">Shares</p>
+        <p className="ticket-mono text-sm text-muted">3 558 zł</p>
+      </div>
+      <div className="mt-5 flex items-center gap-3">
+        <Progress value={visible ? 4 : 0} max={6} tone="success" label="4 of 6 shares paid" />
+        <span className="ticket-mono shrink-0 text-sm text-ink">4/6 paid</span>
+      </div>
+      <ul className="mt-5 space-y-1">
+        {SHARES.map((share, index) => (
+          <li
+            key={share.name}
+            className="flex items-center gap-3 rounded-2xl bg-surface px-3 py-2.5"
+          >
+            <Avatar name={share.name} size="sm" />
+            <span className="min-w-0 flex-1 truncate text-[15px] text-ink">{share.name}</span>
+            <Badge
+              tone={SHARE_BADGE[share.state].tone}
+              className="cue pop ticket-mono"
+              style={{ "--i": index, "--delay": "450ms" } as CSSProperties}
+            >
+              {SHARE_BADGE[share.state].label}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+    </figure>
   );
 }
 
 export function ClosingCta(): ReactNode {
   return (
     <section aria-labelledby="cta-heading" className="px-4 pb-16 sm:px-6 sm:pb-24">
-      <div className="dark mx-auto flex max-w-6xl flex-col items-center rounded-[48px] bg-bg px-6 py-20 text-center text-ink sm:rounded-[60px] sm:py-28">
+      <Reveal className="dark mx-auto flex max-w-6xl flex-col items-center rounded-[48px] bg-bg px-6 py-20 text-center text-ink sm:rounded-[60px] sm:py-28">
         <h2
           id="cta-heading"
           className="display max-w-3xl text-[clamp(2.6rem,6vw,4.6rem)] text-balance"
@@ -162,7 +184,7 @@ export function ClosingCta(): ReactNode {
           Create a trip, drop the link in the group chat, and let the agent do the rest.
         </p>
         <StartTripButton className="mt-10" />
-      </div>
+      </Reveal>
     </section>
   );
 }

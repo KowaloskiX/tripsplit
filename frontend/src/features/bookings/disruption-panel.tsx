@@ -5,7 +5,7 @@ import { ErrorCallout } from "@/components/ui/callout";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { apiErrorMessage, type TripBookingsResponse } from "@/lib/api";
 
-import { formatDelta, formatMoney } from "./money";
+import { DisruptionAlert } from "./disruption-alert";
 import { useSimulateDisruption } from "./mutations";
 
 // Mirrors the backend: a confirmed booking on a trip that is booked, or still booking the rest.
@@ -38,25 +38,13 @@ export function DisruptionPanel({ trip }: { trip: TripBookingsResponse }): React
         )}
         {disruption.error && <ErrorCallout>{apiErrorMessage(disruption.error)}</ErrorCallout>}
         {result && (
-          <div className="space-y-2 text-sm">
-            <p className="text-ink">
-              Replaced {result.replacements.length}{" "}
-              {result.replacements.length === 1 ? "purchase" : "purchases"}. Rebooking: new total{" "}
-              {formatMoney(result.total_minor, trip.currency)} (
-              {formatDelta(result.total_minor - result.previous_total_minor, trip.currency)}).
-            </p>
-            <ul className="divide-y divide-line text-sm tabular-nums">
-              {result.shares.map((share) => (
-                <li key={share.user_id} className="flex justify-between gap-3 py-1.5">
-                  <span className="text-ink">{share.display_name}</span>
-                  <span className="text-muted">
-                    {formatMoney(share.share_minor, trip.currency)} (
-                    {formatDelta(share.delta_minor, trip.currency)}) · {share.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <DisruptionAlert
+            replacements={result.replacements.length}
+            totalMinor={result.total_minor}
+            previousTotalMinor={result.previous_total_minor}
+            shares={result.shares}
+            currency={trip.currency}
+          />
         )}
       </div>
     </Panel>

@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 const button = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full font-medium",
-    "transition duration-150 ease-[var(--ease-calm)] active:translate-y-px",
+    // A press sinks the pill a little and springs it back on release.
+    "transition duration-150 ease-[var(--ease-calm)] active:scale-[0.97] active:duration-75",
+    "motion-reduce:active:scale-100",
     "disabled:pointer-events-none disabled:opacity-50",
   ],
   {

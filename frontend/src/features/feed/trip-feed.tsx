@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useRef } from "react";
 
 import { Panel, PanelHeader } from "@/components/ui/panel";
 
-import { FeedList } from "./feed-list";
+import { AGENT_TYPING_MS, FeedList } from "./feed-list";
 import { MessageInput } from "./message-input";
 import { useFeed } from "./queries";
 
@@ -20,7 +20,14 @@ export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNo
   const count = events.length;
   useEffect(() => {
     const element = scroller.current;
-    if (element && count > 0) element.scrollTop = element.scrollHeight;
+    if (!element || count === 0) return;
+    element.scrollTop = element.scrollHeight;
+    // Again once a typing agent's message has replaced its dots (it is taller).
+    const timer = window.setTimeout(
+      () => element.scrollTo({ top: element.scrollHeight, behavior: "smooth" }),
+      AGENT_TYPING_MS + 50,
+    );
+    return () => window.clearTimeout(timer);
   }, [count]);
 
   return (

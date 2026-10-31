@@ -1,0 +1,736 @@
+/*
+ * The motion system. Rules: transform and opacity only (60 fps), 150–600 ms, one signature
+ * moment per stage. Every class here has a reduced-motion fallback at the bottom of the file:
+ * land on the final state, at most a short opacity fade.
+ *
+ * Raw custom properties (--lime, --ink…) on purpose: `@theme inline` does not guarantee that
+ * the --color-* aliases exist at runtime.
+ */
+
+/* ---------------------------------------------------------------- entrances ---------------- */
+
+/* A headline word rising out of a blur, staggered by --i. */
+@keyframes word-rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.45em);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.word-rise {
+  display: inline-block;
+  animation: word-rise 700ms var(--ease-out-expo) both;
+  animation-delay: calc(120ms + var(--i, 0) * 70ms);
+}
+
+/* The generic fade-up for anything appearing on its own. Stagger with --i. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.rise-in {
+  animation: rise-in 520ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--delay, 0ms) + var(--i, 0) * 80ms);
+}
+
+/* Section reveals: hidden only when scripts run, so no-JS readers still see everything. */
+.reveal {
+  transition:
+    opacity 700ms var(--ease-out-expo),
+    transform 700ms var(--ease-out-expo);
+  transition-delay: calc(var(--i, 0) * 90ms);
+}
+
+@media (scripting: enabled) {
+  .reveal:not([data-visible="true"]) {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+
+  /* Children that choreograph themselves once their scope is on screen. */
+  .cue {
+    animation-play-state: paused;
+  }
+
+  [data-visible="true"] .cue {
+    animation-play-state: running;
+  }
+}
+
+/* ---------------------------------------------------------------- landing illustration ----- */
+
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.bubble-in {
+  transform-origin: 0% 100%;
+  animation: bubble-in 420ms var(--ease-spring) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* The typing dots before the agent's bubble: visible, then gone when the bubble lands. */
+@keyframes typing-window {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  15%,
+  85% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+.typing-window {
+  transform-origin: 0% 100%;
+  animation: typing-window var(--duration, 900ms) var(--ease-calm) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+.typing-dot {
+  animation: typing-dot 1s var(--ease-calm) infinite;
+  animation-delay: calc(var(--i, 0) * 150ms);
+}
+
+/* A ticket feeding out of a printer slot: pushes, pauses, pushes, lands. */
+@keyframes ticket-print {
+  0% {
+    transform: translateY(-104%);
+  }
+  28% {
+    transform: translateY(-66%);
+  }
+  36% {
+    transform: translateY(-66%);
+  }
+  62% {
+    transform: translateY(-30%);
+  }
+  70% {
+    transform: translateY(-30%);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+.ticket-print {
+  animation: ticket-print 1100ms var(--ease-calm) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* The stub separating along the perforation once the ticket is out. */
+@keyframes stub-tear {
+  0% {
+    transform: none;
+  }
+  55% {
+    transform: translate(2px, 9px) rotate(2.2deg);
+  }
+  100% {
+    transform: translate(1px, 6px) rotate(1.6deg);
+  }
+}
+
+.stub-tear {
+  transform-origin: 0% 0%;
+  animation: stub-tear 600ms var(--ease-spring) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* Scroll parallax for decorative layers — progressive enhancement where scroll timelines exist. */
+@keyframes parallax-drift {
+  to {
+    transform: translateY(var(--parallax, -64px));
+  }
+}
+
+@supports (animation-timeline: scroll()) {
+  .parallax {
+    animation: parallax-drift linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+}
+
+/* ---------------------------------------------------------------- packages ----------------- */
+
+/* Skeleton shimmer: a soft band sweeping across a placeholder. */
+@keyframes shimmer-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in oklab, var(--bg) 70%, transparent) 50%,
+    transparent 80%
+  );
+  animation: shimmer-sweep 1.5s var(--ease-calm) infinite;
+}
+
+/* Ticket cards dealt onto the table: from below, tilted, settling flat. */
+@keyframes deal-in {
+  from {
+    opacity: 0;
+    transform: translate(var(--deal-x, -24px), 72px) rotate(var(--deal-rot, -5deg)) scale(0.96);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.deal-in {
+  animation: deal-in 640ms var(--ease-out-expo) both;
+  animation-delay: calc(var(--i, 0) * 140ms);
+}
+
+/* ---------------------------------------------------------------- voting ------------------- */
+
+/* A digit column: 0-9 stacked, slid to the current digit. */
+.digit-reel {
+  transition: transform 520ms var(--ease-spring);
+}
+
+/* The leading package glows lime; the ring lives on a pseudo-element so only opacity animates. */
+.lead-glow {
+  position: relative;
+}
+
+.lead-glow::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 2px var(--lime),
+    0 18px 60px -12px color-mix(in oklab, var(--lime) 85%, transparent);
+  opacity: 0;
+  transition: opacity 400ms var(--ease-calm);
+}
+
+.lead-glow[data-leading="true"]::after {
+  opacity: 1;
+  animation: lead-breathe 2.4s var(--ease-calm) infinite;
+}
+
+@keyframes lead-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* A rubber stamp landing on paper: big and light, then pressed down, slightly askew. */
+@keyframes stamp-land {
+  0% {
+    opacity: 0;
+    transform: scale(2.4) rotate(var(--stamp-rot, -12deg));
+  }
+  55% {
+    opacity: 1;
+    transform: scale(0.92) rotate(var(--stamp-rot, -12deg));
+  }
+  75% {
+    transform: scale(1.04) rotate(var(--stamp-rot, -12deg));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(var(--stamp-rot, -12deg));
+  }
+}
+
+.stamp {
+  transform: rotate(var(--stamp-rot, -12deg));
+  animation: stamp-land 520ms var(--ease-calm) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* The card under a stamp gets a short thump. */
+@keyframes thump {
+  0%,
+  100% {
+    transform: none;
+  }
+  40% {
+    transform: scale(0.985);
+  }
+}
+
+.thump {
+  animation: thump 360ms var(--ease-calm) both;
+  animation-delay: calc(var(--delay, 0ms) + 260ms);
+}
+
+/* Packages that lost the vote step back before they leave. */
+@keyframes recede {
+  to {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+}
+
+.recede {
+  animation: recede 560ms var(--ease-calm) both;
+  animation-delay: 300ms;
+}
+
+/* ---------------------------------------------------------------- shares ------------------- */
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.14);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pop {
+  animation: pop 420ms var(--ease-calm) both;
+  animation-delay: calc(var(--delay, 0ms) + var(--i, 0) * 50ms);
+}
+
+/* Confetti-lite: a handful of pastel flecks thrown outwards, falling, fading. */
+@keyframes confetti-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0) scale(0.6);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(1);
+  }
+}
+
+.confetti-fleck {
+  animation: confetti-fly var(--life, 1300ms) var(--ease-out-expo) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* ---------------------------------------------------------------- booking ------------------ */
+
+/* "The agent is on it": a lime band travelling along the top edge of the card. */
+@keyframes working-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.working-sweep {
+  animation: working-sweep 1.6s var(--ease-calm) infinite;
+}
+
+/* A glow travelling down a graph edge. The element is the full edge; its glow sits on top. */
+@keyframes edge-travel {
+  from {
+    transform: translateY(-40%);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}
+
+.edge-travel {
+  animation: edge-travel 1.2s var(--ease-calm) infinite;
+}
+
+/* The ref typing in: the caret blinks while it types. */
+@keyframes caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.caret {
+  animation: caret-blink 0.9s steps(1) infinite;
+}
+
+/* A line struck through a replaced booking, drawn left to right. */
+@keyframes strike-draw {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.strike-draw {
+  transform-origin: 0% 50%;
+  animation: strike-draw 420ms var(--ease-calm) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* ---------------------------------------------------------------- disruption --------------- */
+
+@keyframes alert-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  40% {
+    opacity: 1;
+    transform: none;
+  }
+  52% {
+    transform: translateX(-6px);
+  }
+  64% {
+    transform: translateX(5px);
+  }
+  76% {
+    transform: translateX(-3px);
+  }
+  88% {
+    transform: translateX(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.alert-in {
+  animation: alert-in 720ms var(--ease-calm) both;
+}
+
+/* The replacement arriving from the right, over the cancelled one. */
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(48px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.slide-in-right {
+  animation: slide-in-right 560ms var(--ease-out-expo) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* ---------------------------------------------------------------- feed --------------------- */
+
+@keyframes feed-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes feed-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(18px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.feed-in-left {
+  transform-origin: 0% 100%;
+  animation: feed-in-left 360ms var(--ease-out-expo) both;
+}
+
+.feed-in-right {
+  transform-origin: 100% 100%;
+  animation: feed-in-right 360ms var(--ease-out-expo) both;
+}
+
+/* ---------------------------------------------------------------- mission control ---------- */
+
+/* A terminal line being typed: a cover in the terminal's colour slides off the text, in steps. */
+@keyframes type-cover {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(101%);
+  }
+}
+
+.type-cover {
+  animation: type-cover var(--type-ms, 600ms) steps(var(--type-steps, 32), end) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* A glow running along a horizontal edge of the graph strip. */
+@keyframes edge-travel-x {
+  from {
+    transform: translateX(-60%);
+  }
+  to {
+    transform: translateX(160%);
+  }
+}
+
+.edge-travel-x {
+  animation: edge-travel-x 1.1s var(--ease-calm) infinite;
+}
+
+/* A finished purchase flying from its pane into the ticket stack. The resting offset lives on
+   the individual `translate`/`rotate` properties, so this only animates the journey. */
+@keyframes ticket-fly {
+  0% {
+    opacity: 0;
+    transform: translate(var(--fly-x, -120px), var(--fly-y, -180px)) rotate(var(--fly-rot, -16deg))
+      scale(0.82);
+  }
+  60% {
+    opacity: 1;
+  }
+  85% {
+    transform: translate(0, 4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ticket-fly {
+  animation: ticket-fly 760ms var(--ease-out-expo) both;
+  animation-delay: var(--delay, 0ms);
+}
+
+/* The agent's cursor wandering over the stand-in page while no live frame has arrived. */
+@keyframes cursor-wander {
+  0%,
+  100% {
+    transform: translate(18%, 30%);
+  }
+  25% {
+    transform: translate(62%, 46%);
+  }
+  50% {
+    transform: translate(40%, 70%);
+  }
+  75% {
+    transform: translate(70%, 84%);
+  }
+}
+
+.cursor-wander {
+  animation: cursor-wander 6s var(--ease-calm) infinite;
+}
+
+/* ---------------------------------------------------------------- group phones ------------- */
+
+/* A phone that just changed (voted, paid) gives a small lift. */
+@keyframes phone-nudge {
+  0%,
+  100% {
+    transform: none;
+  }
+  35% {
+    transform: translateY(-6px) scale(1.015);
+  }
+}
+
+.phone-nudge {
+  animation: phone-nudge 520ms var(--ease-spring) both;
+}
+
+/* ---------------------------------------------------------------- quick plan --------------- */
+
+/* The choice sheet rising from the bottom. */
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.sheet-up {
+  animation: sheet-up 480ms var(--ease-out-expo) both;
+}
+
+/* ---------------------------------------------------------------- page transitions --------- */
+
+/* The header stays put while the page under it cross-fades. */
+.vt-header {
+  view-transition-name: site-header;
+}
+
+@keyframes vt-out {
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes vt-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
+::view-transition-old(root) {
+  animation: vt-out 180ms var(--ease-calm) both;
+}
+
+::view-transition-new(root) {
+  animation: vt-in 320ms var(--ease-out-expo) 60ms both;
+}
+
+::view-transition-group(site-header) {
+  animation: none;
+}
+
+/* ---------------------------------------------------------------- reduced motion ----------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .word-rise,
+  .rise-in,
+  .bubble-in,
+  .ticket-print,
+  .stub-tear,
+  .deal-in,
+  .stamp,
+  .thump,
+  .pop,
+  .alert-in,
+  .slide-in-right,
+  .feed-in-left,
+  .feed-in-right,
+  .parallax,
+  .strike-draw,
+  .ticket-fly,
+  .phone-nudge,
+  .sheet-up {
+    animation: none;
+  }
+
+  /* Typed lines appear whole. */
+  .type-cover {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* Things that only exist to move disappear entirely. */
+  .confetti-fleck,
+  .typing-window,
+  .shimmer::after,
+  .working-sweep,
+  .edge-travel,
+  .edge-travel-x,
+  .cursor-wander {
+    animation: none;
+    opacity: 0;
+  }
+
+  .typing-dot,
+  .caret,
+  .lead-glow[data-leading="true"]::after {
+    animation: none;
+  }
+
+  /* Losers still leave, but as a plain fade. */
+  .recede {
+    animation: none;
+    opacity: 0.4;
+  }
+
+  .reveal {
+    transition: opacity 200ms linear;
+  }
+
+  .reveal:not([data-visible="true"]) {
+    transform: none;
+  }
+
+  .digit-reel {
+    transition: none;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none;
+  }
+}
