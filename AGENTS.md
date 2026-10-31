@@ -77,7 +77,7 @@ with `SUPPLIERS=` (simulators `sim_*`, real `pkp_intercity`, `demo_rail`).
 ```bash
 cd backend && uv run trip-harness run all            # simulated suppliers, scripted agent
 cd backend && uv run trip-harness run prague_happy_path --live-search   # real PKP (~20 s)
-uv run beanie migrate --uri "$MONGODB_URL" --database "$MONGODB_DATABASE" -p migrations
+uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
 ```
 
 ## API bridge

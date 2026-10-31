@@ -13,8 +13,8 @@ Expand-contract:
 3. Contract (a later deploy): drop `train_query` once no reader of it is left. It is NOT
    removed here, so `Backward` can restore the old shape exactly.
 
-    uv run beanie migrate --uri "$MONGODB_URL" --database "$MONGODB_DATABASE" -p migrations
-    uv run beanie migrate --uri "$MONGODB_URL" --database "$MONGODB_DATABASE" -p migrations \\
+    uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
+    uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations \\
         --backward
 """
 

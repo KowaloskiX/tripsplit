@@ -46,7 +46,7 @@ class Backward:
 not enforce it for you.
 
 ```bash
-uv run beanie migrate --uri "$MONGODB_URL" --database "$MONGODB_DATABASE" -p migrations
+uv run beanie migrate -uri "$MONGODB_URL" -db "$MONGODB_DATABASE" -p migrations
 ```
 
 ## Indexes and validators
