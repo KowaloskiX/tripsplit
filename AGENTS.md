@@ -50,6 +50,22 @@ Artifacts land in `backend/var/agent/runs/<run-id>/` (per-step `NN.png`, `status
 `trace.json`, `result.json`, `live.jpg` on Chromium). Env knobs: `OPENAI_API_KEY`,
 `PLANNER_MODEL`, `ENGINE`, `HEADLESS`, `AGENT_VAR_DIR`. Details: `.devin/skills/run-agent/SKILL.md`.
 
+## Trip harness
+
+```bash
+cd backend && uv run trip-harness list
+uv run trip-harness run all                                  # fast: fixture research, scripted agent (~10 s)
+uv run trip-harness run prague_happy_path --live-search      # real PKP Intercity train prices (~15 s)
+uv run trip-harness run prague_happy_path --live-agent       # real agent on its own demo rail supplier (~30 s)
+```
+
+Whole group trips through the real services and a fresh `harness_<timestamp>_<scenario>`
+database (dropped unless `--keep-db`), invariants checked after every step. Scenarios live in
+`backend/src/app/harness/scenarios/`; reports in `backend/var/harness/<timestamp>/`. Steps that
+need an unmerged domain feature are `pending`; scenarios documenting a bug are `xfail`. The
+same scenarios run in pytest (`tests/e2e/test_trip_scenarios.py`). Exit code 1 = an unexpected
+step failure or invariant violation.
+
 ## API bridge
 
 ```bash
