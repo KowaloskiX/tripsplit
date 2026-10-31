@@ -17,46 +17,57 @@ from beanie import PydanticObjectId
 
 from app.core.domain.bookings import format_money
 from app.core.domain.result import Err, Ok, Result
+from app.core.domain.suppliers import hold_is_live
 from app.core.domain.trips import (
-    BookingKind,
     BookingStatus,
     ContributionStatus,
     EventActor,
     TripStatus,
 )
 from app.db.identifiers import identifier_of, to_object_id, to_text
+from app.harness.adapters import matches
 from app.harness.features import Feature, all_features, feature
 from app.harness.invariants import InvariantContext, Snapshot, Violation, check_all, load_snapshot
-from app.harness.live_research import LiveIntercityResearcher, LiveSearchLog
 from app.harness.scenario import (
     EXPECTATIONS,
+    AdvanceClock,
     AgentOutcome,
     Approve,
     CastVotes,
+    CheckDisruptions,
     CloseVoting,
     CompleteManually,
     Disrupt,
+    EnterTravellerDetails,
     ExpectAgentMessage,
+    ExpectAgentRuns,
     ExpectBookingStatus,
     ExpectBudget,
     ExpectError,
     ExpectEvent,
+    ExpectHold,
+    ExpectPurchases,
     ExpectShares,
     ExpectStatus,
     ExpectWinner,
     GeneratePackages,
-    KindSelector,
     Leave,
     Pay,
     StartBookings,
     Step,
+    SupplierDisruption,
     SupplierPriceChange,
+    Target,
+    TargetSelector,
     describe,
 )
 from app.harness.world import World
 from app.models.bookings import Booking
 from app.repositories.trips import ProposalRepository
 from app.services.bookings import running_monitors
+from app.suppliers.pkp import LiveSearchLog
+from app.suppliers.ports import DisruptionKind
+from app.suppliers.sim import SimDisruption
 
 type StepOutcome = Literal["ok", "failed", "pending", "skipped"]
 type ScenarioOutcome = Literal["pass", "known", "pending", "xfail", "xpass", "fail"]
@@ -102,6 +113,21 @@ class MoneyRow:
 
 
 @dataclass(frozen=True, slots=True)
+class BookingRecord:
+    """One purchase as the report shows it — no traveller data."""
+
+    target: str  # "flight", "rail", "stay", ...
+    title: str
+    supplier_id: str
+    channel: str
+    passengers: int
+    amount_minor: int
+    status: str
+    hold_expires_at: str
+    confirmation_ref: str
+
+
+@dataclass(frozen=True, slots=True)
 class AgentRunRecord:
     run_id: str
     kind: str
@@ -130,6 +156,8 @@ class ScenarioResult:
     total_minor: int = 0
     trip_status: str = ""
     agent_runs: list[AgentRunRecord] = field(default_factory=list)
+    bookings: list[BookingRecord] = field(default_factory=list)
+    suppliers: list[str] = field(default_factory=list)
     live_search: LiveSearchLog | None = None
     features: dict[str, str] = field(default_factory=dict)
     seconds: float = 0.0
@@ -137,10 +165,6 @@ class ScenarioResult:
 
 def _code(error: object) -> str:
     return str(getattr(error, "value", error))
-
-
-def _kinds(selector: KindSelector) -> set[BookingKind]:
-    return set(BookingKind) if selector == "all" else {BookingKind(selector)}
 
 
 class Driver:
@@ -161,6 +185,7 @@ class Driver:
             title=self.scenario.title,
             description=self.scenario.description,
             mode=self.mode,
+            suppliers=world_suppliers(self.world),
             features={
                 name.value: "present" if info.present else f"missing: {info.missing}"
                 for name, info in all_features().items()
@@ -190,8 +215,8 @@ class Driver:
             )
         finally:
             await self._release_agents()
-        if isinstance(self.world.researcher, LiveIntercityResearcher):
-            result.live_search = self.world.researcher.log
+            await self.world.close()
+        result.live_search = self.world.live_search_log
         result.seconds = round(time.monotonic() - started, 2)
         self._judge(result)
         return result
@@ -251,6 +276,8 @@ class Driver:
                 after=after,
                 status_trail=self.trail,
                 expected_events=expected_events if outcome == "ok" else (),
+                suppliers=self.world.suppliers,
+                now=self.world.clock.now(),
             )
             violations = check_all(context, dict(self.scenario.known_violations))
             for violation in violations:
@@ -296,16 +323,28 @@ class Driver:
             case Pay():
                 return await self._pay(step)
             case StartBookings():
-                return await self._start(step.kind), ("booking_started",)
+                return await self._start(step.target), ("booking_started",)
             case AgentOutcome():
-                return self._script(step), ()
+                self.world.scripted.script(step.target, step.outcome)
+                return f"{step.target}: {step.outcome}", ()
             case Approve():
                 return await self._approve(step), ()
             case Disrupt():
                 return await self._disrupt(step), ("disruption", "resplit")
             case SupplierPriceChange():
-                self.world.quotes.percent[BookingKind(step.kind)] = step.percent
-                return f"{step.kind} now quotes {step.percent:+g}%", ()
+                for supplier_id in self._suppliers_of(step.target):
+                    self.world.behaviours[supplier_id].price_change_percent = step.percent
+                return f"{step.target} suppliers now ask {step.percent:+g}%", ()
+            case SupplierDisruption():
+                return self._script_disruption(step), ()
+            case CheckDisruptions():
+                return await self._check_disruptions(), ("disruption", "resplit")
+            case AdvanceClock():
+                self.world.advance(step.hours)
+                return f"now {self.world.clock.now():%Y-%m-%d %H:%M} UTC", ()
+            case EnterTravellerDetails():
+                await self.world.enter_details(list(step.members))
+                return f"{', '.join(step.members)} entered their details", ()
             case Leave():
                 return await self._leave(step), ("resplit",)
             case CompleteManually():
@@ -393,12 +432,54 @@ class Driver:
             raise StepFailed(f"{name} could not pay: {code}", code)
         return "paid: " + ", ".join(paid), ("contribution_paid",)
 
-    async def _start(self, selector: KindSelector) -> str:
+    def _suppliers_of(self, target: Target) -> list[str]:
+        """The scenario's scriptable suppliers selling `target` (a kind or a mode)."""
+        found = [
+            adapter.id
+            for adapter in self.world.suppliers
+            if adapter.id in self.world.behaviours
+            and (
+                adapter.capabilities.kind.value == target
+                or (
+                    adapter.capabilities.mode is not None
+                    and adapter.capabilities.mode.value == target
+                )
+            )
+        ]
+        if not found:
+            raise StepFailed(f"no scriptable {target} supplier in this scenario")
+        return found
+
+    def _script_disruption(self, step: SupplierDisruption) -> str:
+        kind = DisruptionKind.CANCELLATION if step.cancelled else DisruptionKind.DELAY
+        for supplier_id in self._suppliers_of(step.target):
+            self.world.behaviours[supplier_id].disruption = SimDisruption(
+                kind=kind,
+                delay_minutes=step.delay_minutes,
+                replacement_price_percent=step.replacement_percent,
+            )
+        return f"{step.target}: {kind.value} scripted, replacement {step.replacement_percent:+g}%"
+
+    async def _check_disruptions(self) -> str:
+        world = self.world
+        result = await world.bookings.check_disruptions(world.trip_id, world.organizer_id)
+        if not isinstance(result, Ok):
+            raise StepFailed(_code(result.error), _code(result.error))
+        if not result.value:
+            raise StepFailed("no supplier reported a disruption")
+        lines = []
+        for done in result.value:
+            currency = done.trip.currency
+            old = format_money(sum(b.amount_minor for b in done.cancelled), currency)
+            new = format_money(sum(b.amount_minor for b in done.replacements), currency)
+            titles = ", ".join(f"“{b.title}”" for b in done.replacements)
+            lines.append(f"rebooked onto {titles}: {old} -> {new}")
+        return "; ".join(lines)
+
+    async def _start(self, selector: TargetSelector) -> str:
         world = self.world
         snap = await self._snapshot()
-        targets = [
-            b for b in snap.live_bookings if b.kind in _kinds(selector) and b.status in _STARTABLE
-        ]
+        targets = [b for b in snap.live_bookings if matches(b, selector) and b.status in _STARTABLE]
         if not targets:
             raise StepFailed(f"no startable {selector} booking")
         started, errors = [], []
@@ -406,10 +487,11 @@ class Driver:
             result = await world.bookings.start(
                 world.trip_id, to_text(identifier_of(booking)), world.organizer_id
             )
+            target = (booking.mode or booking.kind).value
             if isinstance(result, Err):
-                errors.append((booking.kind.value, _code(result.error)))
+                errors.append((target, _code(result.error)))
             else:
-                started.append(booking.kind.value)
+                started.append(target)
         if started:
             await self._wait_for_agents()
         if errors:
@@ -417,28 +499,21 @@ class Driver:
             raise StepFailed(f"starting the {kind} booking failed: {code}", code)
         return await self._booking_line(f"started {', '.join(started)}")
 
-    def _script(self, step: AgentOutcome) -> str:
-        chosen = {"train": step.train, "stay": step.stay, "activity": step.activity}
-        for kind, outcome in chosen.items():
-            if outcome is not None:
-                self.world.scripted.outcomes[BookingKind(kind)] = outcome
-        return ", ".join(f"{k}: {v}" for k, v in chosen.items() if v is not None)
-
     async def _approve(self, step: Approve) -> str:
         world = self.world
         snap = await self._snapshot()
         targets = [
             b
             for b in snap.live_bookings
-            if b.kind in _kinds(step.kind) and b.status is BookingStatus.AWAITING_APPROVAL
+            if matches(b, step.target) and b.status is BookingStatus.AWAITING_APPROVAL
         ]
         if not targets:
-            raise StepFailed(f"no {step.kind} booking is awaiting approval")
+            raise StepFailed(f"no {step.target} booking is awaiting approval")
         for booking in targets:
             result = await world.bookings.approve(
                 world.trip_id, to_text(identifier_of(booking)), world.organizer_id, step.approved
             )
-            self._raise_on(result, f"{booking.kind.value}: ")
+            self._raise_on(result, f"{(booking.mode or booking.kind).value}: ")
         await self._wait_for_agents()
         return await self._booking_line("approved" if step.approved else "rejected")
 
@@ -474,10 +549,10 @@ class Driver:
         targets = [
             b
             for b in snap.live_bookings
-            if b.kind is BookingKind(step.kind) and b.status is BookingStatus.HANDOFF
+            if matches(b, step.target) and b.status is BookingStatus.HANDOFF
         ]
         if not targets:
-            raise StepFailed(f"no {step.kind} booking in handoff")
+            raise StepFailed(f"no {step.target} booking in handoff")
         complete: Any = getattr(world.bookings, "complete_manually")  # noqa: B009
         for booking in targets:
             result: Result[Any, Any] = await complete(
@@ -497,16 +572,35 @@ class Driver:
                     raise StepFailed(f"trip is {snap.trip.status}, expected {step.status}")
                 return f"trip is {step.status}"
             case ExpectBookingStatus():
-                found = [b for b in snap.live_bookings if b.kind is BookingKind(step.kind)]
+                found = [b for b in snap.live_bookings if matches(b, step.target)]
                 wrong = [b for b in found if b.status is not step.status]
                 miscounted = step.count is not None and len(found) != step.count
                 if not found or wrong or miscounted:
                     seen = ", ".join(b.status.value for b in found) or "none"
                     wanted = f"{step.count} x " if step.count is not None else ""
                     raise StepFailed(
-                        f"{step.kind} bookings: {seen}, expected {wanted}{step.status}"
+                        f"{step.target} bookings: {seen}, expected {wanted}{step.status}"
                     )
-                return f"{len(found)} {step.kind} booking(s) {step.status}"
+                return f"{len(found)} {step.target} booking(s) {step.status}"
+            case ExpectPurchases():
+                found = [b for b in snap.live_bookings if matches(b, step.target)]
+                sizes = tuple(len(b.passenger_user_ids) for b in found)
+                if sizes != step.sizes:
+                    raise StepFailed(
+                        f"{step.target} purchases carry {sizes}, expected {step.sizes}"
+                    )
+                supplier = found[0].supplier_id if found else "?"
+                return f"{step.target} on {supplier}: purchases of {' + '.join(map(str, sizes))}"
+            case ExpectHold():
+                return self._expect_hold(step, snap)
+            case ExpectAgentRuns():
+                ids = {b.id for b in snap.bookings if matches(b, step.target)}
+                runs = [r for r in snap.runs if r.booking_id in ids]
+                if len(runs) != step.count:
+                    raise StepFailed(
+                        f"{len(runs)} agent run(s) for {step.target}, expected {step.count}"
+                    )
+                return f"{len(runs)} agent run(s) for {step.target}"
             case ExpectShares():
                 return self._expect_shares(step, snap)
             case ExpectEvent():
@@ -530,6 +624,20 @@ class Driver:
                 return said[-1].message
             case _:
                 raise StepFailed(f"unknown step {step!r}")
+
+    def _expect_hold(self, step: ExpectHold, snap: Snapshot) -> str:
+        now = self.world.clock.now()
+        found = [b for b in snap.live_bookings if matches(b, step.target)]
+        if not found:
+            raise StepFailed(f"no live {step.target} booking")
+        wrong = [b for b in found if hold_is_live(b.hold_expires_at, now) is not step.live]
+        if wrong:
+            state = ", ".join(f"{b.hold_ref or 'no hold'} until {b.hold_expires_at}" for b in wrong)
+            raise StepFailed(f"{step.target}: {state} (now {now:%Y-%m-%d %H:%M})")
+        if not step.live:
+            return f"{len(found)} {step.target} booking(s) without a live hold"
+        until = min(b.hold_expires_at for b in found if b.hold_expires_at is not None)
+        return f"{len(found)} {step.target} booking(s) held until {until:%Y-%m-%d %H:%M} UTC"
 
     async def _expect_winner(self, step: ExpectWinner, snap: Snapshot) -> str:
         proposals = await ProposalRepository().for_trip(self.world.trip_oid)
@@ -628,13 +736,17 @@ class Driver:
             if not busy and len(monitors) <= awaiting:
                 return
             if loop.time() > deadline:
-                state = ", ".join(f"{b.kind.value}={b.status.value}" for b in snap.live_bookings)
+                state = ", ".join(
+                    f"{(b.mode or b.kind).value}={b.status.value}" for b in snap.live_bookings
+                )
                 raise StepFailed(f"agents did not settle within {self.wait_timeout_s:g}s ({state})")
             await asyncio.sleep(self.world.options.poll_s)
 
     async def _booking_line(self, prefix: str) -> str:
         snap = await self._snapshot()
-        state = ", ".join(f"{b.kind.value}={b.status.value}" for b in snap.live_bookings)
+        state = ", ".join(
+            f"{(b.mode or b.kind).value}={b.status.value}" for b in snap.live_bookings
+        )
         return f"{prefix} — {state}"
 
     @staticmethod
@@ -681,6 +793,21 @@ class Driver:
             )
             for c in final.contributions
         ]
+        travellers = len(final.members)
+        result.bookings = [
+            BookingRecord(
+                target=(b.mode or b.kind).value,
+                title=b.title,
+                supplier_id=b.supplier_id or "-",
+                channel=b.channel.value,
+                passengers=len(b.passenger_user_ids) or travellers,
+                amount_minor=b.amount_minor,
+                status=b.status.value,
+                hold_expires_at=f"{b.hold_expires_at:%Y-%m-%d %H:%M}" if b.hold_expires_at else "",
+                confirmation_ref=b.confirmation_ref or "",
+            )
+            for b in final.bookings
+        ]
         live_runs = set(getattr(self.world.launcher, "live_runs", []))
         for run in final.runs:
             booking: Booking | None = final.booking(run.booking_id)
@@ -692,7 +819,7 @@ class Driver:
             result.agent_runs.append(
                 AgentRunRecord(
                     run_id=run.run_id,
-                    kind=booking.kind.value if booking else "?",
+                    kind=(booking.mode or booking.kind).value if booking else "?",
                     title=booking.title if booking else "?",
                     booking_status=booking.status.value if booking else "?",
                     outcome=run.outcome.value if run.outcome else run.status.value,
@@ -730,6 +857,20 @@ class Driver:
         elif known:
             reasons = sorted({f"{v.invariant} ({v.known})" for v in known})
             result.outcome, result.reason = "known", "; ".join(reasons)
+
+
+def world_suppliers(world: World) -> list[str]:
+    return [
+        f"{adapter.id} ({adapter.capabilities.channel.value}"
+        + (
+            f", cap {adapter.capabilities.max_party_per_purchase}"
+            if adapter.capabilities.max_party_per_purchase
+            else ""
+        )
+        + (", holds" if adapter.capabilities.supports_hold else "")
+        + ")"
+        for adapter in world.suppliers
+    ]
 
 
 def _trend(now: int, then: int) -> str:

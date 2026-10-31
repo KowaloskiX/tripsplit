@@ -25,9 +25,9 @@ SCENARIO = Scenario(
     friends=FRIENDS,
     steps=(
         *UNTIL_PAID,
-        SupplierPriceChange("train", 15),
+        SupplierPriceChange("rail", 15),
         ExpectError("price_changed"),
-        StartBookings("train"),
+        StartBookings("rail"),
         ExpectStatus(TripStatus.PAYING),
         ExpectEvent("price_changed"),
         ExpectShares(status=ContributionStatus.PENDING, vs_initial="higher"),

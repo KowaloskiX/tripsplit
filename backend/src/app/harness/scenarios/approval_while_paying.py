@@ -27,8 +27,8 @@ SCENARIO = Scenario(
     steps=(
         *UNTIL_PAID,
         StartBookings("all"),
-        Approve("train"),
-        ExpectBookingStatus("train", BookingStatus.CONFIRMED, count=2),
+        Approve("rail"),
+        ExpectBookingStatus("rail", BookingStatus.CONFIRMED, count=2),
         ExpectBookingStatus("stay", BookingStatus.AWAITING_APPROVAL),
         Disrupt(delay_minutes=140, price_change_percent=20),
         ExpectStatus(TripStatus.PAYING),
@@ -39,9 +39,9 @@ SCENARIO = Scenario(
         ExpectStatus(TripStatus.REBOOKING),
         Approve("stay"),
         ExpectBookingStatus("stay", BookingStatus.CONFIRMED),
-        StartBookings("train"),
-        Approve("train"),
-        ExpectBookingStatus("train", BookingStatus.CONFIRMED, count=2),
+        StartBookings("rail"),
+        Approve("rail"),
+        ExpectBookingStatus("rail", BookingStatus.CONFIRMED, count=2),
         ExpectStatus(TripStatus.BOOKED),
     ),
 )

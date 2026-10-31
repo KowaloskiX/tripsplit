@@ -30,13 +30,13 @@ class FeatureInfo:
 
 
 def _quotes() -> FeatureInfo:
-    takes_quotes = "quotes" in inspect.signature(BookingService.__init__).parameters
+    takes_quotes = "suppliers" in inspect.signature(BookingService.__init__).parameters
     has_error = "PRICE_CHANGED" in BookingError.__members__
     has_event = "PRICE_CHANGED" in EventKind.__members__
     return FeatureInfo(
         present=takes_quotes and has_error and has_event,
         missing=(
-            "BookingService(quotes=QuoteProvider) re-quoting on start, "
+            "BookingService(suppliers=SupplierRegistry) re-quoting on start, "
             "BookingError.PRICE_CHANGED and EventKind.PRICE_CHANGED (feat/domain-lifecycle)"
         ),
     )
@@ -63,8 +63,8 @@ def _passenger_split() -> FeatureInfo:
     return FeatureInfo(
         present="passenger_user_ids" in Booking.model_fields,
         missing=(
-            "Booking.passenger_user_ids — train bookings split into purchases of at most 5 "
-            "passengers at voting close (feat/domain-lifecycle)"
+            "Booking.passenger_user_ids — bookings split into purchases of at most the "
+            "supplier's max_party_per_purchase at voting close (feat/domain-lifecycle)"
         ),
     )
 

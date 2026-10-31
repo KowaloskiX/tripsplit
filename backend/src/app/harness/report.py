@@ -46,6 +46,8 @@ def scenario_markdown(result: ScenarioResult) -> str:
     ]
     if result.description:
         lines += [result.description, ""]
+    if result.suppliers:
+        lines += [f"Suppliers: {', '.join(result.suppliers)}", ""]
     lines += [
         "## Timeline",
         "",
@@ -88,6 +90,21 @@ def scenario_markdown(result: ScenarioResult) -> str:
         lines += [f"- step {s.index} `{s.label}`: {s.detail}" for s in pending]
         if result.outcome in ("xfail", "xpass"):
             lines.append(f"- scenario: {result.reason}")
+    lines += ["", "## Purchases", ""]
+    if result.bookings:
+        lines += [
+            "| Target | Booking | Supplier | Channel | Pax | Amount | Status | Hold until | Ref |",
+            "|---|---|---|---|---|---|---|---|---|",
+        ]
+        for booking in result.bookings:
+            lines.append(
+                f"| {booking.target} | {_cell(booking.title)} | {booking.supplier_id} | "
+                f"{booking.channel} | {booking.passengers} | "
+                f"{format_money(booking.amount_minor, result.currency)} | {booking.status} | "
+                f"{booking.hold_expires_at} | {booking.confirmation_ref} |"
+            )
+    else:
+        lines.append("No bookings (voting never closed).")
     lines += ["", "## Agent runs", ""]
     if result.agent_runs:
         lines += [

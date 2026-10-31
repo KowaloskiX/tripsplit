@@ -110,7 +110,7 @@ async def run_one(
         driver = Driver(
             world,
             wait_timeout_s=LIVE_TIMEOUT_S if live_agent_url else FAST_TIMEOUT_S,
-            mode=" + ".join(modes) or "fast (fixture research, scripted agent)",
+            mode=" + ".join(modes) or "fast (simulated suppliers, scripted agent)",
         )
         return await driver.run()
     finally:
@@ -173,11 +173,13 @@ def main() -> None:
     commands.add_parser("list", help="list the scenarios")
     run = commands.add_parser("run", help="run one scenario or all")
     run.add_argument("name", help="a scenario name or 'all'")
-    run.add_argument("--live-search", action="store_true", help="real PKP Intercity train prices")
+    run.add_argument(
+        "--live-search", action="store_true", help="the real PKP Intercity adapter for rail"
+    )
     run.add_argument(
         "--live-agent",
         action="store_true",
-        help="the real agent subprocess on the demo rail supplier for train bookings",
+        help="the real agent subprocess on the demo rail supplier for rail bookings",
     )
     run.add_argument("--keep-db", action="store_true", help="keep each scenario's database")
     args = parser.parse_args()

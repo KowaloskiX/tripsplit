@@ -6,20 +6,31 @@ feature has not landed yet carries a `known_issue` — its violations are report
 failed, until the feature exists.
 """
 
+import json
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import datetime
 from itertools import pairwise
 
 from beanie import PydanticObjectId
 
 from app.core.domain.bookings import contribution_status
-from app.core.domain.trips import BookingKind, BookingStatus, ContributionStatus, TripStatus
+from app.core.domain.suppliers import (
+    SupplierCapabilities,
+    hold_is_live,
+    missing_traveller_fields,
+    price_is_guaranteed,
+)
+from app.core.domain.trips import BookingStatus, ContributionStatus, SupplierChannel, TripStatus
 from app.harness.features import Feature, feature
 from app.models.bookings import AgentRun, Booking
+from app.models.travellers import TravellerProfile
 from app.models.trips import Contribution, Trip, TripEvent, TripMember
 from app.repositories.bookings import BookingRepository
+from app.repositories.travellers import TravellerProfileRepository
 from app.repositories.trips import ContributionRepository, MemberRepository, TripRepository
-from app.suppliers.intercity import MAX_PASSENGERS_PER_PURCHASE
+from app.services.travellers import details_of
+from app.suppliers.registry import SupplierRegistry
 
 S = TripStatus
 
@@ -67,6 +78,7 @@ class Snapshot:
     bookings: list[Booking]
     runs: list[AgentRun]
     events: list[TripEvent]
+    profiles: dict[PydanticObjectId, TravellerProfile] = field(default_factory=dict)
 
     @property
     def live_bookings(self) -> list[Booking]:
@@ -87,13 +99,15 @@ async def load_snapshot(trip_id: PydanticObjectId) -> Snapshot:
     # Raw finds on indexed fields only (the test database runs with `notablescan`).
     runs = await AgentRun.find(AgentRun.trip_id == trip_id).sort("_id").to_list()
     events = await TripEvent.find(TripEvent.trip_id == trip_id).sort("_id").to_list()
+    members = await MemberRepository().for_trip(trip_id)
     return Snapshot(
         trip=trip,
-        members=await MemberRepository().for_trip(trip_id),
+        members=members,
         contributions=await ContributionRepository().for_trip(trip_id),
         bookings=await BookingRepository().for_trip(trip_id),
         runs=runs,
         events=events,
+        profiles=await TravellerProfileRepository().for_users([m.user_id for m in members]),
     )
 
 
@@ -105,6 +119,25 @@ class InvariantContext:
     status_trail: Sequence[TripStatus]
     # Event kinds the step was supposed to produce (only when the step succeeded).
     expected_events: Sequence[str] = field(default_factory=tuple)
+    # The scenario's supplier plugins and the clock's "now" right after the step.
+    suppliers: SupplierRegistry = field(default_factory=SupplierRegistry)
+    now: datetime | None = None
+
+    def capabilities(self, booking: Booking) -> SupplierCapabilities | None:
+        adapter = self.suppliers.get(booking.supplier_id) if booking.supplier_id else None
+        return adapter.capabilities if adapter is not None else None
+
+    def started_buying(self) -> list[tuple[Booking, BookingStatus]]:
+        """(booking, previous status) for every booking that moved INTO a buying state."""
+        if self.before is None:
+            return []
+        moved = []
+        for booking in self.after.bookings:
+            previous = self.before.booking(booking.id)
+            old = previous.status if previous is not None else BookingStatus.PENDING
+            if booking.status in BUYING and booking.status is not old:
+                moved.append((booking, old))
+        return moved
 
     @property
     def new_events(self) -> list[TripEvent]:
@@ -206,7 +239,7 @@ def _rule_one(ctx: InvariantContext) -> list[str]:
         owed = max(before.outstanding_minor, ctx.after.outstanding_minor)
         if owed > 0:
             problems.append(
-                f"{booking.kind} booking moved {old} -> {booking.status} while "
+                f"{booking.kind} booking '{booking.title}' moved {old} -> {booking.status} while "
                 f"{owed} grosze of shares were unpaid"
             )
     return problems
@@ -218,21 +251,108 @@ def _passengers(booking: Booking, travellers: int) -> int:
 
 
 def _purchase_cap(ctx: InvariantContext) -> list[str]:
+    """Read off the supplier's capabilities — whoever the supplier is."""
     snap = ctx.after
     travellers = len(snap.members)
-    return [
-        f"train booking '{b.title}' covers {_passengers(b, travellers)} passengers "
-        f"(PKP Intercity sells at most {MAX_PASSENGERS_PER_PURCHASE} per purchase)"
-        for b in snap.live_bookings
-        if b.kind is BookingKind.TRAIN
-        and b.supplier == "PKP Intercity"
-        and _passengers(b, travellers) > MAX_PASSENGERS_PER_PURCHASE
-    ]
+    problems = []
+    for booking in snap.live_bookings:
+        capabilities = ctx.capabilities(booking)
+        cap = capabilities.max_party_per_purchase if capabilities else None
+        carried = _passengers(booking, travellers)
+        if cap is not None and carried > cap:
+            problems.append(
+                f"{booking.supplier_id} booking '{booking.title}' covers {carried} passengers "
+                f"(the supplier sells at most {cap} per purchase)"
+            )
+    return problems
 
 
 def _purchase_cap_known() -> str | None:
     info = feature(Feature.PASSENGER_SPLIT)
     return None if info.present else f"pending: {info.missing}"
+
+
+def _traveller_details_before_purchase(ctx: InvariantContext) -> list[str]:
+    """No purchase starts before its passengers have every field the supplier requires.
+    Reports names and field names only — never a value."""
+    snap = ctx.after
+    members = {member.user_id: member for member in snap.members}
+    problems = []
+    for booking, old in ctx.started_buying():
+        capabilities = ctx.capabilities(booking)
+        # Checked where a purchase STARTS; later steps of the same purchase follow from it.
+        if capabilities is None or old in BUYING:
+            continue
+        passengers = [members[uid] for uid in booking.passenger_user_ids if uid in members]
+        provided = {
+            member.display_name: details_of(
+                member, snap.profiles.get(member.user_id)
+            ).provided_fields()
+            for member in passengers
+        }
+        missing = missing_traveller_fields(capabilities.required_traveller_fields, provided)
+        for name, fields in missing.items():
+            problems.append(
+                f"'{booking.title}' moved {old} -> {booking.status} although {name} lacks "
+                f"{', '.join(sorted(field.value for field in fields))}"
+            )
+    return problems
+
+
+def _hold_live_at_purchase(ctx: InvariantContext) -> list[str]:
+    """A supplier that holds prices never sees a purchase step on a lapsed hold."""
+    if ctx.now is None:
+        return []
+    problems = []
+    for booking, old in ctx.started_buying():
+        capabilities = ctx.capabilities(booking)
+        if capabilities is None or not capabilities.supports_hold:
+            continue
+        if not hold_is_live(booking.hold_expires_at, ctx.now):
+            problems.append(
+                f"'{booking.title}' moved {old} -> {booking.status} on a hold that expired at "
+                f"{booking.hold_expires_at}"
+            )
+    return problems
+
+
+def _price_fresh_at_purchase(ctx: InvariantContext) -> list[str]:
+    """A purchase never uses a price older than the supplier's quote TTL (or a lapsed hold):
+    checked when the agent starts and whenever an API purchase moves forward."""
+    if ctx.now is None:
+        return []
+    problems = []
+    for booking, old in ctx.started_buying():
+        capabilities = ctx.capabilities(booking)
+        if capabilities is None:
+            continue
+        direct = booking.channel is SupplierChannel.API
+        if not direct and booking.status is not BookingStatus.RUNNING:
+            continue
+        if not price_is_guaranteed(
+            capabilities,
+            hold_expires_at=booking.hold_expires_at,
+            quoted_at=booking.quoted_at,
+            now=ctx.now,
+        ):
+            problems.append(
+                f"'{booking.title}' moved {old} -> {booking.status} on a price quoted at "
+                f"{booking.quoted_at} (TTL {capabilities.quote_ttl})"
+            )
+    return problems
+
+
+def _no_document_numbers_in_feed(ctx: InvariantContext) -> list[str]:
+    """A passport number never lands in the feed — not in a message, not in a payload."""
+    numbers = [p.document_number for p in ctx.after.profiles.values() if p.document_number]
+    if not numbers:
+        return []
+    problems = []
+    for event in ctx.new_events:
+        text = event.message + json.dumps(event.payload, default=str)
+        if any(number in text for number in numbers):
+            problems.append(f"a '{event.kind}' event contains a traveller's document number")
+    return problems
 
 
 def _state_machine(ctx: InvariantContext) -> list[str]:
@@ -293,9 +413,29 @@ INVARIANTS: tuple[Invariant, ...] = (
     ),
     Invariant(
         "purchase_cap",
-        f"no intercity train booking covers more than {MAX_PASSENGERS_PER_PURCHASE} passengers",
+        "no booking carries more passengers than its supplier's max_party_per_purchase",
         _purchase_cap,
         _purchase_cap_known,
+    ),
+    Invariant(
+        "traveller_details_before_purchase",
+        "no purchase starts before its passengers have the fields the supplier requires",
+        _traveller_details_before_purchase,
+    ),
+    Invariant(
+        "hold_live_at_purchase",
+        "no purchase step on a booking whose supplier hold has expired",
+        _hold_live_at_purchase,
+    ),
+    Invariant(
+        "price_fresh_at_purchase",
+        "a purchase never uses a price older than the supplier's quote TTL",
+        _price_fresh_at_purchase,
+    ),
+    Invariant(
+        "no_document_numbers_in_feed",
+        "traveller document numbers never appear in feed messages or payloads",
+        _no_document_numbers_in_feed,
     ),
     Invariant("state_machine", "every observed trip transition is an allowed one", _state_machine),
     Invariant(
@@ -319,6 +459,7 @@ class Violation:
 
 
 def check_all(ctx: InvariantContext, known: dict[str, str]) -> list[Violation]:
+    """Every invariant against one step; a violation named in `known` is reported, not failed."""
     violations: list[Violation] = []
     for invariant in INVARIANTS:
         reason = known.get(invariant.name) or invariant.known_issue()
