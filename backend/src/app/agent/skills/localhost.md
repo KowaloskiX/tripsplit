@@ -21,3 +21,8 @@ Checkout shape (a breadcrumb at the top shows the current step):
    paying is allowed; call `done` with the booking number in the reason.
 
 If a page says "Train not found", start again from the search page.
+
+Note for maintainers: this file is planner context and human documentation only. What the
+deterministic engine relies on for this site lives in `site_profiles.py` (`DEMORAIL`: CTA copy,
+the pay button, the 5-passenger cap, the booking-number pattern) and in the generic rules. The
+perturbed variants under `/api/demo-supplier/rail-variants/<variant>` share this shape.
