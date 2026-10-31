@@ -24,7 +24,7 @@ _HOST_COOKIE_PREFIX = "__Host-"
 _MIN_AUTH_SECRET_LENGTH = 32
 
 type ResearcherKind = Literal["catalog", "claude-cli"]
-type PaymentsKind = Literal["fake"]
+type PaymentsKind = Literal["fake", "wallet"]
 type PkpTransportKind = Literal["browser", "http"]
 type HoldsMode = Literal["off", "on"]
 
@@ -100,8 +100,11 @@ class Settings(BaseSettings):
     # One GET per supplier link at research time (at most ~1.5 s): 404/410 links are dropped
     # and items without photos get the page's og:image.
     link_check: bool = True
-    # Who takes the money. `fake` always succeeds; Stripe plugs in behind the same port later.
-    payments: PaymentsKind = "fake"
+    # Who takes the money. `wallet` pays shares from the member's platform wallet (dummy BLIK /
+    # card top-ups); `fake` always succeeds without any balance. Stripe plugs in later.
+    payments: PaymentsKind = "wallet"
+    # How long the dummy bank takes to confirm a wallet top-up.
+    wallet_confirm_delay_s: float = Field(default=1.5, ge=0, le=30)
     # The booking agent (see app.agent). Relative paths resolve against `backend/` — the
     # directory the agent subprocess runs in.
     agent_var_dir: str = "var/agent"

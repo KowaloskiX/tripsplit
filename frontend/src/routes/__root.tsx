@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { SessionNav } from "@/features/auth";
 import { LandingFooter, Wordmark } from "@/features/brand";
 import { THEME_INIT_SCRIPT, ThemeToggle } from "@/features/theme";
+import { HeaderWalletChip } from "@/features/wallet";
 import appCss from "@/styles/app.css?url";
 
 const MAIN_REGION_ID = "main-content";
@@ -90,7 +91,7 @@ function RootLayout(): ReactNode {
 function SiteHeader(): ReactNode {
   // Black in both themes: a `.dark` subtree gets the night palette whatever the page uses.
   return (
-    <header className="dark sticky top-0 z-30 border-b border-line bg-bg text-ink">
+    <header className="vt-header dark sticky top-0 z-30 border-b border-line bg-bg text-ink">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <Link
           to="/"
@@ -102,6 +103,7 @@ function SiteHeader(): ReactNode {
 
         <nav aria-label="Account" className="flex items-center gap-1">
           <ThemeToggle />
+          <HeaderWalletChip />
           <SessionNav />
         </nav>
       </div>

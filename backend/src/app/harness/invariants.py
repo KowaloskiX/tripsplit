@@ -22,10 +22,12 @@ from app.core.domain.suppliers import (
     price_is_guaranteed,
 )
 from app.core.domain.trips import BookingStatus, ContributionStatus, SupplierChannel, TripStatus
+from app.core.domain.wallet import WalletTransactionKind, WalletTransactionStatus, held_minor
 from app.harness.features import Feature, feature
 from app.models.bookings import AgentRun, Booking
 from app.models.travellers import TravellerProfile
 from app.models.trips import Contribution, Trip, TripEvent, TripMember
+from app.models.wallet import Wallet, WalletTransaction
 from app.repositories.bookings import BookingRepository
 from app.repositories.travellers import TravellerProfileRepository
 from app.repositories.trips import ContributionRepository, MemberRepository, TripRepository
@@ -79,6 +81,9 @@ class Snapshot:
     runs: list[AgentRun]
     events: list[TripEvent]
     profiles: dict[PydanticObjectId, TravellerProfile] = field(default_factory=dict)
+    # The wallets of everyone with a share (members and former members) and their ledgers.
+    wallets: dict[PydanticObjectId, int] = field(default_factory=dict)
+    ledger: list[WalletTransaction] = field(default_factory=list)
 
     @property
     def live_bookings(self) -> list[Booking]:
@@ -100,14 +105,20 @@ async def load_snapshot(trip_id: PydanticObjectId) -> Snapshot:
     runs = await AgentRun.find(AgentRun.trip_id == trip_id).sort("_id").to_list()
     events = await TripEvent.find(TripEvent.trip_id == trip_id).sort("_id").to_list()
     members = await MemberRepository().for_trip(trip_id)
+    contributions = await ContributionRepository().for_trip(trip_id)
+    people = list({*(m.user_id for m in members), *(c.user_id for c in contributions)})
+    wallets = await Wallet.find({"user_id": {"$in": people}}).to_list(len(people) + 1)
+    ledger = await WalletTransaction.find({"user_id": {"$in": people}}).to_list(5_000)
     return Snapshot(
         trip=trip,
         members=members,
-        contributions=await ContributionRepository().for_trip(trip_id),
+        contributions=contributions,
         bookings=await BookingRepository().for_trip(trip_id),
         runs=runs,
         events=events,
         profiles=await TravellerProfileRepository().for_users([m.user_id for m in members]),
+        wallets={w.user_id: w.balance_minor for w in wallets},
+        ledger=ledger,
     )
 
 
@@ -385,6 +396,41 @@ def _feed_is_chronological(ctx: InvariantContext) -> list[str]:
     ]
 
 
+def _wallets_match_ledgers(ctx: InvariantContext) -> list[str]:
+    """Every balance is the sum of its completed ledger entries, and never negative."""
+    snap = ctx.after
+    problems = []
+    for user_id in {*snap.wallets, *(e.user_id for e in snap.ledger)}:
+        balance = snap.wallets.get(user_id, 0)
+        booked = sum(
+            e.amount_minor
+            for e in snap.ledger
+            if e.user_id == user_id and e.status is WalletTransactionStatus.COMPLETED
+        )
+        if balance != booked or balance < 0:
+            problems.append(f"wallet of {user_id} holds {balance}, its ledger sums to {booked}")
+    return problems
+
+
+def _pot_never_negative(ctx: InvariantContext) -> list[str]:
+    """The trip never spends or refunds money it did not collect from the wallets."""
+    snap = ctx.after
+    trip_entries = [
+        e
+        for e in snap.ledger
+        if e.trip_id == snap.trip.id and e.status is WalletTransactionStatus.COMPLETED
+    ]
+    collected = -sum(
+        e.amount_minor for e in trip_entries if e.kind is WalletTransactionKind.SHARE_PAYMENT
+    )
+    refunded = sum(e.amount_minor for e in trip_entries if e.kind is WalletTransactionKind.REFUND)
+    spent = sum(b.amount_minor for b in snap.bookings if b.status is BookingStatus.CONFIRMED)
+    held = held_minor(collected, spent, refunded)
+    if held < 0:
+        return [f"the pot is {held}: collected {collected}, spent {spent}, refunded {refunded}"]
+    return []
+
+
 INVARIANTS: tuple[Invariant, ...] = (
     Invariant(
         "shares_sum_to_total",
@@ -448,6 +494,16 @@ INVARIANTS: tuple[Invariant, ...] = (
         "money_steps_leave_events",
         "every money-moving step produced its feed event",
         _money_steps_leave_events,
+    ),
+    Invariant(
+        "wallets_match_ledgers",
+        "every wallet balance equals its completed ledger entries and is never negative",
+        _wallets_match_ledgers,
+    ),
+    Invariant(
+        "pot_never_negative",
+        "the trip never spends or refunds more than it collected from the wallets",
+        _pot_never_negative,
     ),
     Invariant(
         "feed_is_chronological",

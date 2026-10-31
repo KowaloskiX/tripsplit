@@ -26,6 +26,7 @@ from app.core.domain.trust import OfferLink, Provenance
 from app.db.identifiers import identifier_of, to_text
 from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember
 from app.models.trust import TrustLink, TrustProvenance
+from app.services.wallet import PotView
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +136,8 @@ class RoomView:
     contributions: tuple[ContributionView, ...]
     my_contribution: ContributionView | None
     paid_count: int
+    # The trip wallet: collected from members' wallets, spent on bookings, refunded, held.
+    pot: PotView
 
 
 @dataclass(frozen=True, slots=True)

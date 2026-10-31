@@ -27,6 +27,8 @@ from app.services.quick_trips import QuickTripService
 from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerService
 from app.services.trips import TripService
+from app.services.wallet import WalletService
+from app.services.wallet_checkout import WalletCheckoutService
 from app.suppliers.duffel import DuffelConfig
 from app.suppliers.liteapi import LiteApiConfig
 from app.suppliers.providers import build_registry, duffel_config, liteapi_config, pkp_transport
@@ -142,15 +144,35 @@ def get_traveller_service() -> TravellerService:
     return TravellerService()
 
 
-def get_contribution_service(settings: SettingsDep) -> ContributionService:
-    return ContributionService(build_payment_provider(settings))
+def get_contribution_service(database: DbDep, settings: SettingsDep) -> ContributionService:
+    return ContributionService(build_payment_provider(settings, database))
+
+
+def get_wallet_service(
+    database: DbDep, settings: SettingsDep, runner: BackgroundRunnerDep
+) -> WalletService:
+    return WalletService(database, runner, confirm_delay_s=settings.wallet_confirm_delay_s)
+
+
+def get_wallet_checkout_service(
+    database: DbDep, settings: SettingsDep, runner: BackgroundRunnerDep
+) -> WalletCheckoutService:
+    return WalletCheckoutService(
+        get_contribution_service(database, settings),
+        get_wallet_service(database, settings, runner),
+    )
 
 
 def get_demo_service(
     database: DbDep, settings: SettingsDep, suppliers: SupplierRegistryDep
 ) -> DemoService:
+    # Seeded members are topped up before `pay-all` when shares are paid from wallets.
+    wallet = WalletService(database) if settings.payments == "wallet" else None
     return DemoService(
-        database, get_contribution_service(settings), get_trip_service(database, suppliers)
+        database,
+        get_contribution_service(database, settings),
+        get_trip_service(database, suppliers),
+        wallet,
     )
 
 
@@ -168,6 +190,8 @@ QuickTripServiceDep = Annotated[QuickTripService, Depends(get_quick_trip_service
 ContributionServiceDep = Annotated[ContributionService, Depends(get_contribution_service)]
 DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]
 TravellerServiceDep = Annotated[TravellerService, Depends(get_traveller_service)]
+WalletServiceDep = Annotated[WalletService, Depends(get_wallet_service)]
+WalletCheckoutServiceDep = Annotated[WalletCheckoutService, Depends(get_wallet_checkout_service)]
 
 
 def _under_backend(raw: str) -> Path:
@@ -192,7 +216,7 @@ def get_booking_service(
         suppliers=suppliers,
         price_tolerance_percent=settings.price_tolerance_percent,
         holds=settings.holds_enabled,
-        payments=build_payment_provider(settings),
+        payments=build_payment_provider(settings, database),
     )
 
 

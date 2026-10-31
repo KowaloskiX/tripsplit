@@ -1,13 +1,36 @@
-import { Loader2 } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel, PanelHeader } from "@/components/ui/panel";
-import { apiErrorMessage, type RoomResponse } from "@/lib/api";
+import { apiErrorMessage, type ProposalResponse, type RoomResponse } from "@/lib/api";
+import { useArrivedAt } from "@/lib/motion";
 
 import { useCloseVoting, useGeneratePackages, useVote } from "./mutations";
 import { ProposalCard } from "./proposal-card";
+import { ResearchProgress } from "./research-progress";
+
+/** How long the losing packages linger, stepping back, after voting closes. */
+const CLOSE_CHOREOGRAPHY_MS = 900;
+
+/** The package with the most votes, if exactly one leads — a tie has no leader. */
+export function leaderOf(proposals: readonly ProposalResponse[]): string | null {
+  const top = Math.max(0, ...proposals.map((proposal) => proposal.votes));
+  if (top === 0) return null;
+  const leaders = proposals.filter((proposal) => proposal.votes === top);
+  return leaders.length === 1 ? (leaders[0]?.id ?? null) : null;
+}
+
+/** Each card is dealt from a slightly different angle, like a hand of cards. */
+function dealStyle(index: number): CSSProperties {
+  const rotations = [-5, 3, -2];
+  const offsets = [-28, 18, -10];
+  return {
+    "--i": index,
+    "--deal-rot": `${rotations[index % 3]}deg`,
+    "--deal-x": `${offsets[index % 3]}px`,
+  } as CSSProperties;
+}
 
 export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
   const { trip } = room;
@@ -18,11 +41,15 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
   const isOrganizer = room.my_role === "organizer";
   const status = trip.status;
   const error = generate.error ?? vote.error ?? close.error;
+  // Voting has just closed in front of us: keep the losers on screen for a beat so the
+  // winner's stamp has an audience.
+  const justClosed = useArrivedAt(status === "voting", false, CLOSE_CHOREOGRAPHY_MS);
 
   const proposals =
-    status === "voting" || status === "proposing"
+    status === "voting" || status === "proposing" || justClosed
       ? room.proposals
       : room.proposals.filter((proposal) => proposal.chosen);
+  const leader = status === "voting" ? leaderOf(room.proposals) : null;
 
   return (
     <Panel>
@@ -35,15 +62,7 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
       <div className="space-y-4 p-4 sm:p-5">
         {error && <ErrorCallout>{apiErrorMessage(error)}</ErrorCallout>}
 
-        {status === "proposing" && (
-          <p className="flex items-center gap-2 text-sm text-muted" role="status">
-            <Loader2
-              className="size-4 animate-spin text-ink motion-reduce:animate-none"
-              aria-hidden
-            />
-            The agent is researching trains, stays and things to do…
-          </p>
-        )}
+        {status === "proposing" && <ResearchProgress />}
 
         {status === "collecting" &&
           (isOrganizer ? (
@@ -61,20 +80,23 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
             </p>
           ))}
 
-        {proposals.length > 0 && (
-          <div className="grid gap-3">
-            {proposals.map((proposal) => (
-              <ProposalCard
-                key={proposal.id}
-                proposal={proposal}
-                currency={trip.currency}
-                voting={vote.isPending}
-                onVote={
-                  status === "voting"
-                    ? () => vote.mutate({ path, body: { proposal_id: proposal.id } })
-                    : undefined
-                }
-              />
+        {proposals.length > 0 && status !== "proposing" && (
+          <div className="grid gap-4">
+            {proposals.map((proposal, index) => (
+              <div key={proposal.id} className="deal-in" style={dealStyle(index)}>
+                <ProposalCard
+                  proposal={proposal}
+                  currency={trip.currency}
+                  voting={vote.isPending}
+                  leading={proposal.id === leader}
+                  receding={justClosed && !proposal.chosen}
+                  onVote={
+                    status === "voting"
+                      ? () => vote.mutate({ path, body: { proposal_id: proposal.id } })
+                      : undefined
+                  }
+                />
+              </div>
             ))}
           </div>
         )}

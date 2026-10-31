@@ -6,6 +6,9 @@ Stripe arrives later behind this exact signature — the contribution service do
 from dataclasses import dataclass
 from typing import Protocol
 
+from app.core.domain.result import Result
+from app.core.domain.wallet import InsufficientFunds
+
 
 @dataclass(frozen=True, slots=True)
 class PaymentReceipt:
@@ -24,7 +27,9 @@ class RefundReceipt:
 class PaymentProvider(Protocol):
     async def charge(
         self, trip_id: str, user_id: str, amount_minor: int, currency: str
-    ) -> PaymentReceipt: ...
+    ) -> Result[PaymentReceipt, InsufficientFunds]:
+        """Takes the money, or says how much is missing (a wallet that cannot cover it)."""
+        ...
 
     async def refund(
         self, trip_id: str, user_id: str, amount_minor: int, currency: str

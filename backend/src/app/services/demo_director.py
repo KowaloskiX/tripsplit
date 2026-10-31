@@ -13,7 +13,6 @@ plays and the run can be stopped. A restart forgets it — the trip itself keeps
 """
 
 import asyncio
-import importlib.util
 import logging
 import random
 from collections.abc import Awaitable, Callable, Sequence
@@ -406,6 +405,9 @@ class DemoDirector:
             await self._pause()
 
     async def _pay_for(self, trip: Trip, member: TripMember) -> None:
+        # Seeded members cannot top up by hand: like demo pay-all, the director credits each
+        # wallet with exactly the shortfall first (a no-op when payments are not wallet-backed).
+        await self.cast.demo.fund(trip, member)
         result = await self.cast.contributions.pay(self.trip_id, to_text(member.user_id))
         if isinstance(result, Err):
             if result.error is TripError.ALREADY_PAID:
@@ -650,10 +652,9 @@ class PhonesService:
 
 
 def detect_features(settings: object) -> DirectorFeatures:
-    """Feature-detects AUTO_BOOK (a setting) and the wallet (a module) — both are built in
-    other workstreams, and the director must run whether or not they are merged yet."""
+    """Feature-detects AUTO_BOOK and wallet payments (`PAYMENTS=wallet`) from the settings."""
     auto_book = getattr(settings, "auto_book", False)
     return DirectorFeatures(
         auto_book=auto_book is True or str(auto_book).lower() in {"on", "true", "1"},
-        wallet=importlib.util.find_spec("app.services.wallet") is not None,
+        wallet=getattr(settings, "payments", "fake") == "wallet",
     )

@@ -33,11 +33,20 @@ export function Progress({
       aria-valuemin={0}
       aria-valuemax={max}
       aria-valuenow={value}
-      className={cn("h-2 w-full overflow-hidden rounded-full bg-surface-sunken", className)}
+      className={cn(
+        "relative h-2 w-full overflow-hidden rounded-full bg-surface-sunken",
+        className,
+      )}
     >
+      {/* Slid, not resized: transform keeps it at 60 fps and lets the spring overshoot. The
+          `before:` extension fills the gap an overshoot would open on the left. */}
       <div
-        className={cn("h-full rounded-full transition-[width] duration-500", TONE[tone])}
-        style={{ width: `${percent}%` }}
+        className={cn(
+          "absolute inset-y-0 left-0 w-full rounded-full transition-transform duration-700 ease-[var(--ease-spring)]",
+          "before:absolute before:inset-y-0 before:right-[calc(100%-1rem)] before:w-full before:bg-inherit",
+          TONE[tone],
+        )}
+        style={{ transform: `translateX(${percent - 100}%)` }}
       />
     </div>
   );

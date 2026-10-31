@@ -257,6 +257,35 @@ class ContributionRepository:
             session=session,
         )
 
+    async def mark_paid_if_unchanged(
+        self, contribution: Contribution, paid_minor: int, provider_ref: str
+    ) -> bool:
+        """`mark_paid` as a compare-and-set on the share and the paid amount the caller read:
+        of two simultaneous payments of one share exactly one is recorded."""
+        status = (
+            ContributionStatus.PAID
+            if paid_minor >= contribution.amount_minor
+            else ContributionStatus.PENDING
+        )
+        now = utc_now()
+        result = await Contribution.get_pymongo_collection().update_one(
+            {
+                "_id": contribution.id,
+                "amount_minor": contribution.amount_minor,
+                "paid_minor": contribution.paid_minor,
+            },
+            {
+                "$set": {
+                    "paid_minor": paid_minor,
+                    "status": status,
+                    "provider_ref": provider_ref,
+                    "paid_at": now,
+                    "updated_at": now,
+                }
+            },
+        )
+        return result.modified_count == 1
+
     async def delete(
         self, contribution: Contribution, session: AsyncClientSession | None = None
     ) -> None:

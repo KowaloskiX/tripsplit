@@ -29,7 +29,7 @@ from app.db.client import Database
 from app.db.identifiers import to_object_id
 from app.harness.adapters import HarnessClock, RoutingLauncher, ScriptablePrices, ScriptedLauncher
 from app.harness.scenario import Scenario, SupplierSpec
-from app.payments.fake import FakePayments
+from app.payments.wallet import WalletPayments
 from app.services.auth import AuthService
 from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
@@ -37,6 +37,8 @@ from app.services.proposals import ProposalService
 from app.services.supplier_prices import SupplierPrices
 from app.services.travellers import TravellerDetailsUpdate, TravellerService
 from app.services.trips import NewTrip, TripService
+from app.services.wallet import WalletService
+from app.services.wallet_checkout import WalletCheckoutService
 from app.suppliers.demo_rail import DemoRailSupplier
 from app.suppliers.duffel import SUPPLIER_ID as DUFFEL
 from app.suppliers.duffel import DuffelConfig, DuffelLog, DuffelSupplier
@@ -111,6 +113,9 @@ class World:
     scripted: ScriptedLauncher
     researcher: CatalogResearcher
     launcher: AgentLauncher
+    # Shares are paid from members' wallets; the dummy bank confirms top-ups inline.
+    wallet: WalletService
+    checkout: WalletCheckoutService
     live_search_log: LiveSearchLog | None = None
     liteapi_log: LiteApiLog | None = None
     duffel_log: DuffelLog | None = None
@@ -184,7 +189,9 @@ class World:
             )
             launcher = RoutingLauncher(live=live, scripted=scripted)
         runner = BackgroundRunner()
-        payments = FakePayments()
+        wallet = WalletService(db, None, confirm_delay_s=0)
+        payments = WalletPayments(wallet)
+        contributions = ContributionService(payments)
         researcher = CatalogResearcher(suppliers)
         return cls(
             db=db,
@@ -209,7 +216,7 @@ class World:
                     holds=scenario.holds,
                 ),
             ),
-            contributions=ContributionService(payments),
+            contributions=contributions,
             bookings=BookingService(
                 db,
                 launcher,
@@ -226,6 +233,8 @@ class World:
             scripted=scripted,
             researcher=researcher,
             launcher=launcher,
+            wallet=wallet,
+            checkout=WalletCheckoutService(contributions, wallet),
             live_search_log=pkp.log if pkp is not None else None,
             liteapi_log=liteapi_log,
             duffel_log=duffel_log,

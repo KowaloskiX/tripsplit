@@ -34,6 +34,13 @@ FAST = DirectorTimings(beat_s=(0.0, 0.0), poll_s=0.01, research_wait_s=10.0,
                        payment_wait_s=10.0, booking_wait_s=0.05)  # fmt: skip
 
 
+@pytest.fixture
+def settings(settings: Settings) -> Settings:
+    """The director demos wallet payments: seeded friends are topped up before they pay, and the
+    pot invariant checks every move against the ledger."""
+    return settings.model_copy(update={"payments": "wallet", "wallet_confirm_delay_s": 0})
+
+
 class Member:
     def __init__(self, client: AsyncClient, settings: Settings) -> None:
         self.client = client
@@ -66,11 +73,14 @@ class InvariantWatch:
         self.before: Snapshot | None = None
         self.violations: list[Violation] = []
         self.checks = 0
+        # Set while the test itself moves money: a snapshot reads wallets and the ledger one
+        # after the other, so one taken mid-payment would see a torn (not a broken) state.
+        self.paused = False
 
     async def sleep(self, _seconds: float) -> None:
         await asyncio.sleep(0)
         trip_oid = to_object_id(self.trip_id) if self.trip_id else None
-        if trip_oid is None:
+        if trip_oid is None or self.paused:
             return
         after = await load_snapshot(trip_oid)
         trail = [self.before.trip.status] if self.before is not None else []
@@ -158,7 +168,7 @@ async def test_the_full_script_plays_the_whole_trip_through_the_rules(
 
     started = await _direct(organizer, trip_id, script="full")
     assert started["state"] == "running"
-    assert started["features"] == {"auto_book": False, "wallet": False}
+    assert started["features"] == {"auto_book": False, "wallet": True}
     await _drain(app)
 
     progress = await _progress(organizer, trip_id)
@@ -213,9 +223,15 @@ async def test_the_presenter_makes_the_last_payment(
         await asyncio.sleep(0.01)
     assert await _status(organizer, trip_id) == TripStatus.PAYING, "the last share is still open"
 
-    paid = await organizer.post(f"/api/trips/{trip_id}/contributions/pay")
+    watch.paused = True
+    paid = await organizer.post(
+        f"/api/trips/{trip_id}/contributions/top-up-and-pay",
+        {"method": "blik", "blik_code": "123456"},
+    )
     assert paid.status_code == 200, paid.text
     await _drain(app)
+    watch.paused = False
+    await watch.sleep(0)  # the rules over the whole by-hand payment, read once it settled
 
     progress = await _progress(organizer, trip_id)
     assert progress["state"] == "done", progress["error"]

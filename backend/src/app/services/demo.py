@@ -14,11 +14,12 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from app.core.domain.errors import TripError
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.trips import EventActor, EventKind, TripStatus
+from app.core.domain.wallet import WalletTransactionKind, shortfall
 from app.core.security import hash_password
 from app.db.client import Database
-from app.db.identifiers import identifier_of, to_object_id
+from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.models.auth import User
-from app.models.trips import TripMember
+from app.models.trips import Trip, TripMember
 from app.repositories.auth import UserRepository
 from app.repositories.trips import (
     EventRepository,
@@ -31,6 +32,7 @@ from app.services.contributions import ContributionService
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
 from app.services.trip_views import TripStatusView
 from app.services.trips import JOINABLE_STATUSES, NotJoinableError, TripService
+from app.services.wallet import WalletService
 
 DEMO_EMAIL_DOMAIN = "demo.tripsplit.invalid"
 # Full names: a carrier needs a first AND last name per traveller, and the booking agent types
@@ -51,9 +53,15 @@ DEMO_NAMES = (
 
 class DemoService:
     def __init__(
-        self, db: Database, contributions: ContributionService, trips: TripService
+        self,
+        db: Database,
+        contributions: ContributionService,
+        trips: TripService,
+        wallet: WalletService | None = None,
     ) -> None:
         self.db = db
+        # Set when shares are paid from wallets: seeded members get topped up before paying.
+        self.wallet = wallet
         self.contribution_service = contributions
         self.trip_service = trips
         self.trips = TripRepository()
@@ -151,10 +159,29 @@ class DemoService:
         for member in await self.members.for_trip(identifier_of(trip)):
             if member.user_id == me.user_id:
                 continue
+            await self.fund(trip, member)
             result = await self.contribution_service.pay_for(trip, member)
             if isinstance(result, Ok):
                 paid += 1
         return Ok(paid)
+
+    async def fund(self, trip: Trip, member: TripMember) -> None:
+        """A seeded friend cannot open a bank app: their wallet is credited with exactly what
+        they miss (an `adjustment` in the ledger, labelled as a demo top-up)."""
+        if self.wallet is None:
+            return
+        due = await self.contribution_service.outstanding(trip, member)
+        if not isinstance(due, Ok):
+            return
+        missing = shortfall(await self.wallet.balance(to_text(member.user_id)), due.value)
+        if missing > 0:
+            await self.wallet.credit(
+                to_text(member.user_id),
+                missing,
+                WalletTransactionKind.ADJUSTMENT,
+                trip_id=to_text(identifier_of(trip)),
+                reference="Demo top-up",
+            )
 
     async def leave(
         self, trip_id: str, user_id: str, member_user_id: str

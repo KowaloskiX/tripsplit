@@ -172,6 +172,17 @@ export type CastVoteRequest = {
 };
 
 /**
+ * CheckoutResponse
+ *
+ * `payment` when the wallet covered the share right away; otherwise `top_up` is pending
+ * and the share is paid as soon as the bank confirms it (poll the top-up, then the room).
+ */
+export type CheckoutResponse = {
+    payment: PaymentResponse | null;
+    top_up: WalletTransactionResponse | null;
+};
+
+/**
  * CompleteManuallyRequest
  */
 export type CompleteManuallyRequest = {
@@ -620,6 +631,28 @@ export type HealthStatus = {
 };
 
 /**
+ * InsufficientFundsResponse
+ */
+export type InsufficientFundsResponse = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Message
+     */
+    message: string;
+    /**
+     * Request Id
+     */
+    request_id?: string | null;
+    /**
+     * Shortfall Minor
+     */
+    shortfall_minor?: number | null;
+};
+
+/**
  * JoinTripRequest
  */
 export type JoinTripRequest = {
@@ -759,6 +792,11 @@ export type OrganizationSummary = {
 };
 
 /**
+ * PaymentMethod
+ */
+export type PaymentMethod = 'blik' | 'card' | 'wallet';
+
+/**
  * PaymentResponse
  */
 export type PaymentResponse = {
@@ -854,6 +892,31 @@ export type PostMessageRequest = {
      * Text
      */
     text: string;
+};
+
+/**
+ * PotResponse
+ *
+ * The trip wallet: paid in from members' wallets, spent on confirmed bookings, paid back,
+ * and what it still holds.
+ */
+export type PotResponse = {
+    /**
+     * Collected Minor
+     */
+    collected_minor: number;
+    /**
+     * Held Minor
+     */
+    held_minor: number;
+    /**
+     * Refunded Minor
+     */
+    refunded_minor: number;
+    /**
+     * Spent Minor
+     */
+    spent_minor: number;
 };
 
 /**
@@ -1008,6 +1071,7 @@ export type RoomResponse = {
      * Paid Count
      */
     paid_count: number;
+    pot: PotResponse;
     /**
      * Proposals
      */
@@ -1155,6 +1219,44 @@ export type ShareChangeResponse = {
  * How a purchase at a supplier is made.
  */
 export type SupplierChannel = 'api' | 'agent' | 'manual';
+
+/**
+ * TopUpAndPayRequest
+ *
+ * Tops the wallet up by exactly what the share is missing, then pays the share.
+ */
+export type TopUpAndPayRequest = {
+    /**
+     * Blik Code
+     */
+    blik_code?: string | null;
+    /**
+     * Card Last4
+     */
+    card_last4?: string | null;
+    method: TopUpMethodField;
+};
+
+export type TopUpMethodField = 'blik' | 'card';
+
+/**
+ * TopUpRequest
+ */
+export type TopUpRequest = {
+    /**
+     * Amount Minor
+     */
+    amount_minor: number;
+    /**
+     * Blik Code
+     */
+    blik_code?: string | null;
+    /**
+     * Card Last4
+     */
+    card_last4?: string | null;
+    method: TopUpMethodField;
+};
 
 /**
  * TransportMode
@@ -1381,6 +1483,79 @@ export type ValidationError = {
      */
     type: string;
 };
+
+/**
+ * WalletResponse
+ */
+export type WalletResponse = {
+    /**
+     * Balance Minor
+     */
+    balance_minor: number;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Transactions
+     */
+    transactions: Array<WalletTransactionResponse>;
+};
+
+/**
+ * WalletTransactionKind
+ */
+export type WalletTransactionKind = 'top_up' | 'share_payment' | 'refund' | 'adjustment';
+
+/**
+ * WalletTransactionResponse
+ */
+export type WalletTransactionResponse = {
+    /**
+     * Amount Minor
+     */
+    amount_minor: number;
+    /**
+     * Balance After Minor
+     */
+    balance_after_minor: number | null;
+    /**
+     * Completed At
+     */
+    completed_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Failure Reason
+     */
+    failure_reason: string | null;
+    /**
+     * Id
+     */
+    id: string;
+    kind: WalletTransactionKind;
+    method: PaymentMethod;
+    /**
+     * Reference
+     */
+    reference: string;
+    status: WalletTransactionStatus;
+    /**
+     * Trip Id
+     */
+    trip_id: string | null;
+    /**
+     * Trip Title
+     */
+    trip_title: string | null;
+};
+
+/**
+ * WalletTransactionStatus
+ */
+export type WalletTransactionStatus = 'pending' | 'completed' | 'failed';
 
 export type AgentRunsFrameData = {
     body?: never;
@@ -2109,7 +2284,7 @@ export type ContributionsPayErrors = {
     /**
      * Conflict
      */
-    409: ErrorResponse;
+    409: InsufficientFundsResponse;
     /**
      * Validation Error
      */
@@ -2126,6 +2301,44 @@ export type ContributionsPayResponses = {
 };
 
 export type ContributionsPayResponse = ContributionsPayResponses[keyof ContributionsPayResponses];
+
+export type ContributionsTopUpAndPayData = {
+    body: TopUpAndPayRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/contributions/top-up-and-pay';
+};
+
+export type ContributionsTopUpAndPayErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: InsufficientFundsResponse;
+    /**
+     * Unprocessable Entity
+     */
+    422: ErrorResponse;
+};
+
+export type ContributionsTopUpAndPayError = ContributionsTopUpAndPayErrors[keyof ContributionsTopUpAndPayErrors];
+
+export type ContributionsTopUpAndPayResponses = {
+    /**
+     * Successful Response
+     */
+    200: CheckoutResponse;
+};
+
+export type ContributionsTopUpAndPayResponse = ContributionsTopUpAndPayResponses[keyof ContributionsTopUpAndPayResponses];
 
 export type DemoDirectorStopData = {
     body?: never;
@@ -2707,3 +2920,78 @@ export type ProposalsCloseVotingResponses = {
 };
 
 export type ProposalsCloseVotingResponse = ProposalsCloseVotingResponses[keyof ProposalsCloseVotingResponses];
+
+export type WalletReadData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/wallet';
+};
+
+export type WalletReadResponses = {
+    /**
+     * Successful Response
+     */
+    200: WalletResponse;
+};
+
+export type WalletReadResponse = WalletReadResponses[keyof WalletReadResponses];
+
+export type WalletTopUpData = {
+    body: TopUpRequest;
+    path?: never;
+    query?: never;
+    url: '/api/wallet/top-ups';
+};
+
+export type WalletTopUpErrors = {
+    /**
+     * Unprocessable Entity
+     */
+    422: ErrorResponse;
+};
+
+export type WalletTopUpError = WalletTopUpErrors[keyof WalletTopUpErrors];
+
+export type WalletTopUpResponses = {
+    /**
+     * Successful Response
+     */
+    202: WalletTransactionResponse;
+};
+
+export type WalletTopUpResponse = WalletTopUpResponses[keyof WalletTopUpResponses];
+
+export type WalletTopUpStatusData = {
+    body?: never;
+    path: {
+        /**
+         * Transaction Id
+         */
+        transaction_id: string;
+    };
+    query?: never;
+    url: '/api/wallet/top-ups/{transaction_id}';
+};
+
+export type WalletTopUpStatusErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type WalletTopUpStatusError = WalletTopUpStatusErrors[keyof WalletTopUpStatusErrors];
+
+export type WalletTopUpStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: WalletTransactionResponse;
+};
+
+export type WalletTopUpStatusResponse = WalletTopUpStatusResponses[keyof WalletTopUpStatusResponses];

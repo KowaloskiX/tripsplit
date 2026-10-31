@@ -1,10 +1,12 @@
 import { Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { TypingIndicator } from "@/components/ui/typing-indicator";
 import type { EventKind, EventResponse } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
+import { usePrefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
 type Variant = "agent" | "mine" | "member" | "system";
@@ -44,12 +46,56 @@ function time(iso: string): string {
   );
 }
 
-type FeedItemProps = { event: EventResponse; variant: Variant; currency: string };
+/** How long the agent "types" before a fresh message of its appears. */
+export const AGENT_TYPING_MS = 600;
 
-function FeedItem({ event, variant, currency }: FeedItemProps): ReactNode {
+/** Where a fresh message slides in from: members from the left, you and the agent from the right. */
+const ENTRANCE: Record<Variant, string> = {
+  agent: "feed-in-right",
+  mine: "feed-in-right",
+  member: "feed-in-left",
+  system: "rise-in",
+};
+
+/** `true` for the first AGENT_TYPING_MS of a fresh agent message's life. */
+function useTyping(fresh: boolean): boolean {
+  const reduced = usePrefersReducedMotion();
+  const [typing, setTyping] = useState(fresh && !reduced);
+  useEffect(() => {
+    if (!typing) return;
+    const timer = window.setTimeout(() => setTyping(false), AGENT_TYPING_MS);
+    return () => window.clearTimeout(timer);
+  }, [typing]);
+  return typing;
+}
+
+function AgentAvatar(): ReactNode {
+  return (
+    <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-lime/30">
+      <Sparkles className="size-4" aria-hidden />
+    </span>
+  );
+}
+
+type FeedItemProps = { event: EventResponse; variant: Variant; currency: string; fresh: boolean };
+
+function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode {
+  const typing = useTyping(fresh && variant === "agent");
+  const entrance = fresh ? ENTRANCE[variant] : undefined;
+  if (typing) {
+    return (
+      <li className="feed-in-right flex items-start gap-2.5">
+        <AgentAvatar />
+        <span className="inline-flex h-11 items-center rounded-3xl rounded-tl-md bg-agent-bg px-4 text-agent-tag ring-1 ring-lime/20">
+          <TypingIndicator />
+          <span className="sr-only">The agent is typing</span>
+        </span>
+      </li>
+    );
+  }
   if (variant === "system") {
     return (
-      <li className="flex justify-center">
+      <li className={cn("flex justify-center", entrance)}>
         <span
           className={cn(
             "inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs font-medium",
@@ -68,10 +114,8 @@ function FeedItem({ event, variant, currency }: FeedItemProps): ReactNode {
     const tag = AGENT_TAG[event.kind];
     const total = totalOf(event);
     return (
-      <li className="flex items-start gap-2.5">
-        <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-lime/30">
-          <Sparkles className="size-4" aria-hidden />
-        </span>
+      <li className={cn("flex items-start gap-2.5", entrance)}>
+        <AgentAvatar />
         <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-lime/20">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="ticket-mono uppercase text-agent-tag">tripsplit agent</span>
@@ -91,7 +135,7 @@ function FeedItem({ event, variant, currency }: FeedItemProps): ReactNode {
   const mine = variant === "mine";
   const name = event.actor_name ?? "Member";
   return (
-    <li className={cn("flex items-end gap-2", mine && "flex-row-reverse")}>
+    <li className={cn("flex items-end gap-2", mine && "flex-row-reverse", entrance)}>
       {!mine && <Avatar name={name} size="sm" />}
       <div
         className={cn(
@@ -121,6 +165,11 @@ type FeedListProps = {
 
 /** Presentational: the group chat — agent, members and system events visually distinct. */
 export function FeedList({ events, myUserId, currency = "PLN" }: FeedListProps): ReactNode {
+  // What was already there when the list first rendered stays still; only arrivals animate.
+  const initial = useRef<ReadonlySet<string> | null>(null);
+  if (initial.current === null) initial.current = new Set(events.map((event) => event.id));
+  const seen = initial.current;
+
   if (events.length === 0) {
     return <p className="py-8 text-center text-sm text-muted">Nothing here yet.</p>;
   }
@@ -132,6 +181,7 @@ export function FeedList({ events, myUserId, currency = "PLN" }: FeedListProps):
           event={event}
           variant={variantOf(event, myUserId)}
           currency={currency}
+          fresh={!seen.has(event.id)}
         />
       ))}
     </ol>
