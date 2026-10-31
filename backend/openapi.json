@@ -547,6 +547,192 @@
         "title": "DependencyStatus",
         "type": "object"
       },
+      "DirectorBeatResponse": {
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/DirectorPhase"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "at",
+          "phase",
+          "actor",
+          "text"
+        ],
+        "title": "DirectorBeatResponse",
+        "type": "object"
+      },
+      "DirectorFeaturesResponse": {
+        "properties": {
+          "auto_book": {
+            "title": "Auto Book",
+            "type": "boolean"
+          },
+          "wallet": {
+            "title": "Wallet",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "auto_book",
+          "wallet"
+        ],
+        "title": "DirectorFeaturesResponse",
+        "type": "object"
+      },
+      "DirectorPace": {
+        "enum": [
+          "fast",
+          "stage"
+        ],
+        "title": "DirectorPace",
+        "type": "string"
+      },
+      "DirectorPhase": {
+        "enum": [
+          "starting",
+          "joining",
+          "researching",
+          "voting",
+          "paying",
+          "waiting_for_organizer",
+          "booking",
+          "disruption",
+          "topping_up",
+          "finished"
+        ],
+        "title": "DirectorPhase",
+        "type": "string"
+      },
+      "DirectorProgressResponse": {
+        "properties": {
+          "beats": {
+            "items": {
+              "$ref": "#/components/schemas/DirectorBeatResponse"
+            },
+            "title": "Beats",
+            "type": "array"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "features": {
+            "$ref": "#/components/schemas/DirectorFeaturesResponse"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "pace": {
+            "$ref": "#/components/schemas/DirectorPace"
+          },
+          "phase": {
+            "$ref": "#/components/schemas/DirectorPhase"
+          },
+          "script": {
+            "$ref": "#/components/schemas/DirectorScript"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DirectorState"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "script",
+          "pace",
+          "state",
+          "phase",
+          "features",
+          "beats",
+          "error",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "DirectorProgressResponse",
+        "type": "object"
+      },
+      "DirectorRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "leave_organizer_payment": {
+            "default": false,
+            "title": "Leave Organizer Payment",
+            "type": "boolean"
+          },
+          "pace": {
+            "$ref": "#/components/schemas/DirectorPace",
+            "default": "stage"
+          },
+          "script": {
+            "$ref": "#/components/schemas/DirectorScript",
+            "default": "full"
+          },
+          "with_disruption": {
+            "default": true,
+            "title": "With Disruption",
+            "type": "boolean"
+          }
+        },
+        "title": "DirectorRequest",
+        "type": "object"
+      },
+      "DirectorScript": {
+        "enum": [
+          "full",
+          "vote_and_pay",
+          "disruption"
+        ],
+        "title": "DirectorScript",
+        "type": "string"
+      },
+      "DirectorState": {
+        "enum": [
+          "running",
+          "done",
+          "stopped",
+          "failed"
+        ],
+        "title": "DirectorState",
+        "type": "string"
+      },
       "DisruptionRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1006,6 +1192,127 @@
           "all_paid"
         ],
         "title": "PaymentResponse",
+        "type": "object"
+      },
+      "PhoneResponse": {
+        "properties": {
+          "amount_minor": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Amount Minor"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "initials": {
+            "title": "Initials",
+            "type": "string"
+          },
+          "is_demo": {
+            "title": "Is Demo",
+            "type": "boolean"
+          },
+          "is_organizer": {
+            "title": "Is Organizer",
+            "type": "boolean"
+          },
+          "last_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Message"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "paid": {
+            "title": "Paid",
+            "type": "boolean"
+          },
+          "paid_minor": {
+            "title": "Paid Minor",
+            "type": "integer"
+          },
+          "user_id": {
+            "title": "User Id",
+            "type": "string"
+          },
+          "voted_for_proposal_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voted For Proposal Id"
+          },
+          "voted_for_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voted For Title"
+          }
+        },
+        "required": [
+          "user_id",
+          "name",
+          "initials",
+          "is_organizer",
+          "is_demo",
+          "last_message",
+          "voted_for_proposal_id",
+          "voted_for_title",
+          "paid",
+          "amount_minor",
+          "paid_minor",
+          "currency"
+        ],
+        "title": "PhoneResponse",
+        "type": "object"
+      },
+      "PhonesResponse": {
+        "properties": {
+          "phones": {
+            "items": {
+              "$ref": "#/components/schemas/PhoneResponse"
+            },
+            "title": "Phones",
+            "type": "array"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TripStatus"
+          },
+          "trip_id": {
+            "title": "Trip Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "trip_id",
+          "status",
+          "phones"
+        ],
+        "title": "PhonesResponse",
         "type": "object"
       },
       "PostMessageRequest": {
@@ -2943,6 +3250,231 @@
         ]
       }
     },
+    "/api/trips/{trip_id}/demo/director": {
+      "delete": {
+        "description": "Stops the run; whatever it already did to the trip stays done.",
+        "operationId": "demo-director-stop",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectorProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stop Director",
+        "tags": [
+          "demo"
+        ]
+      },
+      "get": {
+        "description": "The live progress of the trip's latest run (404 when none ran since the start-up).",
+        "operationId": "demo-director-progress",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectorProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Director Progress",
+        "tags": [
+          "demo"
+        ]
+      },
+      "post": {
+        "description": "Starts a choreography (409 while one is already playing on the trip).",
+        "operationId": "demo-director-start",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DirectorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DirectorProgressResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Director",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
     "/api/trips/{trip_id}/demo/disruption": {
       "post": {
         "description": "The demo's last scene: the transport is delayed, the agent rebooks and re-splits.",
@@ -3146,6 +3678,79 @@
           }
         },
         "summary": "Pay All",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/demo/phones": {
+      "get": {
+        "description": "One compact card per member for the six-phone grid.",
+        "operationId": "demo-phones",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhonesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Phones",
         "tags": [
           "demo"
         ]

@@ -10,6 +10,7 @@ from app.routes.auth import router as auth_router
 from app.routes.bookings import router as bookings_router
 from app.routes.contributions import router as contributions_router
 from app.routes.demo import router as demo_router
+from app.routes.demo_director import router as demo_director_router
 from app.routes.demo_supplier import router as demo_supplier_router
 from app.routes.demo_supplier_variants import router as demo_supplier_variants_router
 from app.routes.health import router as health_router
@@ -25,6 +26,7 @@ api_router.include_router(trips_router)
 api_router.include_router(proposals_router)
 api_router.include_router(contributions_router)
 api_router.include_router(demo_router)
+api_router.include_router(demo_director_router)
 api_router.include_router(bookings_router)
 api_router.include_router(travellers_router)
 # Dev/test only: both answer 404 elsewhere (`require_demo_routes`).
