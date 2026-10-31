@@ -6,14 +6,16 @@ import { agentRunFrameUrl, apiErrorMessage, type BookingResponse } from "@/lib/a
 
 import { ApprovalCard } from "./approval-card";
 import { bookingTitle } from "./booking-title";
+import { LiveFrame } from "./live-frame";
 import { MilestoneStepper } from "./milestone-stepper";
 import { useApproveBooking } from "./mutations";
 import { useRunStatus } from "./queries";
 import { RunGraph } from "./run-graph";
 
-const FRAME_POLL_MS = 1000;
+// The runner refreshes live.jpg about every 300 ms (screencast or screenshots).
+const FRAME_POLL_MS = 500;
 
-/** A counter that ticks every second while `active` — the frame URL's cache buster. */
+/** A counter that ticks while `active` — the frame URL's cache buster. */
 function useTick(active: boolean): number {
   const [tick, setTick] = useState(() => Date.now());
   useEffect(() => {
@@ -32,7 +34,7 @@ type LiveAgentPanelProps = {
   travellers?: number | undefined;
 };
 
-/** What the agent sees and where it is in the checkout, refreshed every second. */
+/** What the agent sees and where it is in the checkout, refreshed twice a second. */
 export function LiveAgentPanel({
   tripId,
   booking,
@@ -45,8 +47,6 @@ export function LiveAgentPanel({
   const tick = useTick(working);
   const status = useRunStatus(run?.run_id ?? "", working && run !== null);
   const approval = useApproveBooking(tripId);
-  // The tick whose frame failed to load (no frame yet); the next tick retries.
-  const [failedTick, setFailedTick] = useState<number | null>(null);
 
   if (!run) return null;
   const live = status.data?.live;
@@ -90,13 +90,12 @@ export function LiveAgentPanel({
           steps={live?.steps}
           title={bookingTitle(booking.title)}
         />
-        {failedTick === tick && <p className="text-sm text-muted">Waiting for the first frame…</p>}
-        <img
+        <LiveFrame
           src={frameUrl}
           alt={`What the agent sees on ${booking.supplier}`}
-          hidden={failedTick === tick}
-          className="w-full rounded-[var(--radius-control)] border border-line bg-surface-sunken"
-          onError={() => setFailedTick(tick)}
+          placeholder={`step ${live?.step ?? run.steps} · ${
+            working ? "Waiting for the first frame…" : "No frame recorded"
+          }`}
         />
         {reason && working && <p className="text-sm text-muted">{reason}</p>}
         <RunNotice booking={booking} reason={reason} isOrganizer={isOrganizer} />
