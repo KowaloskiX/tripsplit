@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-import { formatDuration, type NodeState } from "./model";
+import { fieldLabels, formatDuration, type NodeState } from "./model";
 import type { FlowNode, StepStatus } from "./schema";
 import { NODE_ICON, NODE_TYPE_LABEL, SourceChip, STATUS_LABEL, STATUS_TONE } from "./step-chips";
 
@@ -65,11 +65,8 @@ function StatusDot({
 function Inputs({ inputs }: { inputs: readonly string[] }): ReactNode {
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Reads">
-      {inputs.map((input) => (
-        <li
-          key={input}
-          className="ticket-mono rounded-full bg-surface-sunken px-2 py-0.5 text-[11px] text-muted"
-        >
+      {fieldLabels(inputs).map((input) => (
+        <li key={input} className="rounded-full bg-surface-sunken px-2 py-0.5 text-xs text-muted">
           {input}
         </li>
       ))}
@@ -137,7 +134,7 @@ export function PipelineNode({ node, state, last, children }: PipelineNodeProps)
       >
         <div className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="min-w-0">
-            <p className="eyebrow text-[11px]">{NODE_TYPE_LABEL[node.type]}</p>
+            <p className="eyebrow text-xs">{NODE_TYPE_LABEL[node.type]}</p>
             <p
               className={cn(
                 "mt-0.5 text-base font-medium leading-snug tracking-[-0.01em]",
@@ -212,8 +209,8 @@ export function LoopBody({ node, state, body }: LoopBodyProps): ReactNode {
             <div className="min-w-0 flex-1">
               <p className="text-sm text-ink">{child.label}</p>
               {child.inputs && (
-                <p className="hidden break-all font-mono text-[11px] text-muted sm:block">
-                  {child.inputs.join(" · ")}
+                <p className="hidden text-xs text-muted sm:block">
+                  {fieldLabels(child.inputs).join(" · ")}
                 </p>
               )}
             </div>

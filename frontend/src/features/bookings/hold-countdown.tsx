@@ -21,7 +21,7 @@ export function HoldCountdown({ expiresAt }: { expiresAt: string }): ReactNode {
   const left = holdLeft(expiresAt, now);
   return (
     <span
-      className={`inline-flex items-center gap-1 font-mono text-[11px] ${
+      className={`inline-flex items-center gap-1 font-mono text-xs ${
         left === "expired" ? "text-danger" : "text-live"
       }`}
     >

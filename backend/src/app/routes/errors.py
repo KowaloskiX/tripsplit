@@ -102,11 +102,11 @@ _BOOKING_MESSAGE: dict[BookingError, str] = {
     BookingError.NOTHING_TO_DISRUPT: "There is no confirmed booking to disrupt.",
     BookingError.SOLD_OUT: "The supplier no longer offers this booking.",
     BookingError.PRICE_CHANGED: (
-        "The supplier changed the price. Shares were re-split — top up, then start again."
+        "The supplier changed the price. Shares were re-split. Top up, then start again."
     ),
     BookingError.NOT_COMPLETABLE: "Only a handed-off or failed booking can be finished by hand.",
     BookingError.TRAVELLER_DETAILS_MISSING: (
-        "Some travellers have not entered the details this supplier needs — see the trip feed."
+        "Some travellers have not entered the details this supplier needs. See the trip feed."
     ),
     BookingError.QUOTE_EXPIRED: "The price is no longer guaranteed. Start the booking again.",
     BookingError.SUPPLIER_UNKNOWN: "The supplier of this booking is not available right now.",
@@ -155,7 +155,7 @@ def payment_value[T](result: Result[T, TripError | InsufficientFunds | TopUpFail
         raise DomainHTTPError(
             WalletError.INSUFFICIENT_FUNDS,
             status.HTTP_409_CONFLICT,
-            "Your wallet does not cover your share — top up first.",
+            "Your wallet does not cover your share. Top up first.",
             extra={"shortfall_minor": error.shortfall_minor},
         )
     if isinstance(error, TopUpFailure):

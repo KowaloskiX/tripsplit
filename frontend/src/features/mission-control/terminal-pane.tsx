@@ -65,12 +65,12 @@ export function TerminalPane({ calls, className }: TerminalPaneProps): ReactNode
       className={cn("flex min-h-0 flex-col overflow-hidden rounded-[28px] bg-agent-bg", className)}
     >
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
-        <span className="ticket-mono text-[11px] uppercase text-agent-tag">api · suppliers</span>
-        <span className="ticket-mono text-[11px] text-agent-fg/50">{count} calls</span>
+        <span className="ticket-mono text-xs uppercase text-agent-tag">api · suppliers</span>
+        <span className="ticket-mono text-xs text-agent-fg/50">{count} calls</span>
       </div>
       <div
         ref={scroller}
-        className="ticket-mono h-40 overflow-auto scroll-smooth px-4 motion-reduce:scroll-auto py-3 text-[11px] leading-6 sm:h-44"
+        className="ticket-mono h-40 overflow-auto scroll-smooth px-4 motion-reduce:scroll-auto py-3 text-xs leading-6 sm:h-44"
       >
         {count === 0 ? (
           <p className="text-agent-fg/45">

@@ -66,7 +66,7 @@ export function GraphStrip({ steps }: { steps: readonly GraphStep[] }): ReactNod
           </li>
         ))}
       </ol>
-      <p className="ticket-mono mt-2 truncate text-[11px] text-muted">
+      <p className="mt-2 truncate text-xs text-muted">
         {current
           ? `▸ ${current.label}`
           : steps.every((step) => settled(step.status)) && steps.length > 0

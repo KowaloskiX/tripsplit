@@ -76,7 +76,7 @@ export function BookingsList({
 }): ReactNode {
   const start = useStartBooking(trip.trip_id);
   if (trip.bookings.length === 0) {
-    return <p className="text-sm text-muted">Nothing to book yet — the group is still deciding.</p>;
+    return <p className="text-sm text-muted">Nothing to book yet. The group is still deciding.</p>;
   }
   return (
     <div className="space-y-4">
@@ -121,7 +121,7 @@ export function BookingsList({
                     </Badge>
                   )}
                 </div>
-                <p className="ticket-mono mt-0.5 text-xs text-muted">
+                <p className="mt-0.5 text-xs tabular-nums text-muted">
                   {booking.supplier} ·{" "}
                   <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}
                   {formatMoney(booking.amount_minor, trip.currency)}

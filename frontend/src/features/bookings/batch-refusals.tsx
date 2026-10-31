@@ -6,11 +6,11 @@ import { bookingTitle } from "./booking-title";
 
 /** Why one booking of a batch did not go ahead, in a sentence for the organizer. */
 export const REFUSAL_LABEL: Partial<Record<BookingError, string>> = {
-  price_changed: "the price changed — everyone tops up first, then book again",
+  price_changed: "the price changed, so everyone tops up before booking again",
   trip_not_ready: "not everyone has paid their share yet",
   traveller_details_missing: "some travellers still need to add their details",
   sold_out: "the supplier no longer offers it",
-  quote_expired: "the price is no longer guaranteed — start it again",
+  quote_expired: "the quote expired, start it again",
   supplier_unknown: "its supplier is not enabled",
   booking_not_startable: "it is already being bought",
   not_awaiting_approval: "it is no longer waiting for an approval",

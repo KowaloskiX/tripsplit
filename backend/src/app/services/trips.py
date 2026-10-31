@@ -441,7 +441,7 @@ class TripService:
             identifier_of(trip),
             EventKind.ALL_PAID,
             EventActor.AGENT,
-            "Everyone paid — the agent can book now.",
+            "Everyone paid. The agent can book now.",
             payload={"total_minor": trip.total_minor},
             session=session,
         )

@@ -61,7 +61,7 @@ export function cardSchema(now: Date = new Date()) {
       .string()
       .transform((value) => value.replace(/[\s-]/g, ""))
       .refine((digits) => /^\d{12,19}$/.test(digits) && luhnValid(digits), {
-        message: "Not a valid card number — try 4242 4242 4242 4242.",
+        message: "Not a valid card number. Try 4242 4242 4242 4242.",
       }),
     expiry: z.string().refine((value) => expiryInFuture(value.trim(), now), {
       message: "MM/YY, in the future.",

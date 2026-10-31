@@ -20,7 +20,7 @@ function StepIcon({ state, index }: { state: StayStepState; index: number }): Re
   if (state === "running") {
     return <Loader2 className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden />;
   }
-  return <span className="ticket-mono text-[10px]">{index + 1}</span>;
+  return <span className="ticket-mono text-xs">{index + 1}</span>;
 }
 
 type StayPaneProps = { stay: StayMission; currency: string; className?: string };
@@ -70,7 +70,7 @@ export function StayPane({ stay, currency, className }: StayPaneProps): ReactNod
               {step.label}
             </span>
             {step.detail && (
-              <span key={step.detail} className="rise-in ticket-mono text-[11px] text-muted">
+              <span key={step.detail} className="rise-in text-xs tabular-nums text-muted">
                 {step.detail}
               </span>
             )}

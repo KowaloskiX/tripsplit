@@ -119,7 +119,7 @@ async def test_the_organizer_pays_every_share_and_the_trip_books_itself(
 
     # AUTO_BOOK: the purchases started by themselves after the last payment.
     messages = await _events(trip_id, EventKind.MESSAGE)
-    assert any("booking everything now" in event.message for event in messages)
+    assert any("Booking everything now" in event.message for event in messages)
     bookings = await Booking.find(Booking.trip_id == to_object_id(trip_id)).to_list(10)
     assert launcher.started  # the agent was asked to buy (and refused in tests)
     assert all(b.status is not BookingStatus.PENDING for b in bookings)

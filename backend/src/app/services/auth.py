@@ -1,7 +1,4 @@
-"""Auth logic. No `Request`/`Response`, no cookies — those are an HTTP-layer detail.
-
-As a result the same code serves a CLI, background jobs and unit tests.
-"""
+"""Auth logic without Request/Response or cookies, so a CLI, jobs and tests share it."""
 
 import asyncio
 import secrets

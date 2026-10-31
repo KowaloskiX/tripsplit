@@ -1,26 +1,11 @@
-"""Parametrised flows: a successful run compiled into a replayable PROGRAM, not a tape.
+"""Parametrised flows: a successful run compiled into a replayable program.
 
-A raw trajectory (`trajectory.py`) replays literal steps: the recorded date, the recorded
-party size, the recorded train and exactly the recorded passenger fields. Recorded with six
-passengers, it breaks on a purchase of three. A flow fixes that by compiling the run:
-
-  - every target is a stable DESCRIPTOR (role, accessible name, form name/id, testid, row
-    context) — never the ephemeral `data-agent-ref`;
-  - values are BOUND to variables: `{{vault.passenger_{i}_first_name}}`, `{{goal.date}}`,
-    `{{goal.return_date}}`, `{{goal.passengers}}`; a literal equal to a vault value is
-    replaced by its placeholder;
-  - a repeated per-passenger block of fields is recognised as a LOOP over passengers
-    (the descriptor's index is templated too: `p3_first` -> `p{i}_first`), so a flow
-    recorded for 6 replays for 1..9;
-  - "pick one of N offers" is recorded as a CHOICE resolved from the goal at replay time,
-    so a flow recorded on train A books train B when the goal says so.
-
-Replay walks the steps with a cursor. A step whose target cannot be resolved is a MISS: the
-runner asks the rule layer (then the planner) for that one step — self-heal — and the cursor
-resynchronises by checkout stage. A run that healed is re-compiled and saved.
-
-On disk: `trajectories/<host>.flow.json` (`version: 2`). A legacy `<host>.json` raw trajectory
-is still loaded and compiled on the fly, so existing caches keep working.
+Targets are stable descriptors (role, accessible name, form id, testid, row context), values
+are bound to variables (`{{vault.passenger_{i}_first_name}}`, `{{goal.date}}`, ...), repeated
+passenger blocks become a loop (recorded for 6, replays for 1..9) and "pick one of N offers" is
+a choice resolved from the goal. A step whose target is gone is a miss: the rule layer or the
+planner heals it and the healed run is re-compiled. Stored as `trajectories/<host>.flow.json`
+(version 2); a legacy `<host>.json` trajectory is compiled on load.
 """
 
 import json

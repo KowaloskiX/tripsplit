@@ -23,11 +23,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "tripsplit — from group chat to tickets" },
+      { title: "tripsplit: from group chat to tickets" },
       {
         name: "description",
         content:
-          "An agent joins your group chat, proposes trip packages, collects votes and everyone's share, then books the train and the stay — and rebooks if the train is late.",
+          "An agent joins your group chat, proposes trip packages, collects votes and everyone's share, then books the train and the stay, and rebooks if the train is late.",
       },
     ],
     // Runs before the first paint, so a dark-mode user never sees a light flash. Declared
@@ -95,7 +95,7 @@ function SiteHeader(): ReactNode {
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <Link
           to="/"
-          aria-label="tripsplit — home"
+          aria-label="tripsplit home"
           className="rounded-full transition duration-150 hover:opacity-75"
         >
           <Wordmark />
