@@ -171,6 +171,8 @@ class EventKind(StrEnum):
     HOLD_PLACED = "hold_placed"  # the supplier holds the price while the group pays
     HOLD_EXPIRED = "hold_expired"  # the hold lapsed before the purchase — re-held / re-quoted
     TRAVELLER_DETAILS_MISSING = "traveller_details_missing"  # names who still has to fill in
+    ATTRACTION_VOTED = "attraction_voted"  # a member wants to see an attraction
+    ITINERARY_READY = "itinerary_ready"  # the day-by-day plan was (re)generated
 
 
 def split_evenly(total_minor: int, members: int) -> list[int]:

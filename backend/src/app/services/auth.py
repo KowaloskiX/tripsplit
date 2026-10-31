@@ -36,6 +36,7 @@ from app.repositories.auth import (
     SessionRepository,
     UserRepository,
 )
+from app.repositories.itinerary import AttractionRepository
 from app.repositories.travellers import TravellerProfileRepository
 from app.repositories.trips import ContributionRepository, MemberRepository, VoteRepository
 from app.repositories.wallet import WalletRepository, WalletTransactionRepository
@@ -245,6 +246,7 @@ class AuthService:
             # them, and the money already collected has to remain accountable.
             await self.trip_members.delete_for_user(identifier, session=session)
             await self.votes.delete_for_user(identifier, session=session)
+            await AttractionRepository().delete_votes_of_user(identifier, session=session)
             await self.contributions.delete_for_user(identifier, session=session)
             # Personal data (passport number): nothing of it may outlive the account.
             await self.traveller_profiles.delete_for_user(identifier, session=session)

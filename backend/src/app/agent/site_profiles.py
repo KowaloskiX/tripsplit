@@ -65,6 +65,9 @@ class SiteProfile:
     max_passengers_per_purchase: int | None = None
     # Type at a human pace (bot management watches keystroke timing); off for our own sites.
     human_typing: bool = True
+    # Recorded flows are kept per host; a second site on the same host (our demo shops share
+    # localhost) names its own scope so the two never replay each other's flow.
+    flow_scope: str = ""
 
     def matches(self, url: str) -> bool:
         parsed = urlparse(url or "")
@@ -90,6 +93,7 @@ class SiteProfile:
             unmatched_offer=self.unmatched_offer,
             max_passengers_per_purchase=self.max_passengers_per_purchase,
             human_typing=self.human_typing,
+            flow_scope=self.flow_scope,
         )
 
 
@@ -169,6 +173,25 @@ DEMORAIL = SiteProfile(
     human_typing=False,
 )
 
+DEMOTICKETS = SiteProfile(
+    name="demotickets",
+    path_prefix="/api/demo-supplier/tickets",
+    cta={
+        Stage.SEARCH: (r"^find time slots$",),
+        Stage.PASSENGERS: (r"continue to summary",),
+    },
+    pay=(r"pay now",),
+    review_markers=(r"review your order",),
+    confirmation_markers=(r"booking number:",),
+    confirmation_ref=r"\bTK-[A-Z0-9]{8}\b",
+    # The goal names the planned entry slot ("entry at 14:30"); the shop sells half-hourly
+    # entries, so the nearest one is the intended one.
+    unmatched_offer=OfferFallback.CLOSEST_DEPARTURE,
+    max_passengers_per_purchase=10,
+    human_typing=False,
+    flow_scope="tickets",
+)
+
 INTERCITY = SiteProfile(
     name="intercity",
     hosts=("intercity.pl",),
@@ -181,7 +204,7 @@ INTERCITY = SiteProfile(
     max_passengers_per_purchase=5,
 )
 
-PROFILES: tuple[SiteProfile, ...] = (DEMORAIL, INTERCITY)
+PROFILES: tuple[SiteProfile, ...] = (DEMORAIL, DEMOTICKETS, INTERCITY)
 
 
 def profile_for(url: str) -> SiteProfile:

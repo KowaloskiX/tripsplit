@@ -28,6 +28,8 @@ _EXPECTED = re.compile(
 _RETURN_DATE = re.compile(r"return date[^\d]{0,5}(20\d\d-[01]\d-[0-3]\d)", re.I)
 _BUDGET = re.compile(r"budget[^\d]{0,20}(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(PLN|EUR|CZK|zł|USD)?", re.I)
 _DEPARTS = re.compile(r"\bdep(?:arts?|arture)?\.?\s*(?:at\s*)?([0-2]?\d:[0-5]\d)", re.I)
+# A timed entry (attraction tickets): "entry at 14:30", "time slot 14:30".
+_SLOT = re.compile(r"\b(?:entry|time slot)\s*(?:at\s*)?([0-2]?\d:[0-5]\d)", re.I)
 _TOLERANCE = re.compile(r"tolerance[^\d]{0,10}(\d+(?:[.,]\d+)?)\s*%", re.I)
 _DEFAULT_TOLERANCE_PERCENT = 2.0
 
@@ -101,6 +103,8 @@ def parse_goal(goal: str, vault: Any = None) -> GoalSpec:
         currency=currency,
         tolerance_percent=tolerance,
         rebooking="rebooking" in goal.lower(),
-        departs=m.group(1) if (m := _DEPARTS.search(goal)) is not None else None,
+        departs=(
+            m.group(1) if (m := _DEPARTS.search(goal) or _SLOT.search(goal)) is not None else None
+        ),
         return_date=m.group(1) if (m := _RETURN_DATE.search(goal)) is not None else None,
     )

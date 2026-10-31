@@ -23,13 +23,14 @@ from app.suppliers.pkp import PkpIntercitySupplier
 from app.suppliers.ports import SupplierAdapter
 from app.suppliers.registry import SupplierRegistry
 from app.suppliers.sim import SIM_CAPABILITIES, sim_supplier
+from app.suppliers.sim_tickets import SIGHTS, TICKETS, AttractionSupplier
 
 logger = logging.getLogger(__name__)
 
 PKP_INTERCITY = "pkp_intercity"
 DEMO_RAIL = "demo_rail"
 KNOWN_SUPPLIERS: frozenset[str] = frozenset(
-    {*SIM_CAPABILITIES, PKP_INTERCITY, DEMO_RAIL, LITEAPI, DUFFEL, OSM_ACTIVITIES}
+    {*SIM_CAPABILITIES, PKP_INTERCITY, DEMO_RAIL, LITEAPI, DUFFEL, OSM_ACTIVITIES, TICKETS, SIGHTS}
 )
 
 
@@ -96,6 +97,9 @@ def _adapter(
 ) -> SupplierAdapter | None:
     if supplier_id in SIM_CAPABILITIES:
         return sim_supplier(supplier_id, utc_now)
+    if supplier_id in (TICKETS, SIGHTS):
+        # In a demo the agent buys attraction tickets on our own demo ticket shop.
+        return AttractionSupplier(supplier_id, site_url=demo_rail_url, clock=utc_now)
     if supplier_id == PKP_INTERCITY:
         # In a demo (`demo_rail_url`) the agent buys PKP's trains on our fake rail site.
         site = f"{demo_rail_url}{DEMO_RAIL_PATH}" if demo_rail_url is not None else None

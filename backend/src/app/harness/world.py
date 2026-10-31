@@ -31,10 +31,12 @@ from app.db.identifiers import to_object_id
 from app.harness.adapters import HarnessClock, RoutingLauncher, ScriptablePrices, ScriptedLauncher
 from app.harness.scenario import Brief, Scenario, SupplierSpec
 from app.payments.wallet import WalletPayments
+from app.services.attractions import AttractionService
 from app.services.auth import AuthService
 from app.services.auto_book import AutoBooker
 from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
+from app.services.itinerary import ItineraryService
 from app.services.proposals import ProposalService
 from app.services.quick_trips import QuickTripService
 from app.services.supplier_prices import SupplierPrices
@@ -54,6 +56,7 @@ from app.suppliers.ports import SupplierAdapter
 from app.suppliers.providers import duffel_config, duffel_supplier, liteapi_config
 from app.suppliers.registry import SupplierRegistry
 from app.suppliers.sim import SIM_CAPABILITIES, SimBehaviour, sim_supplier
+from app.suppliers.sim_tickets import SIGHTS, TICKETS, AttractionSupplier
 
 PASSWORD = "harness-correct-horse-battery-staple"
 EMAIL_DOMAIN = "harness.tripsplit.invalid"
@@ -119,6 +122,8 @@ class World:
     # Shares are paid from members' wallets; the dummy bank confirms top-ups inline.
     wallet: WalletService
     checkout: WalletCheckoutService
+    attractions: AttractionService
+    itinerary: ItineraryService
     pay_all: PayAllService
     live_search_log: LiveSearchLog | None = None
     liteapi_log: LiteApiLog | None = None
@@ -170,6 +175,13 @@ class World:
                 duffel = cls._duffel(settings, options, clock)
                 duffel_log = duffel.log
                 adapters.append(duffel)
+            elif spec.id in (TICKETS, SIGHTS):
+                # Under --live-agent the real agent buys the tickets on the demo ticket shop.
+                adapters.append(
+                    AttractionSupplier(
+                        spec.id, site_url=options.live_agent_base_url, clock=clock.now
+                    )
+                )
             elif spec.id == SIM_RAIL and options.live_agent_base_url:
                 adapters.append(DemoRailSupplier(options.live_agent_base_url))
             elif spec.id == SIM_RAIL and options.live_search:
@@ -243,6 +255,8 @@ class World:
             launcher=launcher,
             wallet=wallet,
             checkout=WalletCheckoutService(contributions, wallet),
+            attractions=AttractionService(db, suppliers=suppliers),
+            itinerary=ItineraryService(db, suppliers=suppliers),
             pay_all=PayAllService(contributions, wallet),
             live_search_log=pkp.log if pkp is not None else None,
             liteapi_log=liteapi_log,

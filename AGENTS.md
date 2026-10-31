@@ -142,6 +142,19 @@ PKP_TRANSPORT=browser                                   # the default
 - `uv run seed-demo` (dev/test only, idempotent): demo@tripsplit.app / TripSplitDemo2026!
   with 5 000 zł in the wallet.
 
+## Attractions and the day plan
+
+After the package vote (while the group pays) `GET /api/trips/{id}/attractions` lists ~8-12 ranked
+ideas from every activity supplier (snapshot at the first request; `supplier_data` read
+defensively), `POST .../attractions/{aid}/vote` toggles a vote, and the organizer's
+`POST .../itinerary/generate` schedules the voted ones deterministically
+(`core/domain/day_plan.py`: transport bounds, opening hours, walking/transit times, lunch +
+dinner, max 4/day, nearest-neighbour clustering). A planned BOOKABLE visit queues a ticket
+`Booking` (re-split of the shares, back to `paying` if needed); `sim_tickets` offers are bought
+by the agent on the demo ticket shop `/api/demo-supplier/tickets` (rules only, 0 LLM calls).
+Offers with `supplier_data.itinerary_only` never enter packages.
+`uv run trip-harness run attraction_tickets [--live-agent]`.
+
 ## API bridge
 
 ```bash

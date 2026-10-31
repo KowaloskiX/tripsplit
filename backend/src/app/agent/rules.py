@@ -241,6 +241,8 @@ def choose_offer(elements: list[Element], goal: GoalSpec, profile: SiteProfile) 
         return min(offers, key=lambda o: _minutes_from(o, goal.departs))
     if goal.rebooking:
         return None  # "the next train after the delayed one" needs judgement -> planner
+    if goal.departs and profile.unmatched_offer == OfferFallback.CLOSEST_DEPARTURE:
+        return min(offers, key=lambda o: _minutes_from(o, goal.departs))  # a timed entry
     if profile.offer_policy == "cheapest":
         return min(offers, key=_price)
     return min(offers, key=_departure)

@@ -18,11 +18,13 @@ from app.core.domain.result import Ok
 from app.core.errors_http import DomainHTTPError
 from app.db.deps import DbDep
 from app.payments.providers import build_payment_provider
+from app.services.attractions import AttractionService
 from app.services.auth import AuthService
 from app.services.auto_book import AutoBooker
 from app.services.bookings import BookingService
 from app.services.contributions import ContributionService
 from app.services.demo import DemoService
+from app.services.itinerary import ItineraryService
 from app.services.proposals import ProposalService
 from app.services.quick_trips import QuickTripService
 from app.services.supplier_prices import SupplierPrices
@@ -220,6 +222,16 @@ def get_demo_service(
     return DemoService(database, contributions, get_trip_service(database, suppliers), wallet)
 
 
+def get_attraction_service(database: DbDep, suppliers: SupplierRegistryDep) -> AttractionService:
+    return AttractionService(database, suppliers=suppliers)
+
+
+def get_itinerary_service(database: DbDep, suppliers: SupplierRegistryDep) -> ItineraryService:
+    return ItineraryService(database, suppliers=suppliers)
+
+
+AttractionServiceDep = Annotated[AttractionService, Depends(get_attraction_service)]
+ItineraryServiceDep = Annotated[ItineraryService, Depends(get_itinerary_service)]
 TripServiceDep = Annotated[TripService, Depends(get_trip_service)]
 ProposalServiceDep = Annotated[ProposalService, Depends(get_proposal_service)]
 

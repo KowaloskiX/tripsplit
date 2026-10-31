@@ -4,6 +4,7 @@ from app.harness.scenario import Scenario
 from app.harness.scenarios import (
     agent_stuck_retry,
     approval_while_paying,
+    attraction_tickets,
     auto_book,
     barcelona_duffel_live,
     barcelona_duffel_slow_group,
@@ -57,5 +58,6 @@ SCENARIOS: dict[str, Scenario] = {
         wallet_shortfall,
         barcelona_duffel_live,
         barcelona_duffel_slow_group,
+        attraction_tickets,
     )
 }

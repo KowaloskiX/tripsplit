@@ -37,6 +37,9 @@ TENANT_EXEMPT_COLLECTIONS = frozenset(
         # Per user too: a wallet pays shares of trips in any organization.
         "wallets",
         "wallet_transactions",
+        # Trip documents too: what the group does at the destination, seen by its members.
+        "trip_attractions",
+        "itineraries",
     }
 )
 
@@ -89,6 +92,8 @@ async def test_unique_constraints_exist_in_database(database: Database) -> None:
         "contributions": [("trip_id", 1), ("user_id", 1)],
         "agent_runs": [("run_id", 1)],
         "traveller_profiles": [("user_id", 1)],
+        "trip_attractions": [("trip_id", 1)],
+        "itineraries": [("trip_id", 1)],
     }
     for collection, key in expected_unique.items():
         indexes = await database.database[collection].index_information()

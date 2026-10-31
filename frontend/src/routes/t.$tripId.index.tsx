@@ -8,6 +8,7 @@ import { LiveMissionControl, TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel, DemoStage } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
+import { AttractionsPanel } from "@/features/itinerary";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
@@ -108,6 +109,8 @@ function RoomPage(): ReactNode {
               <TripPotCard pot={room.pot} currency={room.trip.currency} />
             </div>
           )}
+          {/* After the package vote — while the group pays, it never blocks the money. */}
+          <AttractionsPanel room={room} />
           {/* Before buying, the packages/vote card is the stage action: the (long) details
               form goes below it, collapsed. */}
           {showBookings && <TravellerDetailsPanel room={room} />}

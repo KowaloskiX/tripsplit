@@ -55,6 +55,7 @@ from app.harness.scenario import (
     ExpectError,
     ExpectEvent,
     ExpectHold,
+    ExpectPlanned,
     ExpectPot,
     ExpectPurchases,
     ExpectShares,
@@ -65,6 +66,7 @@ from app.harness.scenario import (
     Leave,
     Pay,
     PayAllShares,
+    PlanDays,
     StartBookings,
     Step,
     SupplierDisruption,
@@ -73,6 +75,7 @@ from app.harness.scenario import (
     TargetSelector,
     TopUp,
     TopUpAndPay,
+    VoteAttractions,
     describe,
 )
 from app.harness.world import World
@@ -414,6 +417,10 @@ class Driver:
                 return await self._leave(step), ("resplit",)
             case CompleteManually():
                 return await self._complete(step), ("booking_confirmed",)
+            case VoteAttractions():
+                return await self._vote_attractions(step), ("attraction_voted",)
+            case PlanDays():
+                return await self._plan_days(), ("itinerary_ready",)
             case _:
                 return await self._expect(step), ()
 
@@ -701,6 +708,55 @@ class Driver:
         await self._wait_for_agents()
         return await self._booking_line(f"completed manually with {step.ref}")
 
+    async def _vote_attractions(self, step: VoteAttractions) -> str:
+        world = self.world
+        listed = await world.attractions.overview(world.trip_id, world.organizer_id)
+        self._raise_on(listed)
+        assert isinstance(listed, Ok)  # _raise_on raised otherwise
+        by_title = {a.title: a.attraction_id for a in listed.value.attractions}
+        lines = []
+        for title, voters in step.votes.items():
+            if title not in by_title:
+                raise StepFailed(f"“{title}” is not a candidate ({', '.join(by_title)})")
+            names = list(voters) if voters is not None else list(self.scenario.members)
+            for name in names:
+                voted = await world.attractions.vote(
+                    world.trip_id, by_title[title], world.users[name]
+                )
+                self._raise_on(voted, f"{name}: ")
+            lines.append(f"{title}: {len(names)}")
+        return f"{len(listed.value.attractions)} candidates; votes " + ", ".join(lines)
+
+    async def _plan_days(self) -> str:
+        world = self.world
+        planned = await world.itinerary.generate(world.trip_id, world.organizer_id)
+        self._raise_on(planned)
+        assert isinstance(planned, Ok)
+        return "; ".join(
+            f"{day.label}: "
+            + ", ".join(f"{i.start} {i.title}" for i in day.items if i.kind.value == "attraction")
+            for day in planned.value.days
+        )
+
+    async def _expect_planned(self, step: ExpectPlanned) -> str:
+        world = self.world
+        plan = await world.itinerary.get(world.trip_id, world.organizer_id)
+        self._raise_on(plan)
+        assert isinstance(plan, Ok)
+        visits = [
+            (day, item)
+            for day in plan.value.days
+            for item in day.items
+            if item.kind.value == "attraction" and item.title == step.title
+        ]
+        if not visits:
+            raise StepFailed(f"“{step.title}” is not in the plan")
+        day, item = visits[0]
+        tickets = item.tickets.value if item.tickets is not None else None
+        if tickets != step.tickets:
+            raise StepFailed(f"“{step.title}” tickets: {tickets}, expected {step.tickets}")
+        return f"{day.label} {item.start}-{item.end} {item.title}: tickets {tickets}"
+
     # ---- expectations -------------------------------------------------------------------
 
     async def _expect(self, step: Step) -> str:
@@ -761,6 +817,8 @@ class Driver:
                     f"pot: collected {pot.collected_minor}, spent {pot.spent_minor}, "
                     f"refunded {pot.refunded_minor}, held {pot.held_minor}"
                 )
+            case ExpectPlanned():
+                return await self._expect_planned(step)
             case ExpectAgentMessage():
                 wanted = step.text.casefold()
                 said = [

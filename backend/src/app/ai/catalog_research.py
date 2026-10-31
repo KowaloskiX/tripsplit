@@ -253,10 +253,13 @@ class CatalogResearcher:
     async def _search(
         self, kind: BookingKind, mode: TransportMode | None, request: SearchRequest
     ) -> list[PackageItemPlan]:
+        # An attraction for the itinerary (`itinerary_only`) is voted on after the package,
+        # never sold inside it.
         return [
             _item(adapter, offer)
             for adapter, offers in await self._answers(kind, mode, request)
             for offer in offers
+            if offer.supplier_data.get("itinerary_only") is not True
         ]
 
     async def _stays(self, brief: TripBrief, destination: str) -> tuple[list[PackageItemPlan], str]:
