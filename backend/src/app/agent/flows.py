@@ -17,7 +17,13 @@ from typing import Any
 
 from app.agent.goal import GoalSpec
 from app.agent.paths import trajectories_dir
-from app.agent.rules import FieldKind, choose_offer, classify_field, vault_placeholder
+from app.agent.rules import (
+    FieldKind,
+    choose_fare,
+    choose_offer,
+    classify_field,
+    vault_placeholder,
+)
 from app.agent.site_profiles import SiteProfile, Stage, profile_for
 from app.agent.trajectory import _goto_is_replayable, _host
 
@@ -31,15 +37,19 @@ _INDEXED_KEYS = ("testid", "id", "name", "label", "text", "context")
 _PASSENGER_VAR = re.compile(r"\{\{\s*vault\.passenger_(\d+)_([a-z_]+)\s*\}\}")
 _ISO_DATE = re.compile(r"^20\d\d-[01]\d-[0-3]\d$")
 _OFFER_TEXT = re.compile(r"^(select|wybierz|choose|kup bilet|buy a ticket)\b", re.I)
+_ROW_FACT = re.compile(
+    r"\b[0-2]?\d:[0-5]\d\b|\d[.,]\d{2}\s*(?:PLN|zł|EUR|CZK|USD)|[$€£]\s?\d", re.I
+)
 # Actions that leave the page as it is, so the next step can run on the same observation.
 _BATCHABLE = ("fill_form", "type", "select")
 _STAGE_ORDER = {
     Stage.CONSENT: 0,
     Stage.SEARCH: 1,
     Stage.RESULTS: 2,
-    Stage.PASSENGERS: 3,
-    Stage.REVIEW: 4,
-    Stage.CONFIRMATION: 5,
+    Stage.FARE: 3,
+    Stage.PASSENGERS: 4,
+    Stage.REVIEW: 5,
+    Stage.CONFIRMATION: 6,
 }
 
 
@@ -115,6 +125,10 @@ def _bind_literal(
         return "{{goal.date}}"
     if text.isdigit() and int(text) == party and kind is FieldKind.PARTY_SIZE:
         return "{{goal.passengers}}"
+    if goal and goal.origin and text.casefold() == goal.origin.casefold():
+        return "{{goal.origin}}"
+    if goal and goal.destination and text.casefold() == goal.destination.casefold():
+        return "{{goal.destination}}"
     return text
 
 
@@ -130,8 +144,14 @@ def _recorded_party(raw: list[Step], goal: GoalSpec | None) -> int:
     return max(indices, default=1)
 
 
-def _compile_fields(fields: list[dict[str, Any]], bind: Callable[..., str | None]) -> list[Step]:
-    """Fields -> items; an index-templated per-passenger block becomes one LOOP item."""
+def _compile_fields(
+    fields: list[dict[str, Any]], bind: Callable[..., str | None], party: int = 1
+) -> list[Step]:
+    """Fields -> items; an index-templated per-passenger block becomes one LOOP item.
+
+    Only when the form had a block for EVERY recorded passenger: a single lead-name field on
+    a form for a party of 3 stays literal, it must not grow into three fields on replay.
+    """
     items: list[Step] = []
     blocks: dict[int, list[Step]] = {}
     loop_at: int | None = None
@@ -158,7 +178,7 @@ def _compile_fields(fields: list[dict[str, Any]], bind: Callable[..., str | None
     shapes = {
         json.dumps([[b["target"], b["value"]] for b in blocks[i]], sort_keys=True) for i in indices
     }
-    if indices == list(range(1, len(indices) + 1)) and len(shapes) == 1:
+    if indices == list(range(1, len(indices) + 1)) and len(shapes) == 1 and len(indices) >= party:
         body = [{"target": b["target"], "value": b["value"]} for b in blocks[1]]
         compiled: list[Step] = [{"loop": "passengers", "body": body}]
     else:
@@ -172,6 +192,18 @@ def _compile_fields(fields: list[dict[str, Any]], bind: Callable[..., str | None
             for b in blocks[i]
         ]
     return items[:loop_at] + compiled + items[loop_at:]
+
+
+def _looks_like_offer(raw: Step, desc: dict[str, str]) -> bool:
+    """A click that picked one offer of a list (replayed as a choice, not as this element).
+
+    On a results page a click is an offer pick only if the control sits in a row with a time
+    or a price — a header "CHANGE" or a filter button on the same page is not.
+    """
+    if _OFFER_TEXT.search(desc.get("text", "")):
+        return True
+    context = desc.get("context", "")
+    return raw.get("milestone") == "results" and bool(_ROW_FACT.search(context))
 
 
 def compile_flow(
@@ -198,16 +230,15 @@ def compile_flow(
             steps.append({**base, "direction": r.get("direction"), "text": r.get("text")})
             continue
         if kind == "fill_form":
-            items = _compile_fields(r.get("fields") or [], bind)
+            items = _compile_fields(r.get("fields") or [], bind, party)
             if items:
                 steps.append({**base, "items": items})
             continue
         desc = r.get("desc") or {}
         step = {**base, "target": desc, "value": bind(r.get("text"), desc)}
-        if r.get("choice") == "offer" or (
-            kind == "click"
-            and (r.get("milestone") == "results" or _OFFER_TEXT.search(desc.get("text", "")))
-        ):
+        if r.get("choice") == "fare" or r.get("milestone") == Stage.FARE.value:
+            step["choice"] = "fare"
+        elif r.get("choice") == "offer" or (kind == "click" and _looks_like_offer(r, desc)):
             step["choice"] = "offer"
         steps.append(step)
     return {"version": FLOW_VERSION, "recorded_party": party, "steps": steps}
@@ -284,6 +315,8 @@ class FlowPlayer:
     executed: int = 0
     log: list[str] = field(default_factory=list)
     last_indices: list[int] = field(default_factory=list)
+    patience_at: int = -1
+    patience: int = 0
 
     @property
     def steps(self) -> list[Step]:
@@ -327,6 +360,13 @@ class FlowPlayer:
             return None
         action = self._resolve_step(step, elements)
         if action is None:
+            # Real sites render controls late (after prices load): give the target a few
+            # seconds before declaring a miss and handing the page to the rules/planner.
+            if self.patience_at != self.cursor:
+                self.patience_at, self.patience = self.cursor, 0
+            if self.patience < self.profile.target_patience:
+                self.patience += 1
+                return [{"action": "wait", "ms": 1500, "milestone": step.get("milestone")}]
             self.misses += 1
             self.log.append(f"miss step {self.cursor}: target not found")
             return None
@@ -376,6 +416,11 @@ class FlowPlayer:
                     return None
                 fields.append({"ref": ref, "text": _goal_value(item.get("value"), self.goal)})
             return {"action": "fill_form", "fields": fields, "milestone": ms} if fields else None
+        if step.get("choice") == "fare":
+            fare = choose_fare(elements, self.goal, self.profile)
+            if fare is None:
+                return None
+            return {"action": "click", "ref": fare["ref"], "milestone": ms, "choice": "fare"}
         if step.get("choice") == "offer":
             offer = choose_offer(elements, self.goal, self.profile)
             if offer is None:

@@ -21,6 +21,7 @@ class Stage(StrEnum):
     CONSENT = "consent"
     SEARCH = "search"
     RESULTS = "results"
+    FARE = "fare"  # an opened offer: pick the fare (class, refundable or not)
     PASSENGERS = "passengers"
     REVIEW = "review"
     CONFIRMATION = "done"
@@ -68,6 +69,23 @@ class SiteProfile:
     # Recorded flows are kept per host; a second site on the same host (our demo shops share
     # localhost) names its own scope so the two never replay each other's flow.
     flow_scope: str = ""
+    # The site sells the whole party under ONE lead name (no per-passenger fields): the
+    # summary check then only looks for passenger 1.
+    lead_passenger_only: bool = False
+    # Page text where the run must stop and hand over to a person even though nothing went
+    # wrong (e.g. a sign-in / guest-checkout wall): a planned handoff at `handoff_milestone`.
+    # A run ending there still counts as a success for recording the flow.
+    handoff_markers: tuple[str, ...] = ()
+    handoff_milestone: str = ""
+    # Fare buttons inside an opened offer; group 1 = the travel class. The site lists the
+    # cheapest (non-refundable) fare of a class first and the flexible one last.
+    fare_buttons: str = ""
+    # Page text stating the party size the offers are priced for (group 1). When it differs
+    # from the goal, offers are not chosen by rule: the party must be changed first.
+    party_shown: str = ""
+    # Re-observations (1.5 s apart) a flow step waits for a late-rendering target before it
+    # counts as a miss; 0 = heal at once (our own sites render synchronously).
+    target_patience: int = 0
 
     def matches(self, url: str) -> bool:
         parsed = urlparse(url or "")
@@ -94,6 +112,12 @@ class SiteProfile:
             max_passengers_per_purchase=self.max_passengers_per_purchase,
             human_typing=self.human_typing,
             flow_scope=self.flow_scope,
+            lead_passenger_only=self.lead_passenger_only,
+            handoff_markers=self.handoff_markers,
+            handoff_milestone=self.handoff_milestone,
+            fare_buttons=self.fare_buttons,
+            party_shown=self.party_shown,
+            target_patience=self.target_patience,
         )
 
 
@@ -198,13 +222,42 @@ INTERCITY = SiteProfile(
     cta={
         Stage.SEARCH: (r"^wyszukaj$",),
         Stage.RESULTS: (r"buy a ticket", r"kup bilet"),
-        Stage.PASSENGERS: (r"go to payments", r"przejdź do płatności", r"continue as guest"),
+        Stage.PASSENGERS: (r"go to payments", r"przejdź do płatności"),
     },
     unavailable=(r"no offers fulfil the criteria", r"przerwa technologiczna"),
     max_passengers_per_purchase=5,
+    # "GO TO PAYMENTS" opens a sign-in wall (log in / register / continue as guest). Going on
+    # means an e-mail address and accepting the e-IC regulations on someone's behalf, so the
+    # agent hands over here: the selection is done, a person continues.
+    handoff_markers=(r"continue as (?:a )?guest", r"kontynuuj jako gość"),
+    handoff_milestone="guest_screen",
+    # "BUY A TICKET" opens fare boxes: Non-refundable (Super Promo) first, Flexible second,
+    # per class; an unavailable class has a disabled button.
+    fare_buttons=r"^(?:choose|wybierz) (?:class|klas[aęy]) ([12])$",
+    # The header reads "3x Passengers 3 x Adults"; the adults count is what gets sold.
+    party_shown=r"(\d+)\s*x\s*(?:adults?|dorosł)",
+    # The header's CHANGE and the fare boxes render seconds after the page.
+    target_patience=4,
 )
 
-PROFILES: tuple[SiteProfile, ...] = (DEMORAIL, DEMOTICKETS, INTERCITY)
+BLAZEDEMO = SiteProfile(
+    # BlazeMeter's public flight-booking demo built for test automation: no real money, the
+    # "Purchase Flight" button returns a fake confirmation id. Search (two city selects) ->
+    # flights table -> purchase page (reservation + billing/card form) -> confirmation.
+    name="blazedemo",
+    hosts=("blazedemo.com",),
+    cta={Stage.SEARCH: (r"^find flights$",)},
+    pay=(r"^purchase flight$",),
+    review_markers=(r"has been reserved", r"please submit the form below"),
+    confirmation_markers=(r"thank you for your purchase",),
+    confirmation_ref=r"\b\d{10,16}\b",
+    total=r"total cost\D{0,10}(\d[\d,]*\.\d{2})\s*(USD)?",
+    offer_policy=OfferPolicy.CHEAPEST,
+    lead_passenger_only=True,
+    human_typing=False,
+)
+
+PROFILES: tuple[SiteProfile, ...] = (DEMORAIL, DEMOTICKETS, INTERCITY, BLAZEDEMO)
 
 
 def profile_for(url: str) -> SiteProfile:

@@ -52,6 +52,54 @@ Artifacts land in `backend/var/agent/runs/<run-id>/` (per-step `NN.png`, `status
 `trace.json`, `result.json`, `live.jpg` on Chromium). Env knobs: `OPENAI_API_KEY`,
 `PLANNER_MODEL`, `ENGINE`, `HEADLESS`, `AGENT_VAR_DIR`. Details: `.devin/skills/run-agent/SKILL.md`.
 
+## Real sites (real_sites)
+
+The agent on third-party sites, not only our demo shops. Safety: stop-before-pay stays on,
+`AGENT_FINAL_CLICK=simulate` except on BlazeDemo (a demo site with no real money), a fake
+vault (`4242…` test card, invented names), no accounts, no CAPTCHA bypass, ≤ ~6 runs per site.
+The first run (auto, Claude CLI planner) records `var/agent/trajectories/<host>.flow.json`; the
+second replays it with `--mode replay` (0 LLM calls).
+
+```bash
+cd backend
+# vault: passengers, passenger_N_first/last_name, billing_address/city/state/zip,
+# card_number=4242424242424242, card_holder — all fake, kept in /tmp, never committed
+# 1. BlazeDemo (blazedemo.com, BlazeMeter's automation demo): record, then replay another route
+#    with the site's own (fake) "Purchase Flight" -> a confirmation id.
+PLANNER=claude-cli uv run agent-run --url https://blazedemo.com/ --run-id blaze-record \
+  --goal "Book a flight from Paris to London for 3 passengers, cheapest, passenger names from the vault, fill the purchase form with the billing and card test data from the vault, stop at the purchase confirmation" \
+  --vault /tmp/vault-3.json --max-llm-calls 25 --await-approval   # approve: echo '{"approved": true}' > var/agent/runs/blaze-record/approval.json
+AGENT_FINAL_CLICK=real uv run agent-run --url https://blazedemo.com/ --run-id blaze-replay --mode replay \
+  --goal "Book a flight from Boston to Rome for 2 passengers, cheapest, ..." --vault /tmp/vault-2.json --await-approval
+# 2. PKP Intercity e-IC (REAL): search -> 3 adults -> EC 131 -> Super Promo 2nd class -> confirm
+#    modal -> automatic seats -> GO TO PAYMENTS -> STOP at the sign-in / "Continue as Guest" wall
+#    (milestone guest_screen, outcome handoff by design). No data is ever typed. Pick a date ~3 weeks out.
+URL="https://ebilet.intercity.pl/polaczenia-miedzynarodowe?dwyj=2026-11-20&swyj=5100065&sprzy=5400014&time=06%3A00&przy=0&sprzez=&ticket100=1010&ticket50=&polbez=0"
+GOAL="Select (do NOT buy or pay) tickets Warszawa Centralna -> Praha hl.n. on 2026-11-20 for 3 passengers (3 adults, normal fare), 2nd class, the cheapest non-refundable fare on the first morning EuroCity. The page starts with 1 adult: first use the header's CHANGE to set 3 adults and confirm. Then open that train, choose the non-refundable 2nd class fare, accept the fare confirmation modal, keep the automatic seat assignment, press GO TO PAYMENTS and stop at the sign-in / Continue as Guest screen. Never type any personal data."
+PLANNER=claude-cli uv run agent-run --url "$URL" --goal "$GOAL" --run-id ic-record --max-llm-calls 25
+uv run agent-run --url "$URL" --goal "$GOAL" --run-id ic-replay --mode replay
+```
+
+Measured on 2026-10-31: BlazeDemo record 5 steps / 1 LLM call / 28 s, replay (Boston -> Rome, 2
+pax) 6 steps / 0 LLM / 21 s incl. the demo purchase (confirmation id `1793436950569`); e-IC
+record 16 steps / 13 LLM calls / 251 s, replay 12 steps / 0 LLM / 25 s, both at `guest_screen`.
+What the profiles (`agent/site_profiles.py`: `BLAZEDEMO`, `INTERCITY`) and playbooks
+(`agent/skills/blazedemo.com.md`, `intercity.pl.md`) encode:
+
+- **e-IC behind Akamai:** plain Playwright Chromium gets `ERR_EMPTY_RESPONSE` at the edge;
+  Camoufox (the default engine) passes. No CAPTCHA was shown.
+- **Party size on e-IC is set in the UI, never in the URL.** `ticket100=1010;1010;1010` shows
+  "3x Passengers / 1 x Adults" and the summary page crashes ("Oops! Something went wrong");
+  the profile's `party_shown` keeps rules from choosing an offer until the header reads "3 x Adults".
+- **Planned handoff** (`handoff_markers` / `handoff_milestone`): checked before anything else
+  each step (the generic modal closer would dismiss the sign-in wall); the run ends `handoff`
+  at `guest_screen` and its flow is still saved.
+- **Fare boxes** (`fare_buttons`, stage `fare`): first fare of the goal's class = non-refundable,
+  last = flexible; replayed as a choice from the goal, not a fixed button.
+- **Modals:** `observe` lists only the controls of an open dialog and clears stale refs.
+- **BlazeDemo** sells the party under one lead name (`lead_passenger_only`), its pay page
+  carries the billing form, and prices are `$1,234.56` with 12-hour times.
+
 ## Trip harness
 
 ```bash
