@@ -263,7 +263,7 @@ export const FEED: readonly EventResponse[] = [
     "e3",
     "agent",
     "proposals_ready",
-    "3 packages from 412 zł each. Vote, then pay your share — I’ll book.",
+    "3 packages from 412 zł each. Vote, then pay your share and I’ll book.",
   ),
   event("e4", "member", "message", "Old Town by train, obviously", ola),
   event("e5", "system", "contribution_paid", "Maja paid 593 zł", maja),
@@ -271,7 +271,7 @@ export const FEED: readonly EventResponse[] = [
     "e6",
     "agent",
     "all_paid",
-    "Everyone paid — booking the train and the stay now.",
+    "Everyone paid. Booking the train and the stay now.",
     undefined,
     {
       total_minor: 355_800,

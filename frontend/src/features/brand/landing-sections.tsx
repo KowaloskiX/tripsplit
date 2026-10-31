@@ -22,7 +22,7 @@ const STEPS = [
   {
     icon: ThumbsUp,
     title: "Vote",
-    body: "Everyone votes in the chat. Packages over the group's budget are flagged before anyone falls in love with them.",
+    body: "Everyone votes in the chat. Packages over the group's budget are flagged.",
     fill: "bg-pastel-lime",
   },
   {
@@ -33,7 +33,7 @@ const STEPS = [
   },
   {
     icon: RefreshCw,
-    title: "The agent books — and rebooks",
+    title: "The agent books and rebooks",
     body: "It buys the tickets on the supplier's own site. Train running late? It finds the next one and re-splits the cost.",
     fill: "bg-surface-sunken",
   },
@@ -59,7 +59,7 @@ export function HowItWorks(): ReactNode {
       className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32"
     >
       <SectionTitle id="how-heading">
-        Four steps, one chat, <span className="accent-word">zero</span> spreadsheets
+        How it <span className="accent-word">works</span>
       </SectionTitle>
       <ol className="mt-14 grid gap-4 sm:mt-20 md:grid-cols-2">
         {STEPS.map((step, index) => (
@@ -178,10 +178,10 @@ export function ClosingCta(): ReactNode {
           id="cta-heading"
           className="display max-w-3xl text-[clamp(2.6rem,6vw,4.6rem)] text-balance"
         >
-          Your next trip is one <span className="accent-word text-lime">message</span> away
+          Plan your next <span className="accent-word text-lime">trip</span>
         </h2>
         <p className="mt-5 max-w-md text-lg text-muted">
-          Create a trip, drop the link in the group chat, and let the agent do the rest.
+          Create a trip, share the link in the group chat, and the agent handles the rest.
         </p>
         <StartTripButton className="mt-10" />
       </Reveal>
@@ -196,7 +196,7 @@ export function LandingFooter(): ReactNode {
         <div>
           <Wordmark />
           <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-            From group chat to tickets — for friends who would rather travel than do accounting.
+            From group chat to tickets: planned, paid and booked in one place.
           </p>
         </div>
         <nav aria-label="Product" className="text-sm">

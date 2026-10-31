@@ -74,8 +74,8 @@ export function VoiceScene(): ReactNode {
       />
       <p className="ticket-mono text-center text-xs text-muted">
         {live
-          ? "This browser can listen — tap the mic in the box to try it for real; unmute to hear the reply."
-          : "No SpeechRecognition here (Firefox?) — the mic stays hidden; Chrome, Edge or Safari can listen."}
+          ? "This browser supports voice input. Tap the mic to try it; unmute to hear the reply."
+          : "No SpeechRecognition here (Firefox?), so the mic is hidden. Use Chrome, Edge or Safari."}
       </p>
     </div>
   );

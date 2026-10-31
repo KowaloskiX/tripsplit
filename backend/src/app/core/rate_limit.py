@@ -1,30 +1,12 @@
-"""Rate limiting as middleware — deliberately our own, not `slowapi`.
+"""Rate limiting middleware, our own rather than slowapi.
 
-**Why not slowapi.** Verified on FastAPI 0.141 + Starlette 1.3:
-- `SlowAPIMiddleware` recognizes a route via `hasattr(route, "endpoint")`, but FastAPI wraps
-  `include_router` in an `_IncludedRouter` object that lacks that attribute. The middleware
-  never finds a handler, treats the request as exempt and **limits nothing**.
-- The `@limiter.limit` decorator wraps the endpoint function, so it counts only AFTER
-  dependencies resolve. CSRF rejections (403) and missing sessions (401) never reached the
-  counter — meaning the cheapest floods stayed unlimited.
-
-Here the limit is checked before dependencies, for every route, with the rules in one place.
-
-**Storage is pluggable** (`RATE_LIMIT_STORAGE_URL`):
-- empty -> process memory; the limit applies **per instance**. Good for tests and single-node.
-- `redis://…` -> one shared counter for all replicas. The target setting for staging/prod.
-- `mongodb://…` -> shared as well, without adding Redis, but every request becomes a write to
-  the document database. An emergency exit, not a default.
-
-**Behind a proxy** set `TRUSTED_PROXY_HOPS` to the number of your own proxies in front of the
-application — see `client_key`. Without it all traffic from nginx looks like a single client
-and the login limit becomes a global limit for everybody at once.
-
-**Known limitations:**
-- The key is an IP address, which is a blunt instrument: users behind one NAT share a budget.
-  Per-account limits are a separate layer, not built yet. We deliberately do NOT key on the
-  session cookie: its value cannot be verified without a database query, so an attacker would
-  draw a fresh cookie per request and enjoy an unlimited budget.
+slowapi does not see routes mounted with `include_router` (it limits nothing) and its decorator
+counts only after dependencies resolve, so 401/403 floods went uncounted. Here the limit is
+checked before dependencies, for every route. Storage (`RATE_LIMIT_STORAGE_URL`): empty = per
+process memory, `redis://` = shared (production), `mongodb://` = shared fallback. Behind a
+proxy set `TRUSTED_PROXY_HOPS` (see `client_key`). The key is the client IP, not the session
+cookie: a cookie cannot be checked without a database query, so a fresh one per request would
+bypass the limit.
 """
 
 import logging

@@ -138,7 +138,7 @@ class ProposalService:
             trip_oid,
             EventKind.MESSAGE,
             EventActor.AGENT,
-            f"Researching packages for {brief.travellers} people from {trip.origin} — getting "
+            f"Researching packages for {brief.travellers} people from {trip.origin}, getting "
             "there, a place to stay and something fun. This can take a few minutes.",
         )
         self.runner.spawn(self.research(trip_oid, previous, brief), name=f"research-{trip_id}")
@@ -221,14 +221,14 @@ class ProposalService:
                 raise _StatusChanged
             cheapest = min(proposal.per_person_minor for proposal in proposals)
             message = (
-                f"{len(proposals)} packages are ready — from "
+                f"{len(proposals)} packages are ready, from "
                 f"{format_money(cheapest, brief.currency)} per person. Vote for your favourite!"
             )
             budget = brief.budget_per_person_minor
             if budget is not None and all(proposal.over_budget for proposal in proposals):
                 message += (
                     f" Heads-up: none fits the budget of {format_money(budget, brief.currency)} "
-                    "per person — these are the cheapest options I found."
+                    "per person. These are the cheapest options I found."
                 )
             await self.events.add(
                 trip_id,
@@ -347,7 +347,7 @@ class ProposalService:
                     trip_oid,
                     EventKind.MESSAGE,
                     EventActor.AGENT,
-                    f"Heads-up: “{winner.title}” is over your budget — "
+                    f"Note: “{winner.title}” is over your budget. "
                     f"{format_money(winner.per_person_minor, trip.currency)} per person against "
                     f"{format_money(trip.budget_per_person_minor, trip.currency)} planned.",
                     payload={
@@ -440,6 +440,6 @@ def progress_message(progress: SupplierProgress) -> str:
         case SearchOutcome.EMPTY:
             return f"{name} · nothing for these dates · {progress.seconds:.1f} s"
         case SearchOutcome.TIMEOUT:
-            return f"{name} ✗ too slow ({progress.seconds:.1f} s) — going on without it"
+            return f"{name} ✗ too slow ({progress.seconds:.1f} s), continuing without it"
         case SearchOutcome.FAILED:
             return f"{name} ✗ unavailable right now"

@@ -75,7 +75,7 @@ export function BookingsList({
 }): ReactNode {
   const start = useStartBooking(trip.trip_id);
   if (trip.bookings.length === 0) {
-    return <p className="text-sm text-muted">Nothing to book yet — the group is still deciding.</p>;
+    return <p className="text-sm text-muted">Nothing to book yet. The group is still deciding.</p>;
   }
   return (
     <div className="space-y-4">

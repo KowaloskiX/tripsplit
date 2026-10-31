@@ -1,29 +1,12 @@
-"""`CatalogResearcher`: packages composed from what the enabled suppliers actually offer.
+"""`CatalogResearcher`: three packages composed from what the enabled suppliers offer.
 
-It asks every transport supplier of the wanted mode (any mode when the trip has no preference),
-every stay supplier and every activity supplier in the registry, then composes three packages
-deterministically:
-
-- **Budget** — the cheapest transport and a step up from the cheapest bed (none when the
-  cheapest is known to be decent); if that breaks the per-person budget it trims to the
-  cheapest bed, and says so when even that does not fit.
-- **Comfort** — a third way to go when there is one (no slower than the cheapest, at most 1.5x
-  its price), the second-best stay and the cheaper evening out; without the evening when that
-  breaks the budget.
-- **Splurge** — the dearest of the quickest transports, the best stay and the dearer evening.
-
-Transport has to fit the calendar (`app.ai.itinerary`: there on day one, back on the last day,
-no red-eye, the trip's travel preferences) whenever anything does. Two rail singles compete
-with the return ticket. "Fly there, train back" in the brief composes one-way offers of two
-modes; when the wished modes have nothing, each direction falls back to another mode and every
-summary says so. Whether a package
-still exceeds the budget is flagged where it is stored (`Proposal.over_budget`). With the PKP
-Intercity adapter enabled this is the live research: real trains and fares, same rules.
-
-Every supplier search of a research runs at once (transport, stays, activities). One that fails
-or exceeds `supplier_timeout_s` contributes no offers and never fails the research by itself; a
-timed-out search keeps running in the background and, with a `SearchCache`, fills the cache for
-the next research. Each finished search is reported to the `research_progress` sink, if set.
+Budget = cheapest transport and a step above the cheapest bed (trimmed to fit the budget);
+Comfort = a third way to go (at most 1.5x the cheapest), the second-best stay and the cheaper
+evening; Splurge = the dearest of the quickest transports, the best stay, the dearer evening.
+Transport must fit the calendar (`app.ai.itinerary`); one-way offers of two modes may combine,
+and a mode with nothing falls back to another (the summary says so). Over-budget packages are
+flagged (`Proposal.over_budget`). All supplier searches run at once; a failed or timed-out one
+contributes nothing, and a timed-out one keeps filling the `SearchCache` in the background.
 """
 
 import asyncio

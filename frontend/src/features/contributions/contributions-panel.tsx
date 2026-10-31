@@ -33,7 +33,7 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
         <PayShareSheet tripId={trip.id} currency={trip.currency} />
         {mine !== null && mine.refund_minor > 0 && (
           <p className="rounded-[var(--radius-control)] bg-info-soft px-3.5 py-2.5 text-sm text-info">
-            You get {formatMoney(mine.refund_minor, trip.currency)} back — you paid more than your
+            You get {formatMoney(mine.refund_minor, trip.currency)} back. You paid more than your
             current share.
           </p>
         )}
@@ -44,7 +44,7 @@ export function ContributionsPanel({ room }: { room: RoomResponse }): ReactNode 
         )}
         {trip.status === "booking" && (
           <p className="rounded-[var(--radius-control)] bg-success-soft px-3.5 py-2.5 text-sm text-success">
-            Everyone paid — the organizer can start the bookings above.
+            Everyone paid. The organizer can start the bookings above.
           </p>
         )}
         <ContributionsTable

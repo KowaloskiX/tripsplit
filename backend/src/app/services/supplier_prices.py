@@ -241,7 +241,7 @@ class SupplierPrices:
                 EventKind.BOOKING_FAILED,
                 EventActor.AGENT,
                 f"{first.supplier} no longer has seats for the whole group on this "
-                f"{mode_noun(first.mode)} — I bought none of its {len(parts)} purchases, so "
+                f"{mode_noun(first.mode)}: I bought none of its {len(parts)} purchases, so "
                 "nobody is left without a ticket. Pick another option or book it by hand.",
                 payload={
                     "booking_id": to_text(identifier_of(first)),
@@ -284,7 +284,7 @@ class SupplierPrices:
                 trip,
                 EventKind.HOLD_EXPIRED,
                 f"The hold on {booking.title} expired on {_when(booking.hold_expires_at)} "
-                f"before the purchase — asking {booking.supplier} for a new one.",
+                f"before the purchase. Asking {booking.supplier} for a new one.",
                 booking,
                 expired_at=booking.hold_expires_at.isoformat(),
             )
@@ -385,13 +385,13 @@ class SupplierPrices:
         )
         if plan.shares:
             each = max(abs(share.change.delta_minor) for share in plan.shares)
-            message += f" — {format_money(each, money)} {'more' if rose else 'less'} each."
+            message += f", {format_money(each, money)} {'more' if rose else 'less'} each."
         else:
             message += "."
         if plan.owes:
             message += " Top up and I will buy it."
         elif plan.refunds:
-            message += " The difference will be refunded — buying it now."
+            message += " The difference will be refunded. Buying it now."
         else:
             message += " Buying it now."
         payload = {

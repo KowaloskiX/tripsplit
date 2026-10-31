@@ -15,10 +15,7 @@ type ApprovalCardProps = {
   onDecision: (approved: boolean) => void;
 };
 
-/**
- * The human's half of the final pay click: the agent stopped at the supplier's summary, and
- * nothing is paid until the organizer looks at it and approves.
- */
+/** The agent stopped at the supplier's summary; nothing is paid until the organizer approves. */
 export function ApprovalCard({
   frameUrl,
   supplier,
@@ -49,7 +46,7 @@ export function ApprovalCard({
               on the screenshot. Saying so beats a silent mismatch between the two numbers. */}
           <p className="mt-1 text-sm text-muted">
             {travellers ? `For ${travellers} people. ` : ""}The agent stopped before paying. The
-            supplier's own total is on the summary above — check it, then approve the final click.
+            supplier's own total is on the summary above. Check it, then approve the final click.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

@@ -36,7 +36,7 @@ class AutoBooker:
             identifier_of(trip),
             EventKind.MESSAGE,
             EventActor.AGENT,
-            "Everyone paid — booking everything now. The organizer approves the basket once.",
+            "Everyone paid. Booking everything now. The organizer approves the basket once.",
             payload={"auto_book": True},
         )
         started = await self.bookings.start_all(trip_id, to_text(trip.organizer_id))

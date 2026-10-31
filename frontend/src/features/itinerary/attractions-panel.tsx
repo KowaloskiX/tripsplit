@@ -122,7 +122,7 @@ export function AttractionsPanel({ room }: { room: RoomResponse }): ReactNode {
               <ItineraryView days={days} />
             ) : (
               <p className="text-sm text-muted">
-                No plan yet — vote above, then plan the days around the train times.
+                No plan yet. Vote above, then plan the days around the train times.
               </p>
             )}
           </section>

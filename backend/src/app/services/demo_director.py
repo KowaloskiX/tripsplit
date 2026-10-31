@@ -147,7 +147,7 @@ class DirectorAborted(Exception):
 # Short, human group-chat lines. Picked deterministically per trip (seeded random).
 JOIN_LINES = ("I'm in!", "Count me in 🙌")
 VOTE_LINES = ("This one looks great", "Hmm, I like this one more")
-SWITCH_LINE = "Ok, outvoted — switching 🙌"
+SWITCH_LINE = "Ok, outvoted, switching 🙌"
 PAY_LINES = ("paid with BLIK ✅", "paid by card", "done, Apple Pay", "sent!", "paid with BLIK")
 WALLET_PAY_LINE = "paid from wallet 💸"
 DISRUPTION_LINES = ("Train delayed?! 😱", "Agent's on it 👀")
@@ -271,7 +271,7 @@ class DemoDirector:
         self.progress.phase = DirectorPhase.JOINING
         trip = await self._trip()
         if trip.status not in JOINABLE_STATUSES:
-            self._beat("Director", "Joining is over for this trip — skipping the arrivals.")
+            self._beat("Director", "Joining is over for this trip. Skipping the arrivals.")
             return
         present = len(await self.members.for_trip(identifier_of(trip)))
         wanted = trip.group_size - present
@@ -303,7 +303,7 @@ class DemoDirector:
 
         async def settled(fresh: Trip) -> bool:
             if fresh.status is TripStatus.COLLECTING:
-                raise DirectorAborted("the research failed — see the trip feed")
+                raise DirectorAborted("the research failed, see the trip feed")
             return fresh.status is not TripStatus.PROPOSING
 
         if await self._wait_for(settled, self.timings.research_wait_s) is None:
@@ -315,7 +315,7 @@ class DemoDirector:
         self.progress.phase = DirectorPhase.VOTING
         trip = await self._trip()
         if trip.status is not TripStatus.VOTING:
-            self._beat("Director", "The vote is already closed — skipping it.")
+            self._beat("Director", "The vote is already closed. Skipping it.")
             return
         proposals = await self.proposals.for_trip(identifier_of(trip))
         if not proposals:
@@ -324,7 +324,7 @@ class DemoDirector:
         others = [p for p in proposals if identifier_of(p) != identifier_of(target)]
         friends = await self._friends(trip)
         if not friends:
-            raise DirectorAborted("no demo friends on this trip — run the full script")
+            raise DirectorAborted("no demo friends on this trip; run the full script")
 
         # A believable spread: the second and fourth friend fancy another package first.
         dissenters: list[TripMember] = []
@@ -417,7 +417,7 @@ class DemoDirector:
             member.display_name, f"paid {format_money(result.value.paid_minor, trip.currency)}"
         )
         if result.value.all_paid:
-            self._beat("Agent", "Everyone paid — the agent can book now.")
+            self._beat("Agent", "Everyone paid. The agent can book now.")
 
     async def _wait_for_organizer(self, organizer: TripMember) -> None:
         self.progress.phase = DirectorPhase.WAITING_FOR_ORGANIZER
@@ -435,15 +435,15 @@ class DemoDirector:
         if trip.status not in (TripStatus.BOOKING, TripStatus.REBOOKING, TripStatus.BOOKED):
             return
         if self.progress.features.auto_book:
-            self._beat("Agent", "AUTO_BOOK is on — the agent starts buying.")
+            self._beat("Agent", "AUTO_BOOK is on, so the agent starts buying.")
         else:
-            self._beat("Director", "Everyone paid — over to you: start the booking.")
+            self._beat("Director", "Everyone paid. Over to you: start the booking.")
 
     async def _disruption(self) -> None:
         self.progress.phase = DirectorPhase.DISRUPTION
         confirmed = await self._wait_for(self._has_confirmed_transport, self.timings.booking_wait_s)
         if confirmed is None:
-            self._beat("Director", "No confirmed transport yet — skipping the disruption.")
+            self._beat("Director", "No confirmed transport yet. Skipping the disruption.")
             return
         await self._pause()
         result = await self.cast.bookings.simulate_disruption(
@@ -458,7 +458,7 @@ class DemoDirector:
                 self._beat("Director", "Nothing to disrupt.")
                 return
             raise DirectorAborted(f"the disruption failed ({result.error})")
-        self._beat("Agent", f"Delay of {DISRUPTION_DELAY_MINUTES} min — rebooking a later train.")
+        self._beat("Agent", f"Delay of {DISRUPTION_DELAY_MINUTES} min. Rebooking a later train.")
         friends = await self._friends(confirmed)
         for friend, line in zip(friends, DISRUPTION_LINES, strict=False):
             await self._pause()

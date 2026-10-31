@@ -1,33 +1,13 @@
-"""`duffel`: real flights through the Duffel Flights API — in TEST mode unless explicitly not.
+"""`duffel`: real flights through the Duffel Flights API (test mode unless live is allowed).
 
-- `search`: `POST /air/offer_requests?return_offers=true` — the best few holdable offers.
-- `quote`: `GET /air/offers/{id}`; an expired offer (or another party size) is re-found.
-- `hold`: `POST /air/orders` with `type: "hold"` and the travellers — a named booking.
-- `purchase`: `GET /air/orders/{id}` + `POST /air/payments` (balance) on the held order;
-  without a hold, `POST /air/orders` with `type: "instant"` and the payment.
-- `status`: `GET /air/airline_initiated_changes?order_id=` -> a delay or cancellation.
-
-**Offers expire after ~30 minutes**, a group votes for longer. `supplier_data` keeps the
-search (slices, party) and the itinerary (flight numbers + departure times), so an expired
-offer — or a purchase for a different party size — is found again with a fresh search and the
-same flights; the new offer id lives only as long as the call needs it (the hold's order id is
-what the purchase pays).
-
-**Money.** Duffel prices and charges in the account's currency (EUR for ours). Trips are in PLN,
-so prices are converted with a configured rate (`DUFFEL_FX_EUR_PLN`, default 4.30) for the
-group; the original amount and currency stay in `supplier_data` and in the offer details, and
-Duffel is always paid its own amount in its own currency. A purchase never pays more than the
-approved PLN amount: a dearer order is refused and the price-change path re-splits the shares.
-
-**Travellers.** An airline order names every passenger: given and family name, birth date,
-gender (Duffel requires it and derives nothing; the title is derived from it), e-mail and phone.
-TripSplit keeps no per-passenger contact, so the configured agency contact
-(`DUFFEL_CONTACT_EMAIL` / `DUFFEL_CONTACT_PHONE`) is sent for everyone. Passports go only when
-the offer says `passenger_identity_documents_required`, but are required up front for every
-flight (like the simulated airline) because whether a route needs them is only known per offer.
-Every passenger is booked as an adult. Names are sent in ASCII (airline PNRs are ASCII). No
-traveller value is ever logged; Duffel's error messages (which may echo one) are dropped in
-favour of codes and field names.
+search -> `POST /air/offer_requests`, quote -> `GET /air/offers/{id}`, hold -> a `hold` order,
+purchase -> pay the held order (or an `instant` order without a hold), status -> airline
+initiated changes. Offers expire after ~30 min, so `supplier_data` keeps the search and the
+itinerary (flight number + departure time) and an expired offer, or one for another party
+size, is re-found by a fresh search. Prices are EUR, converted to PLN at `DUFFEL_FX_EUR_PLN`
+for the group; Duffel is always paid its own amount, never above the approved PLN amount.
+Orders name every passenger (ASCII names, gender required, all adults, the agency contact for
+everyone). No traveller value is logged; Duffel's error messages are dropped for codes.
 """
 
 import logging

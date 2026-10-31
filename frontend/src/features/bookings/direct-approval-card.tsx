@@ -14,11 +14,7 @@ type DirectApprovalCardProps = {
   currency: string;
 };
 
-/**
- * The approval of a purchase bought through the supplier's own API (channel `api`): there is
- * no agent and no screenshot — the price is the supplier's quote or hold, and approving makes
- * the backend call the purchase API.
- */
+/** Approval of an API-channel purchase: no agent, no screenshot, the price is the supplier's quote. */
 export function DirectApprovalCard({
   tripId,
   booking,
@@ -40,8 +36,7 @@ export function DirectApprovalCard({
         </p>
         {booking.hold_expires_at && <HoldCountdown expiresAt={booking.hold_expires_at} />}
         <p className="text-sm text-muted">
-          {booking.supplier} confirmed this price. Approving buys it through their booking API — no
-          agent involved.
+          {booking.supplier} confirmed this price. Approving buys it through their booking API.
         </p>
         <div className="flex flex-wrap gap-2">
           <Button disabled={approval.isPending} onClick={() => approval.decide(booking.id, true)}>

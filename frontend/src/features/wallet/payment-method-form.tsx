@@ -86,7 +86,7 @@ export function PaymentMethodForm({
         <Field
           htmlFor={`${id}-blik`}
           label="BLIK code"
-          hint="Any 6 digits — 000 000 is declined by the demo bank."
+          hint="Any 6 digits. 000 000 is declined by the demo bank."
           error={errors.blik}
         >
           <Input
@@ -106,7 +106,7 @@ export function PaymentMethodForm({
           <Field
             htmlFor={`${id}-number`}
             label="Card number"
-            hint="Test card 4242 4242 4242 4242 — one ending 0002 is declined."
+            hint="Test card 4242 4242 4242 4242. Cards ending 0002 are declined."
             error={errors.number}
           >
             <Input
