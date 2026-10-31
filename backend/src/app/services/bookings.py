@@ -34,6 +34,7 @@ from app.core.domain.bookings import (
     run_id_for,
 )
 from app.core.domain.errors import BookingError
+from app.core.domain.packages import expected_total_clause
 from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import mode_noun, price_is_guaranteed, purchase_noun
 from app.core.domain.travellers import describe_missing, split_name
@@ -659,7 +660,7 @@ class BookingService:
         spec = LaunchSpec(
             run_id=run_id,
             url=booking.supplier_url,
-            goal=self._goal_for(booking, party),
+            goal=self._goal_for(booking, party, trip.currency),
             vault=await self._vault_for(trip, booking, members),
             max_steps=self.max_steps,
             headful=self.headful,
@@ -681,10 +682,14 @@ class BookingService:
         task.add_done_callback(_MONITORS.discard)
         task.add_done_callback(lambda _: _WATCHED.discard(run_id))
 
-    def _goal_for(self, booking: Booking, travellers: int) -> str:
+    def _goal_for(self, booking: Booking, travellers: int, currency: str) -> str:
+        expected = expected_total_clause(
+            booking.amount_minor, currency, self.prices.price_tolerance_percent
+        )
         return (
-            f"{booking.goal} Passengers on this purchase: {travellers}. Fill traveller names "
-            "and the contact email from the vault. Stop at the final summary, before paying."
+            f"{booking.goal} Passengers on this purchase: {travellers}. {expected} Fill "
+            "traveller names and the contact email from the vault. Stop at the final summary, "
+            "before paying."
         )
 
     async def _vault_for(
@@ -1346,7 +1351,8 @@ class BookingService:
             trip_id=target.trip_id,
             kind=target.kind,
             mode=target.mode,
-            title=f"{title} (rebooked)"[:200],
+            # "Rebooked" is shown from `replaces_booking_id` (a badge), not baked into the title.
+            title=title[:200],
             supplier=offer.seller if offer is not None else target.supplier,
             supplier_url=(offer.purchase_url if offer is not None else "") or target.supplier_url,
             goal=f"{target.goal} {note}"[:4000],

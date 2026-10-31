@@ -8,6 +8,8 @@ from collections import Counter
 from collections.abc import Sequence
 from datetime import date, datetime
 
+# One money style for every feed message, `1 234.56 PLN` (still importable from here).
+from app.core.domain.bookings import format_money as format_money
 from app.core.domain.trips import BookingKind
 
 _STOP_BEFORE_PAY = "Stop at the summary before paying."
@@ -25,9 +27,18 @@ def is_over_budget(per_person_minor: int, budget_per_person_minor: int | None) -
     return budget_per_person_minor is not None and per_person_minor > budget_per_person_minor
 
 
-def format_money(amount_minor: int, currency: str) -> str:
-    """`123456, "PLN"` -> `"1234.56 PLN"` — for agent messages in the feed."""
-    return f"{amount_minor // 100}.{amount_minor % 100:02d} {currency}"
+# The agent may accept a supplier total this close to what the group paid (rounding of
+# per-passenger splits); PRICE_TOLERANCE_PERCENT widens it, never narrows it.
+MIN_SUMMARY_TOLERANCE_PERCENT = 1.0
+
+
+def expected_total_clause(amount_minor: int, currency: str, tolerance_percent: float) -> str:
+    """The hard price fact for the agent's summary check (parsed by `app.agent.goal`)."""
+    tolerance = max(tolerance_percent, MIN_SUMMARY_TOLERANCE_PERCENT)
+    return (
+        f"Expected total: {format_money(amount_minor, currency)} for this purchase "
+        f"(tolerance {tolerance:g}%); a different supplier total is a handoff, not a purchase."
+    )
 
 
 def pick_winner[T](candidates: Sequence[T], votes: Sequence[T]) -> T:
@@ -53,11 +64,13 @@ def booking_goal(
     date_to: date,
     starts_at: datetime | None = None,
     itinerary: str = "",
+    return_date: date | None = None,
 ) -> str:
     """The natural-language instruction the booking agent receives for one package item.
 
-    `itinerary` describes transport segments ("LO 401 WAW -> BCN 2026-11-20 07:05"); without
-    it a transport is taken as a return journey over the trip's dates.
+    `itinerary` describes transport segments (`itinerary.describe_itinerary`); without it a
+    transport is taken as a return journey over the trip's dates. `return_date` marks a
+    return journey bought as ONE order: the agent's summary check then requires both legs.
     """
     extra = f" {details.strip()}" if details.strip() else ""
     match kind:
@@ -67,6 +80,11 @@ def booking_goal(
                 or f"outbound on {date_from.isoformat()}, return on {date_to.isoformat()}"
             )
             body = f"Find and book {title} for {travellers} passengers: {route}."
+            if return_date is not None:
+                body += (
+                    f" Return date: {return_date.isoformat()} — buy the outbound and the return "
+                    "leg together in one order."
+                )
         case BookingKind.STAY:
             body = (
                 f"Find and book {title} for {travellers} guests, check-in "

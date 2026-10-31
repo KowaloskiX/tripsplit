@@ -2,6 +2,7 @@
 adapter on recorded answers, the registry — no database, no network."""
 
 from datetime import UTC, date, datetime, timedelta
+from urllib.parse import parse_qsl
 
 import pytest
 
@@ -218,6 +219,22 @@ async def test_agent_channel_sims_cannot_be_bought_through_an_api() -> None:
     assert await rail.hold(ref, []) is None
 
 
+async def test_a_demo_rail_return_is_one_order_for_both_legs() -> None:
+    """Regression: the site sold one leg per order, so a "return" offer was bought one way."""
+    demo = build_registry(["demo_rail"], "http://localhost:8000").get("demo_rail")
+    assert demo is not None
+    request = SearchRequest("Warszawa", "Praha", date(2026, 11, 30), date(2026, 12, 3), 3)
+    offer = (await demo.search(request))[0]
+    assert offer.title == "EC 111 Praha · Warszawa → Praha · return"
+    assert offer.price_minor == 18_900 * 2 * 3
+    assert dict(parse_qsl(offer.purchase_url.split("?")[1])) == {
+        "from": "Warszawa",
+        "to": "Praha",
+        "date": "2026-11-30",
+        "return": "2026-12-03",
+    }
+
+
 # ---- PKP Intercity adapter, registry, brief reading ------------------------------------------
 
 
@@ -308,4 +325,12 @@ async def test_in_a_demo_pkp_trains_are_bought_on_the_fake_rail_site() -> None:
     assert pkp is not None
     request = SearchRequest("Warszawa", "Prague", date(2026, 11, 20), None, 6)
     (offer,) = await pkp.search(request)
-    assert offer.purchase_url == "http://localhost:8000/api/demo-supplier/rail"
+    site, query = offer.purchase_url.split("?")
+    assert site == "http://localhost:8000/api/demo-supplier/rail"
+    # The site prices the journey at PKP's real per-person fare; the dates are filled in.
+    assert dict(parse_qsl(query)) == {
+        "from": offer.segments[0].origin,
+        "to": offer.segments[0].destination,
+        "date": "2026-11-20",
+        "fare": "15565",
+    }
