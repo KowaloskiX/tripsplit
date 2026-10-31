@@ -148,9 +148,14 @@ async def test_full_flow_from_brief_to_booking(app: FastAPI, member_factory: Mem
     trip_oid = to_object_id(trip_id)
     assert trip_oid is not None
     bookings = await BookingRepository().for_trip(trip_oid)
-    assert len(bookings) == len(proposals[1]["items"])
+    # PKP Intercity sells at most 5 passengers per purchase: the train of six is two bookings.
+    assert len(bookings) == len(proposals[1]["items"]) + 1
     assert all(b.status is BookingStatus.PENDING for b in bookings)
-    assert all("6" in b.goal and "Stop at the summary before paying." in b.goal for b in bookings)
+    assert all("Stop at the summary before paying." in b.goal for b in bookings)
+    trains = [b for b in bookings if b.kind is BookingKind.TRAIN]
+    assert [len(b.passenger_user_ids) for b in trains] == [3, 3]
+    assert all("3 passengers" in b.goal for b in trains)
+    assert all("6" in b.goal for b in bookings if b.kind is not BookingKind.TRAIN)
 
     # Everyone but the organizer pays — the trip must NOT move to booking yet (rule #1).
     assert (await friend.post(f"/api/trips/{trip_id}/contributions/pay")).status_code == 200

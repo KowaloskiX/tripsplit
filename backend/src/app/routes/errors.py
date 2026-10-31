@@ -37,6 +37,8 @@ _TRIP_STATUS: dict[TripError, int] = {
     TripError.INVALID_STATE: status.HTTP_409_CONFLICT,
     TripError.NO_PROPOSALS: status.HTTP_409_CONFLICT,
     TripError.ALREADY_PAID: status.HTTP_409_CONFLICT,
+    TripError.ORGANIZER_CANNOT_LEAVE: status.HTTP_409_CONFLICT,
+    TripError.BOOKING_STARTED: status.HTTP_409_CONFLICT,
 }
 
 _TRIP_MESSAGE: dict[TripError, str] = {
@@ -46,6 +48,8 @@ _TRIP_MESSAGE: dict[TripError, str] = {
     TripError.INVALID_STATE: "The trip is not at a stage where this is possible.",
     TripError.NO_PROPOSALS: "There are no packages to vote on yet.",
     TripError.ALREADY_PAID: "Your share is already paid.",
+    TripError.ORGANIZER_CANNOT_LEAVE: "The organizer cannot leave their own trip.",
+    TripError.BOOKING_STARTED: "Too late to leave: the agent has already started booking.",
 }
 
 
@@ -70,6 +74,9 @@ _BOOKING_STATUS: dict[BookingError, int] = {
     BookingError.BOOKING_NOT_STARTABLE: status.HTTP_409_CONFLICT,
     BookingError.NOT_AWAITING_APPROVAL: status.HTTP_409_CONFLICT,
     BookingError.NOTHING_TO_DISRUPT: status.HTTP_409_CONFLICT,
+    BookingError.SOLD_OUT: status.HTTP_409_CONFLICT,
+    BookingError.PRICE_CHANGED: status.HTTP_409_CONFLICT,
+    BookingError.NOT_COMPLETABLE: status.HTTP_409_CONFLICT,
 }
 
 _BOOKING_MESSAGE: dict[BookingError, str] = {
@@ -82,6 +89,11 @@ _BOOKING_MESSAGE: dict[BookingError, str] = {
     BookingError.BOOKING_NOT_STARTABLE: "This booking is already in progress or done.",
     BookingError.NOT_AWAITING_APPROVAL: "This booking is not waiting for an approval.",
     BookingError.NOTHING_TO_DISRUPT: "There is no confirmed booking to disrupt.",
+    BookingError.SOLD_OUT: "The supplier no longer offers this booking.",
+    BookingError.PRICE_CHANGED: (
+        "The supplier changed the price. Shares were re-split — top up, then start again."
+    ),
+    BookingError.NOT_COMPLETABLE: "Only a handed-off or failed booking can be finished by hand.",
 }
 
 

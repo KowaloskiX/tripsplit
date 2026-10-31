@@ -1,7 +1,7 @@
 import { Bot } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { EventResponse } from "@/lib/api";
+import type { EventKind, EventResponse } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type Variant = "agent" | "mine" | "member" | "system";
@@ -12,6 +12,13 @@ export function variantOf(event: EventResponse, myUserId: string): Variant {
   return event.actor_user_id === myUserId ? "mine" : "member";
 }
 
+// Agent events that change what people owe get a tag, so they do not drown in the chat.
+const AGENT_TAG: Partial<Record<EventKind, string>> = {
+  price_changed: "price changed",
+  resplit: "new shares",
+  disruption: "disruption",
+};
+
 function time(iso: string): string {
   return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" }).format(
     new Date(iso),
@@ -21,7 +28,12 @@ function time(iso: string): string {
 function FeedItem({ event, variant }: { event: EventResponse; variant: Variant }): ReactNode {
   if (variant === "system") {
     return (
-      <li className="py-1 text-center font-mono text-[11px] text-muted">
+      <li
+        className={cn(
+          "py-1 text-center font-mono text-[11px]",
+          event.kind === "member_left" ? "text-danger" : "text-muted",
+        )}
+      >
         {event.message} · {time(event.created_at)}
       </li>
     );
@@ -35,6 +47,11 @@ function FeedItem({ event, variant }: { event: EventResponse; variant: Variant }
         <div className="min-w-0 max-w-[85%] rounded-[var(--radius-panel)] border border-accent/40 bg-accent/8 px-3 py-2">
           <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-accent">
             TripSplit agent · {time(event.created_at)}
+            {AGENT_TAG[event.kind] && (
+              <span className="ml-2 rounded-full border border-accent/50 px-1.5 text-accent">
+                {AGENT_TAG[event.kind]}
+              </span>
+            )}
           </p>
           <p className="mt-0.5 text-sm text-ink">{event.message}</p>
         </div>

@@ -13,12 +13,11 @@ from pymongo.asynchronous.client_session import AsyncClientSession
 from app.ai.research import PackagePlan, PackageResearcher, TripBrief
 from app.core.background import BackgroundRunner
 from app.core.domain.errors import TripError
-from app.core.domain.packages import booking_goal, format_money, per_person, pick_winner
+from app.core.domain.packages import format_money, per_person, pick_winner
 from app.core.domain.result import Err, Ok, Result
-from app.core.domain.trips import BookingKind, EventActor, EventKind, TripStatus, split_evenly
+from app.core.domain.trips import EventActor, EventKind, TripStatus, split_evenly
 from app.db.client import Database
 from app.db.identifiers import identifier_of, to_object_id, to_text
-from app.models.bookings import Booking
 from app.models.trips import Contribution, Proposal, ProposalItem, Trip
 from app.repositories.bookings import BookingRepository
 from app.repositories.trips import (
@@ -29,6 +28,7 @@ from app.repositories.trips import (
     TripRepository,
     VoteRepository,
 )
+from app.services.booking_plans import bookings_for_item
 from app.services.trip_access import TripAccess, load_access, require_organizer, require_status
 from app.services.trip_views import TripStatusView
 
@@ -183,8 +183,9 @@ class ProposalService:
         return Ok(TripStatusView(trip_id=trip_id, status=trip.status))
 
     async def close_voting(self, trip_id: str, user_id: str) -> Result[TripStatusView, TripError]:
-        """Picks the winner, splits it into one share per CURRENT member and queues one booking
-        per package item. All of it in one transaction: half a split is worse than none."""
+        """Picks the winner, splits it into one share per CURRENT member and queues the bookings
+        of every package item (several for a train whose supplier caps one purchase — see
+        `bookings_for_item`). All of it in one transaction: half a split is worse than none."""
         access = await self._access(trip_id, user_id)
         if not isinstance(access, Ok):
             return access
@@ -230,11 +231,12 @@ class ProposalService:
                 ],
                 session=session,
             )
-            for item in winner.items:
-                booking = _booking(trip, item, len(members))
-                if item.kind is BookingKind.TRAIN and self.train_supplier_url:
-                    booking.supplier_url = self.train_supplier_url
-                await self.bookings.add(booking, session=session)
+            passengers = [member.user_id for member in members]
+            for index, item in enumerate(winner.items):
+                for booking in bookings_for_item(
+                    trip, item, index, passengers, train_supplier_url=self.train_supplier_url
+                ):
+                    await self.bookings.add(booking, session=session)
             await self.events.add(
                 trip_oid,
                 EventKind.PROPOSAL_CHOSEN,
@@ -288,24 +290,4 @@ def _proposal(trip_id: PydanticObjectId, plan: PackagePlan, travellers: int) -> 
         ],
         total_minor=plan.total_minor,
         per_person_minor=per_person(plan.total_minor, travellers),
-    )
-
-
-def _booking(trip: Trip, item: ProposalItem, travellers: int) -> Booking:
-    return Booking(
-        trip_id=identifier_of(trip),
-        kind=item.kind,
-        title=item.title,
-        supplier=item.supplier,
-        supplier_url=item.supplier_url,
-        amount_minor=item.price_minor,
-        goal=booking_goal(
-            kind=item.kind,
-            title=item.title,
-            details=item.details,
-            travellers=travellers,
-            date_from=trip.date_from,
-            date_to=trip.date_to,
-            starts_at=item.starts_at,
-        ),
     )

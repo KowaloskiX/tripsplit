@@ -1,6 +1,8 @@
-"""Booking-side rules: which states may start an agent, how a disruption re-prices the trip and
-how shares are re-split. Pure Python — no framework, no database."""
+"""Booking-side rules: which states may start an agent, how a disruption re-prices the trip,
+how shares are re-split and how many passengers one supplier purchase may carry. Pure Python —
+no framework, no database."""
 
+import math
 import re
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
@@ -23,6 +25,45 @@ TRIP_STATUSES_THAT_BUY: frozenset[TripStatus] = frozenset(
 BOOKING_STATUSES_THAT_START: frozenset[BookingStatus] = frozenset(
     {BookingStatus.PENDING, BookingStatus.FAILED, BookingStatus.HANDOFF}
 )
+
+
+PKP_INTERCITY = "PKP Intercity"
+# An online international PKP Intercity purchase accepts at most 5 passengers: a 6-person
+# request answers "No offers fulfil the criteria" (verified live on intercity.pl).
+PKP_INTERCITY_PURCHASE_CAP = 5
+
+# Passengers per ONE online purchase, by supplier name (case-insensitive). The single place
+# that knows the caps — the PKP client and the voting close both read it from here.
+_PURCHASE_CAPS: dict[str, int] = {PKP_INTERCITY.casefold(): PKP_INTERCITY_PURCHASE_CAP}
+
+
+def purchase_cap(supplier: str) -> int | None:
+    """How many passengers one purchase at `supplier` may carry; None = no known limit."""
+    return _PURCHASE_CAPS.get(supplier.strip().casefold())
+
+
+def split_party(travellers: int, cap: int | None) -> list[int]:
+    """As few purchases as possible, as even as possible: (6, 5) -> [3, 3], (11, 5) ->
+    [4, 4, 3], (5, 5) -> [5]. Without a cap the whole party is one purchase."""
+    if travellers <= 0:
+        raise ValueError("a party needs at least one traveller")
+    if cap is None:
+        return [travellers]
+    if cap <= 0:
+        raise ValueError("a purchase cap must be positive")
+    purchases = math.ceil(travellers / cap)
+    base, extra = divmod(travellers, purchases)
+    return [base + 1 if index < extra else base for index in range(purchases)]
+
+
+def exceeds_tolerance(previous_minor: int, current_minor: int, tolerance_percent: float) -> bool:
+    """True when a re-quote moved further from the stored price than the tolerance allows.
+
+    A tolerance of 0 means any change counts. Compared exactly (no float rounding): the
+    difference in grosze times 100 against the stored price times the percentage.
+    """
+    difference = Decimal(abs(current_minor - previous_minor)) * Decimal(100)
+    return difference > Decimal(previous_minor) * Decimal(str(tolerance_percent))
 
 
 def is_valid_run_id(run_id: str) -> bool:
@@ -53,6 +94,11 @@ def repriced_minor(amount_minor: int, price_change_percent: float) -> int:
     factor = Decimal(1) + Decimal(str(price_change_percent)) / Decimal(100)
     value = (Decimal(amount_minor) * factor).quantize(Decimal(1), rounding=ROUND_HALF_UP)
     return max(int(value), 0)
+
+
+def refund_minor(share_minor: int, paid_minor: int) -> int:
+    """What a member gets back when they paid more than their current share."""
+    return max(paid_minor - share_minor, 0)
 
 
 def contribution_status(share_minor: int, paid_minor: int) -> ContributionStatus:

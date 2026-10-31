@@ -26,6 +26,7 @@ MESSAGE_MAX_LENGTH = 2000
 INVITE_CODE_MAX_LENGTH = 64
 MAX_GROUP_SIZE = 20
 MAX_DEMO_MEMBERS = 10
+OBJECT_ID_LENGTH = 24
 
 
 def _visible(value: str) -> str:
@@ -72,6 +73,11 @@ class CastVoteRequest(StrictRequest):
 
 class SeedMembersRequest(StrictRequest):
     count: int = Field(default=5, ge=1, le=MAX_DEMO_MEMBERS)
+
+
+class DemoLeaveRequest(StrictRequest):
+    # The seeded member who drops out.
+    user_id: str = Field(min_length=OBJECT_ID_LENGTH, max_length=OBJECT_ID_LENGTH)
 
 
 class _ReadModel(BaseModel):
@@ -133,6 +139,8 @@ class ContributionResponse(_ReadModel):
     amount_minor: int
     paid_minor: int
     outstanding_minor: int
+    # Paid beyond the current share (status `refund_due`): "you get X back".
+    refund_minor: int
     status: ContributionStatus
 
 

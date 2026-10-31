@@ -77,6 +77,12 @@ Both artifacts are committed. Never hand-edit the generated client.
 
 ## Gotchas
 
+- **A train for more than 5 is several PKP bookings.** `purchase_cap()` in
+  `core/domain/bookings.py` is the single place that knows per-supplier caps; each part has its
+  own `passenger_user_ids` and the agent vault holds only those passengers (`passenger_1..N`).
+- **Every start re-quotes first** (`QUOTES=static` by default = stored amount). A price change
+  beyond `PRICE_TOLERANCE_PERCENT` re-splits the shares (`services/resplit.py`); a rise sends
+  the trip back to `paying` and the start answers 409 `price_changed`.
 - **Demo bookings go to the fake rail supplier only if `DEMO_SUPPLIER_URL` is set** (dev/test,
   e.g. `http://localhost:8000`): train bookings created at voting close then point at
   `/api/demo-supplier/rail`. The stay and activity still point at real suppliers — do not start

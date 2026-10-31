@@ -8,7 +8,7 @@ an open endpoint for any origin.
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.core.domain.environments import AppEnv
@@ -25,6 +25,7 @@ _MIN_AUTH_SECRET_LENGTH = 32
 
 type ResearcherKind = Literal["fixture", "claude-cli"]
 type PaymentsKind = Literal["fake"]
+type QuotesKind = Literal["static", "intercity"]
 
 
 class Settings(BaseSettings):
@@ -102,6 +103,13 @@ class Settings(BaseSettings):
     # train bookings created at voting close point at the fake rail supplier under it instead of
     # the real carrier, so a live demo never drives the agent at a real supplier. Empty = off.
     demo_supplier_url: str = ""
+    # Who re-quotes a booking right before the agent buys it: `static` = the stored amount is
+    # the price (offline, tests); `intercity` = ask PKP Intercity again for bookings that carry
+    # a train query (see app.suppliers.quotes).
+    quotes: QuotesKind = "static"
+    # How far (in percent of the stored amount) a re-quote may move before the group's shares
+    # are re-split. 0 = any change re-splits.
+    price_tolerance_percent: float = Field(default=0.0, ge=0.0, le=100.0)
 
     @field_validator("cors_origins")
     @classmethod

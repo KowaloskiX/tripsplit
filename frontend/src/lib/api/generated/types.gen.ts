@@ -90,6 +90,10 @@ export type BookingResponse = {
     id: string;
     kind: BookingKind;
     /**
+     * Passenger User Ids
+     */
+    passenger_user_ids: Array<string>;
+    /**
      * Replaces Booking Id
      */
     replaces_booking_id: string | null;
@@ -129,6 +133,16 @@ export type CastVoteRequest = {
 };
 
 /**
+ * CompleteManuallyRequest
+ */
+export type CompleteManuallyRequest = {
+    /**
+     * Confirmation Ref
+     */
+    confirmation_ref: string;
+};
+
+/**
  * ContributionResponse
  */
 export type ContributionResponse = {
@@ -148,6 +162,10 @@ export type ContributionResponse = {
      * Paid Minor
      */
     paid_minor: number;
+    /**
+     * Refund Minor
+     */
+    refund_minor: number;
     status: ContributionStatus;
     /**
      * User Id
@@ -214,6 +232,16 @@ export type CurrentUserResponse = {
      * Organizations
      */
     organizations: Array<OrganizationSummary>;
+};
+
+/**
+ * DemoLeaveRequest
+ */
+export type DemoLeaveRequest = {
+    /**
+     * User Id
+     */
+    user_id: string;
 };
 
 /**
@@ -312,7 +340,7 @@ export type EventActor = 'agent' | 'member' | 'system';
 /**
  * EventKind
  */
-export type EventKind = 'trip_created' | 'member_joined' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit';
+export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed';
 
 /**
  * EventResponse
@@ -1274,6 +1302,52 @@ export type BookingsApproveResponses = {
 
 export type BookingsApproveResponse = BookingsApproveResponses[keyof BookingsApproveResponses];
 
+export type BookingsCompleteManuallyData = {
+    body: CompleteManuallyRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+        /**
+         * Booking Id
+         */
+        booking_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/bookings/{booking_id}/complete';
+};
+
+export type BookingsCompleteManuallyErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsCompleteManuallyError = BookingsCompleteManuallyErrors[keyof BookingsCompleteManuallyErrors];
+
+export type BookingsCompleteManuallyResponses = {
+    /**
+     * Successful Response
+     */
+    200: BookingResponse;
+};
+
+export type BookingsCompleteManuallyResponse = BookingsCompleteManuallyResponses[keyof BookingsCompleteManuallyResponses];
+
 export type BookingsStartData = {
     body?: never;
     path: {
@@ -1399,6 +1473,48 @@ export type DemoDisruptionResponses = {
 };
 
 export type DemoDisruptionResponse = DemoDisruptionResponses[keyof DemoDisruptionResponses];
+
+export type DemoLeaveData = {
+    body: DemoLeaveRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/demo/leave';
+};
+
+export type DemoLeaveErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DemoLeaveError = DemoLeaveErrors[keyof DemoLeaveErrors];
+
+export type DemoLeaveResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type DemoLeaveResponse = DemoLeaveResponses[keyof DemoLeaveResponses];
 
 export type DemoPayAllData = {
     body?: never;
@@ -1530,6 +1646,44 @@ export type TripsFeedResponses = {
 };
 
 export type TripsFeedResponse = TripsFeedResponses[keyof TripsFeedResponses];
+
+export type TripsLeaveData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/leave';
+};
+
+export type TripsLeaveErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsLeaveError = TripsLeaveErrors[keyof TripsLeaveErrors];
+
+export type TripsLeaveResponses = {
+    /**
+     * Successful Response
+     */
+    200: TripStatusResponse;
+};
+
+export type TripsLeaveResponse = TripsLeaveResponses[keyof TripsLeaveResponses];
 
 export type TripsPostMessageData = {
     body: PostMessageRequest;

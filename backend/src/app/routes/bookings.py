@@ -15,6 +15,7 @@ from app.schemas.bookings import (
     AgentRunResponse,
     ApproveRequest,
     BookingResponse,
+    CompleteManuallyRequest,
     LiveStatusResponse,
     RunStatusResponse,
     TripBookingsResponse,
@@ -62,6 +63,7 @@ def booking_response(item: BookingWithRun) -> BookingResponse:
         replaces_booking_id=to_text(booking.replaces_booking_id)
         if booking.replaces_booking_id is not None
         else None,
+        passenger_user_ids=[to_text(user_id) for user_id in booking.passenger_user_ids],
         run=run_response(item.run) if item.run is not None else None,
     )
 
@@ -113,6 +115,25 @@ async def approve_booking(
     service: BookingServiceDep,
 ) -> BookingResponse:
     result = await service.approve(trip_id, booking_id, user.id, payload.approved)
+    if not isinstance(result, Ok):
+        raise booking_failure(result.error)
+    return booking_response(result.value)
+
+
+@router.post(
+    "/trips/{trip_id}/bookings/{booking_id}/complete",
+    operation_id="bookings-complete-manually",
+    responses=_ORGANIZER_ACTION,
+)
+async def complete_booking_manually(
+    trip_id: str,
+    booking_id: str,
+    payload: CompleteManuallyRequest,
+    user: CurrentUser,
+    service: BookingServiceDep,
+) -> BookingResponse:
+    """After a handoff (or a failure) the organizer finished the purchase by hand."""
+    result = await service.complete_manually(trip_id, user.id, booking_id, payload.confirmation_ref)
     if not isinstance(result, Ok):
         raise booking_failure(result.error)
     return booking_response(result.value)

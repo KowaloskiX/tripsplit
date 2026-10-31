@@ -1,7 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { tripsCreateMutation, tripsJoinMutation, tripsListQueryKey } from "@/lib/api";
+import {
+  tripsCreateMutation,
+  tripsJoinMutation,
+  tripsLeaveMutation,
+  tripsListQueryKey,
+} from "@/lib/api";
 
 import { type CreateTripValues, type JoinTripValues, toCreateTripBody } from "./schema";
 
@@ -44,6 +49,22 @@ export function useJoinTrip(inviteCode: string) {
         });
         await queryClient.invalidateQueries({ queryKey: tripsListQueryKey() });
         await navigate({ to: "/t/$tripId", params: { tripId: joined.trip_id } });
+      }),
+  };
+}
+
+export function useLeaveTrip(tripId: string) {
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const mutation = useMutation(tripsLeaveMutation());
+
+  return {
+    ...mutation,
+    leave: (): Promise<void> =>
+      runQuietly(async () => {
+        await mutation.mutateAsync({ path: { trip_id: tripId } });
+        await queryClient.invalidateQueries({ queryKey: tripsListQueryKey() });
+        await navigate({ to: "/app" });
       }),
   };
 }

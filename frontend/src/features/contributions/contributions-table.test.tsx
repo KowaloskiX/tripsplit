@@ -11,6 +11,7 @@ function share(userId: string, name: string, paid: boolean): ContributionRespons
     amount_minor: 50_000,
     paid_minor: paid ? 50_000 : 0,
     outstanding_minor: paid ? 0 : 50_000,
+    refund_minor: 0,
     status: paid ? "paid" : "pending",
   };
 }
@@ -36,5 +37,20 @@ describe("ContributionsTable", () => {
     expect(within(rows[0] as HTMLElement).getByText("paid")).toBeInTheDocument();
     expect(within(rows[0] as HTMLElement).getByText("(you)")).toBeInTheDocument();
     expect(within(rows[1] as HTMLElement).getByText("pending")).toBeInTheDocument();
+  });
+
+  it("shows a refund and leaves a former member's settled share out of the progress", () => {
+    const leaver: ContributionResponse = {
+      ...share("u2", "Kuba", true),
+      amount_minor: 0,
+      refund_minor: 50_000,
+      status: "refund_due",
+    };
+    const contributions = [share("u0", "Łukasz", true), share("u1", "Ola", false), leaver];
+    render(<ContributionsTable contributions={contributions} currency="PLN" myUserId="u0" />);
+
+    expect(screen.getByText("1/2 paid")).toBeInTheDocument();
+    const rows = screen.getAllByRole("row").slice(1);
+    expect(within(rows[2] as HTMLElement).getByText(/^refund /)).toBeInTheDocument();
   });
 });

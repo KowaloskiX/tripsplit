@@ -6,8 +6,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { agentRunsFrame, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsList, bookingsStart, contributionsPay, demoDisruption, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, tripsCreate, tripsFeed, tripsJoin, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
-import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
+import { agentRunsFrame, agentRunsStatus, authLogin, authLogout, authRegister, authSession, bookingsApprove, bookingsCompleteManually, bookingsList, bookingsStart, contributionsPay, demoDisruption, demoLeave, demoPayAll, demoSeedMembers, demoVoteAll, healthGet, healthReady, type Options, proposalsCloseVoting, proposalsGenerate, proposalsVote, tripsCreate, tripsFeed, tripsJoin, tripsLeave, tripsList, tripsPostMessage, tripsRoom } from '../sdk.gen';
+import type { AgentRunsFrameData, AgentRunsFrameError, AgentRunsStatusData, AgentRunsStatusError, AgentRunsStatusResponse, AuthLoginData, AuthLoginError, AuthLoginResponse, AuthLogoutData, AuthLogoutError, AuthLogoutResponse, AuthRegisterData, AuthRegisterError, AuthRegisterResponse, AuthSessionData, AuthSessionResponse, BookingsApproveData, BookingsApproveError, BookingsApproveResponse, BookingsCompleteManuallyData, BookingsCompleteManuallyError, BookingsCompleteManuallyResponse, BookingsListData, BookingsListError, BookingsListResponse, BookingsStartData, BookingsStartError, BookingsStartResponse, ContributionsPayData, ContributionsPayError, ContributionsPayResponse, DemoDisruptionData, DemoDisruptionError, DemoDisruptionResponse, DemoLeaveData, DemoLeaveError, DemoLeaveResponse, DemoPayAllData, DemoPayAllError, DemoPayAllResponse, DemoSeedMembersData, DemoSeedMembersError, DemoSeedMembersResponse, DemoVoteAllData, DemoVoteAllError, DemoVoteAllResponse, HealthGetData, HealthGetResponse, HealthReadyData, HealthReadyError, HealthReadyResponse, ProposalsCloseVotingData, ProposalsCloseVotingError, ProposalsCloseVotingResponse, ProposalsGenerateData, ProposalsGenerateError, ProposalsGenerateResponse, ProposalsVoteData, ProposalsVoteError, ProposalsVoteResponse, TripsCreateData, TripsCreateError, TripsCreateResponse, TripsFeedData, TripsFeedError, TripsFeedResponse, TripsJoinData, TripsJoinError, TripsJoinResponse, TripsLeaveData, TripsLeaveError, TripsLeaveResponse, TripsListData, TripsListResponse, TripsPostMessageData, TripsPostMessageError, TripsPostMessageResponse, TripsRoomData, TripsRoomError, TripsRoomResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -309,6 +309,25 @@ export const bookingsApproveMutation = (options?: Partial<Options<BookingsApprov
 };
 
 /**
+ * Complete Booking Manually
+ *
+ * After a handoff (or a failure) the organizer finished the purchase by hand.
+ */
+export const bookingsCompleteManuallyMutation = (options?: Partial<Options<BookingsCompleteManuallyData>>): UseMutationOptions<BookingsCompleteManuallyResponse, BookingsCompleteManuallyError, Options<BookingsCompleteManuallyData>> => {
+    const mutationOptions: UseMutationOptions<BookingsCompleteManuallyResponse, BookingsCompleteManuallyError, Options<BookingsCompleteManuallyData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await bookingsCompleteManually({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Start Booking
  */
 export const bookingsStartMutation = (options?: Partial<Options<BookingsStartData>>): UseMutationOptions<BookingsStartResponse, BookingsStartError, Options<BookingsStartData>> => {
@@ -353,6 +372,25 @@ export const demoDisruptionMutation = (options?: Partial<Options<DemoDisruptionD
     const mutationOptions: UseMutationOptions<DemoDisruptionResponse, DemoDisruptionError, Options<DemoDisruptionData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await demoDisruption({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Make Member Leave
+ *
+ * A seeded member drops out — the organizer drives it from the demo panel.
+ */
+export const demoLeaveMutation = (options?: Partial<Options<DemoLeaveData>>): UseMutationOptions<DemoLeaveResponse, DemoLeaveError, Options<DemoLeaveData>> => {
+    const mutationOptions: UseMutationOptions<DemoLeaveResponse, DemoLeaveError, Options<DemoLeaveData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await demoLeave({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -489,6 +527,25 @@ export const tripsFeedInfiniteOptions = (options: Options<TripsFeedData>) => {
         queryKey: tripsFeedInfiniteQueryKey(options)
     });
     return opts as Omit<typeof opts, 'initialData'>;
+};
+
+/**
+ * Leave Trip
+ *
+ * The caller drops out before anything is bought; the rest re-split the total.
+ */
+export const tripsLeaveMutation = (options?: Partial<Options<TripsLeaveData>>): UseMutationOptions<TripsLeaveResponse, TripsLeaveError, Options<TripsLeaveData>> => {
+    const mutationOptions: UseMutationOptions<TripsLeaveResponse, TripsLeaveError, Options<TripsLeaveData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await tripsLeave({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 /**
