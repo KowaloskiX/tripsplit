@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as DevAgentGraphRouteImport } from './routes/dev.agent-graph'
+import { Route as DevMotionRouteImport } from './routes/dev.motion'
 import { Route as JoinInviteCodeRouteImport } from './routes/join.$inviteCode'
 import { Route as TTripIdIndexRouteImport } from './routes/t.$tripId.index'
 import { Route as TTripIdBookingsRouteImport } from './routes/t.$tripId.bookings'
@@ -43,6 +44,11 @@ const DevAgentGraphRoute = DevAgentGraphRouteImport.update({
   path: '/dev/agent-graph',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DevMotionRoute = DevMotionRouteImport.update({
+  id: '/dev/motion',
+  path: '/dev/motion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const JoinInviteCodeRoute = JoinInviteCodeRouteImport.update({
   id: '/join/$inviteCode',
   path: '/join/$inviteCode',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dev/agent-graph': typeof DevAgentGraphRoute
+  '/dev/motion': typeof DevMotionRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/t/$tripId/bookings': typeof TTripIdBookingsRoute
   '/t/$tripId/': typeof TTripIdIndexRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dev/agent-graph': typeof DevAgentGraphRoute
+  '/dev/motion': typeof DevMotionRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/t/$tripId/bookings': typeof TTripIdBookingsRoute
   '/t/$tripId': typeof TTripIdIndexRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dev/agent-graph': typeof DevAgentGraphRoute
+  '/dev/motion': typeof DevMotionRoute
   '/join/$inviteCode': typeof JoinInviteCodeRoute
   '/t/$tripId/bookings': typeof TTripIdBookingsRoute
   '/t/$tripId/': typeof TTripIdIndexRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/dev/agent-graph'
+    | '/dev/motion'
     | '/join/$inviteCode'
     | '/t/$tripId/bookings'
     | '/t/$tripId/'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/dev/agent-graph'
+    | '/dev/motion'
     | '/join/$inviteCode'
     | '/t/$tripId/bookings'
     | '/t/$tripId'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/dev/agent-graph'
+    | '/dev/motion'
     | '/join/$inviteCode'
     | '/t/$tripId/bookings'
     | '/t/$tripId/'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   DevAgentGraphRoute: typeof DevAgentGraphRoute
+  DevMotionRoute: typeof DevMotionRoute
   JoinInviteCodeRoute: typeof JoinInviteCodeRoute
   TTripIdBookingsRoute: typeof TTripIdBookingsRoute
   TTripIdIndexRoute: typeof TTripIdIndexRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevAgentGraphRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/dev/motion': {
+      id: '/dev/motion'
+      path: '/dev/motion'
+      fullPath: '/dev/motion'
+      preLoaderRoute: typeof DevMotionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/join/$inviteCode': {
       id: '/join/$inviteCode'
       path: '/join/$inviteCode'
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   DevAgentGraphRoute: DevAgentGraphRoute,
+  DevMotionRoute: DevMotionRoute,
   JoinInviteCodeRoute: JoinInviteCodeRoute,
   TTripIdBookingsRoute: TTripIdBookingsRoute,
   TTripIdIndexRoute: TTripIdIndexRoute,

@@ -43,6 +43,22 @@ function at(ms: number): CSSProperties {
   return { "--delay": `${ms}ms` } as CSSProperties;
 }
 
+/** "From group chat to tickets", each word rising out of a blur in turn. */
+export function HeroHeadline({ id }: { id?: string }): ReactNode {
+  return (
+    <h1 id={id} className="display mt-8 max-w-5xl text-[clamp(3.4rem,10vw,7.5rem)] text-balance">
+      <Word index={0}>From</Word> <Word index={1}>group</Word>{" "}
+      <Word index={2} className="accent-word text-lime">
+        chat
+      </Word>{" "}
+      <Word index={3}>to</Word>{" "}
+      <Word index={4} className="accent-word text-lime">
+        tickets
+      </Word>
+    </h1>
+  );
+}
+
 export function LandingHero(): ReactNode {
   return (
     <section aria-labelledby="hero-heading" className="dark overflow-hidden bg-bg text-ink">
@@ -50,19 +66,7 @@ export function LandingHero(): ReactNode {
         <p className="eyebrow rise-in rounded-full border border-line px-3 py-1">
           A travel agent for your group chat
         </p>
-        <h1
-          id="hero-heading"
-          className="display mt-8 max-w-5xl text-[clamp(3.4rem,10vw,7.5rem)] text-balance"
-        >
-          <Word index={0}>From</Word> <Word index={1}>group</Word>{" "}
-          <Word index={2} className="accent-word text-lime">
-            chat
-          </Word>{" "}
-          <Word index={3}>to</Word>{" "}
-          <Word index={4} className="accent-word text-lime">
-            tickets
-          </Word>
-        </h1>
+        <HeroHeadline id="hero-heading" />
         <p
           className="rise-in mt-8 max-w-2xl text-lg leading-relaxed text-muted text-balance sm:text-2xl sm:leading-9"
           style={at(560)}
