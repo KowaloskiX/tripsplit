@@ -30,11 +30,18 @@ export function ProposalCard({ proposal, currency, onVote, voting }: ProposalCar
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-semibold text-ink">{proposal.title}</h3>
-        {proposal.chosen && (
-          <span className="shrink-0 rounded-full bg-live px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-accent-ink">
-            chosen
-          </span>
-        )}
+        <div className="flex shrink-0 gap-1.5">
+          {proposal.over_budget && (
+            <span className="rounded-full border border-danger px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-danger">
+              over budget
+            </span>
+          )}
+          {proposal.chosen && (
+            <span className="rounded-full bg-live px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-accent-ink">
+              chosen
+            </span>
+          )}
+        </div>
       </div>
       {proposal.summary && (
         <p className="mt-1 text-xs leading-relaxed text-muted">{proposal.summary}</p>

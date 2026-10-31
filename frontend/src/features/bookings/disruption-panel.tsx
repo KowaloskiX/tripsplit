@@ -40,7 +40,9 @@ export function DisruptionPanel({ trip }: { trip: TripBookingsResponse }): React
         {result && (
           <div className="space-y-2 text-sm">
             <p className="text-ink">
-              Rebooking: new total {formatMoney(result.total_minor, trip.currency)} (
+              Replaced {result.replacements.length}{" "}
+              {result.replacements.length === 1 ? "purchase" : "purchases"}. Rebooking: new total{" "}
+              {formatMoney(result.total_minor, trip.currency)} (
               {formatDelta(result.total_minor - result.previous_total_minor, trip.currency)}).
             </p>
             <ul className="divide-y divide-line font-mono text-xs">

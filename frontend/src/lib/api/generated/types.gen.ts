@@ -295,14 +295,17 @@ export type DisruptionRequest = {
  */
 export type DisruptionResponse = {
     /**
-     * Cancelled Booking Id
+     * Cancelled Booking Ids
      */
-    cancelled_booking_id: string;
+    cancelled_booking_ids: Array<string>;
     /**
      * Previous Total Minor
      */
     previous_total_minor: number;
-    replacement: BookingResponse;
+    /**
+     * Replacements
+     */
+    replacements: Array<BookingResponse>;
     /**
      * Shares
      */
@@ -340,7 +343,7 @@ export type EventActor = 'agent' | 'member' | 'system';
 /**
  * EventKind
  */
-export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed';
+export type EventKind = 'trip_created' | 'member_joined' | 'member_left' | 'message' | 'proposals_ready' | 'vote_cast' | 'proposal_chosen' | 'contribution_paid' | 'all_paid' | 'booking_started' | 'booking_awaiting_approval' | 'booking_confirmed' | 'booking_failed' | 'disruption' | 'resplit' | 'price_changed' | 'refund_issued';
 
 /**
  * EventResponse
@@ -584,6 +587,10 @@ export type ProposalResponse = {
      * Items
      */
     items: Array<ProposalItemResponse>;
+    /**
+     * Over Budget
+     */
+    over_budget: boolean;
     /**
      * Per Person Minor
      */

@@ -507,16 +507,23 @@
       },
       "DisruptionResponse": {
         "properties": {
-          "cancelled_booking_id": {
-            "title": "Cancelled Booking Id",
-            "type": "string"
+          "cancelled_booking_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Cancelled Booking Ids",
+            "type": "array"
           },
           "previous_total_minor": {
             "title": "Previous Total Minor",
             "type": "integer"
           },
-          "replacement": {
-            "$ref": "#/components/schemas/BookingResponse"
+          "replacements": {
+            "items": {
+              "$ref": "#/components/schemas/BookingResponse"
+            },
+            "title": "Replacements",
+            "type": "array"
           },
           "shares": {
             "items": {
@@ -534,8 +541,8 @@
           }
         },
         "required": [
-          "cancelled_booking_id",
-          "replacement",
+          "cancelled_booking_ids",
+          "replacements",
           "trip_status",
           "previous_total_minor",
           "total_minor",
@@ -599,7 +606,8 @@
           "booking_failed",
           "disruption",
           "resplit",
-          "price_changed"
+          "price_changed",
+          "refund_issued"
         ],
         "title": "EventKind",
         "type": "string"
@@ -982,6 +990,10 @@
             "title": "Items",
             "type": "array"
           },
+          "over_budget": {
+            "title": "Over Budget",
+            "type": "boolean"
+          },
           "per_person_minor": {
             "title": "Per Person Minor",
             "type": "integer"
@@ -1014,6 +1026,7 @@
           "items",
           "total_minor",
           "per_person_minor",
+          "over_budget",
           "votes",
           "voted_by_me",
           "chosen"

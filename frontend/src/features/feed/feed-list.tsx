@@ -17,6 +17,7 @@ const AGENT_TAG: Partial<Record<EventKind, string>> = {
   price_changed: "price changed",
   resplit: "new shares",
   disruption: "disruption",
+  refund_issued: "refund",
 };
 
 function time(iso: string): string {
