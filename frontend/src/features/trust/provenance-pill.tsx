@@ -36,7 +36,7 @@ export function ProvenancePill({ provenance, now, className }: ProvenancePillPro
       data-provenance={provenance.kind}
       title={label}
       className={cn(
-        "ticket-mono inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px]",
+        "ticket-mono inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs",
         STYLE[provenance.kind],
         className,
       )}

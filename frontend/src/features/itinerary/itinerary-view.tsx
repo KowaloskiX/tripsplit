@@ -52,7 +52,7 @@ function ItemBlock({ item, index }: { item: ItineraryItemResponse; index: number
     >
       <span className="ticket-mono pt-2 text-right text-xs text-muted">
         {item.start}
-        <span className="block text-[10px] opacity-70">{item.end}</span>
+        <span className="block text-xs opacity-70">{item.end}</span>
       </span>
       <div
         className={cn(
@@ -72,7 +72,7 @@ function ItemBlock({ item, index }: { item: ItineraryItemResponse; index: number
           <span className="min-w-0">{item.title}</span>
         </p>
         {(item.note || item.tickets || item.map_url || item.link) && !compact && (
-          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] opacity-80">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs opacity-80">
             {item.tickets && <TicketBadge status={item.tickets} />}
             {item.note && <span>{item.note}</span>}
             {item.map_url && (

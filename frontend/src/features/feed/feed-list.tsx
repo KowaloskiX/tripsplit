@@ -118,7 +118,7 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
         <AgentAvatar />
         <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-lime/20">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-            <span className="ticket-mono uppercase text-agent-tag">tripsplit agent</span>
+            <span className="font-medium text-agent-tag">tripsplit agent</span>
             <span className="ticket-mono text-agent-fg/60">{time(event.created_at)}</span>
             {tag && <Badge tone={tag.tone}>{tag.label}</Badge>}
             {total !== null && (
