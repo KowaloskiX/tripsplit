@@ -28,6 +28,13 @@ class Stage(StrEnum):
     UNKNOWN = "unknown"
 
 
+class OfferFallback(StrEnum):
+    """What to do when the goal names an offer the site does not list."""
+
+    PLANNER = "planner"  # not confident: ask the planner (real suppliers)
+    CLOSEST_DEPARTURE = "closest_departure"  # a stand-in site: take the nearest departure
+
+
 class OfferPolicy(StrEnum):
     EARLIEST = "earliest"
     CHEAPEST = "cheapest"
@@ -54,6 +61,7 @@ class SiteProfile:
         r"(\d[\d\s\u00a0]*[.,]\d{2})\s*(PLN|zł|EUR|CZK)?"
     )
     offer_policy: OfferPolicy = OfferPolicy.EARLIEST
+    unmatched_offer: OfferFallback = OfferFallback.PLANNER
     max_passengers_per_purchase: int | None = None
 
     def matches(self, url: str) -> bool:
@@ -77,6 +85,7 @@ class SiteProfile:
             confirmation_ref=self.confirmation_ref,
             total=self.total,
             offer_policy=self.offer_policy,
+            unmatched_offer=self.unmatched_offer,
             max_passengers_per_purchase=self.max_passengers_per_purchase,
         )
 
@@ -150,6 +159,9 @@ DEMORAIL = SiteProfile(
     review_markers=(r"review your booking",),
     confirmation_markers=(r"booking number:",),
     confirmation_ref=r"\bDR-[A-Z0-9]{8}\b",
+    # The demo site stands in for the real carrier: its three trains never carry the real
+    # train numbers a proposal names, so the nearest departure is the intended substitute.
+    unmatched_offer=OfferFallback.CLOSEST_DEPARTURE,
     max_passengers_per_purchase=5,
 )
 

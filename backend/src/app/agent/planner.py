@@ -145,6 +145,8 @@ class PlannerUnavailable(RuntimeError):
 
 
 _LIMIT_HINTS = (
+    "session limit",
+    "hit your limit",
     "429",
     "rate limit",
     "rate_limit",

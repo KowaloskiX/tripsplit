@@ -25,7 +25,7 @@ from enum import StrEnum
 from typing import Any
 
 from app.agent.goal import GoalSpec
-from app.agent.site_profiles import SiteProfile, Stage, any_match
+from app.agent.site_profiles import OfferFallback, SiteProfile, Stage, any_match
 from app.agent.summary import SummaryRecord, extract_summary
 
 Element = dict[str, Any]
@@ -91,6 +91,7 @@ class SummaryCheck:
     problems: tuple[str, ...]
     record: SummaryRecord
     price_mismatch: bool = False
+    notes: tuple[str, ...] = ()
 
     @property
     def total(self) -> float | None:
@@ -105,7 +106,8 @@ class SummaryCheck:
         )
         if self.ok:
             date = f", date {goal.date}" if goal.date else ""
-            return f"summary verified: {goal.passengers} passenger(s){date}, total {total}"
+            notes = "".join(f"; {n}" for n in self.notes)
+            return f"summary verified: {goal.passengers} passenger(s){date}, total {total}{notes}"
         problems = "; ".join(self.problems)
         return f"summary does not match the goal ({problems}); supplier total {total}"
 
@@ -198,6 +200,14 @@ def _price(el: Element) -> float:
     return _number(m.group(1)) if m else float("inf")
 
 
+def _minutes_from(el: Element, departs: str | None) -> int:
+    hour, minute = _departure(el)
+    if not departs:
+        return hour * 60 + minute
+    want_h, want_m = (int(x) for x in departs.split(":"))
+    return abs(hour * 60 + minute - (want_h * 60 + want_m))
+
+
 def choose_offer(elements: list[Element], goal: GoalSpec, profile: SiteProfile) -> Element | None:
     """The offer the goal asks for; the profile's default policy when it names none."""
     offers = offer_buttons(elements)
@@ -214,7 +224,9 @@ def choose_offer(elements: list[Element], goal: GoalSpec, profile: SiteProfile) 
             ]
             if len(hits) == 1:
                 return hits[0]
-        return None
+        if profile.unmatched_offer != OfferFallback.CLOSEST_DEPARTURE:
+            return None
+        return min(offers, key=lambda o: _minutes_from(o, goal.departs))
     if goal.rebooking:
         return None  # "the next train after the delayed one" needs judgement -> planner
     if profile.offer_policy == "cheapest":
@@ -290,6 +302,7 @@ def verify_summary(
     record = extract_summary(state, profile)
     page = _norm(str(state.get("text") or state.get("text_preview") or ""))
     problems: list[str] = []
+    notes: list[str] = []
     wanted = [_norm(f"{first} {last}") for first, last in names]
     if record.passengers:
         shown = [_norm(n) for n in record.passengers]
@@ -309,7 +322,10 @@ def verify_summary(
         code = _compact(" ".join(goal.train.split()[:2]))
         shown_service = _compact(record.service or "") if record.service else _compact(page)
         if code not in shown_service:
-            problems.append("requested train not shown")
+            if profile.unmatched_offer == OfferFallback.CLOSEST_DEPARTURE and record.service:
+                notes.append(f"{goal.train} is not offered here; booked {record.service}")
+            else:
+                problems.append("requested train not shown")
     price_mismatch = False
     if goal.budget is not None:
         total = record.total_minor / 100 if record.total_minor is not None else None
@@ -322,7 +338,7 @@ def verify_summary(
                 f"price changed: supplier total {total:.2f} vs budget {goal.budget:.2f} "
                 f"({delta:+.1f}%, tolerance {goal.tolerance_percent:g}%)"
             )
-    return SummaryCheck(not problems, tuple(problems), record, price_mismatch)
+    return SummaryCheck(not problems, tuple(problems), record, price_mismatch, tuple(notes))
 
 
 @dataclass

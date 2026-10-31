@@ -23,7 +23,14 @@ from app.agent_evals.server import VariantServer
 from app.services.demo_supplier_variants import Variant
 
 DEFAULT_MAX_LLM_CALLS = 40
-_LIMIT_MARKERS = ("planner unavailable", "429", "rate limit", "usage limit", "limit reached")
+_LIMIT_MARKERS = (
+    "planner unavailable",
+    "session limit",
+    "429",
+    "rate limit",
+    "usage limit",
+    "limit reached",
+)
 
 
 def _csv(raw: str | None) -> list[str]:

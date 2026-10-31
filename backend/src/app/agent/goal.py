@@ -22,6 +22,7 @@ _PARTY = (
 # "EC 113 Vltava", "EN 407 Chopin", "IC 5300", "TLK 1234 Name" — a train category + number.
 _TRAIN = re.compile(r"\b((?:EC|EN|EIC|EIP|IC|TLK|RJ|ICE|RE|R)\s?\d{2,5}(?:\s+[A-Z][\w-]+)?)")
 _BUDGET = re.compile(r"budget[^\d]{0,20}(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(PLN|EUR|CZK|zł|USD)?", re.I)
+_DEPARTS = re.compile(r"\bdep(?:arts?|arture)?\.?\s*(?:at\s*)?([0-2]?\d:[0-5]\d)", re.I)
 _TOLERANCE = re.compile(r"tolerance[^\d]{0,10}(\d+(?:[.,]\d+)?)\s*%", re.I)
 _DEFAULT_TOLERANCE_PERCENT = 2.0
 
@@ -35,6 +36,7 @@ class GoalSpec:
     currency: str | None = None
     tolerance_percent: float = _DEFAULT_TOLERANCE_PERCENT
     rebooking: bool = False
+    departs: str | None = None
 
     def variables(self) -> dict[str, str]:
         """`{{goal.<key>}}` bindings a flow may reference."""
@@ -90,4 +92,5 @@ def parse_goal(goal: str, vault: Any = None) -> GoalSpec:
         currency=currency,
         tolerance_percent=tolerance,
         rebooking="rebooking" in goal.lower(),
+        departs=m.group(1) if (m := _DEPARTS.search(goal)) is not None else None,
     )

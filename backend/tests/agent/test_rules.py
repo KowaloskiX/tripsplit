@@ -108,9 +108,21 @@ def test_without_a_named_offer_the_profile_policy_picks_the_earliest() -> None:
     assert decision is not None and decision.actions[0]["ref"] == 1
 
 
-def test_an_offer_the_page_does_not_show_is_left_to_the_planner() -> None:
+def test_an_offer_a_real_site_does_not_show_is_left_to_the_planner() -> None:
     goal = GoalSpec(passengers=3, train="IC 5300")
-    assert _engine(goal).decide(results_page()) is None
+    engine = _engine(goal)
+    engine.profile = GENERIC
+    assert engine.decide(results_page()) is None
+
+
+def test_the_demo_site_substitutes_the_closest_departure_and_says_so() -> None:
+    goal = GoalSpec(passengers=3, date="2026-12-04", train="EC 131 Batory", departs="07:52")
+    engine = _engine(goal)
+    decision = engine.decide(results_page())
+    assert decision is not None and decision.actions[0]["ref"] == 1  # 06:20 is closest to 07:52
+    done = engine.decide(summary_page(NAMES, train="EC 111 Praha", total="567.00"))
+    assert done is not None and done.actions[0]["action"] == "done"
+    assert "EC 131 Batory is not offered here; booked EC 111" in done.actions[0]["reason"]
 
 
 @pytest.mark.parametrize("reordered", [False, True])
