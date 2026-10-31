@@ -5,4 +5,6 @@ export { BookingTicket } from "./booking-ticket";
 export { BookingsList } from "./bookings-list";
 export { DisruptionAlert } from "./disruption-alert";
 export { LiveAgentPanel } from "./live-agent-panel";
+export { LiveBookingStage } from "./live-booking-stage";
+export { activeAgentBooking, apiCalls, graphSteps, stayMission, useMission } from "./mission";
 export { TripBookings } from "./trip-bookings";

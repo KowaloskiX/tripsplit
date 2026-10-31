@@ -4,11 +4,10 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusScreen } from "@/components/ui/status-screen";
 import { sessionQueryOptions } from "@/features/auth";
-import { TripBookings } from "@/features/bookings";
+import { LiveBookingStage, TripBookings } from "@/features/bookings";
 import { ContributionsPanel } from "@/features/contributions";
 import { DemoPanel } from "@/features/demo";
 import { TripFeed } from "@/features/feed";
-import { BookingStage } from "@/features/mission-control";
 import { ProposalsPanel } from "@/features/proposals";
 import { TravellerDetailsPanel } from "@/features/travellers";
 import { RoomHeader, useRoom } from "@/features/trips";
@@ -93,11 +92,10 @@ function RoomPage(): ReactNode {
                   Full screen
                 </Link>
               </div>
-              {/* Mission control appears above the bookings once a `mission` prop is passed
-                  (MissionControlData); without one this is the plain booking UI. */}
-              <BookingStage>
+              {/* Mission control on top while the trip is buying; the plain booking UI below. */}
+              <LiveBookingStage tripId={tripId} title={room.trip.title}>
                 <TripBookings tripId={tripId} />
-              </BookingStage>
+              </LiveBookingStage>
             </section>
           )}
           {/* While the group pays, the shares are the stage card; afterwards the bookings are.

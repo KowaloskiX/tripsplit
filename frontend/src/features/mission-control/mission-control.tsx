@@ -61,7 +61,7 @@ export function MissionControl({
       <div className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,0.85fr)]">
         <BrowserPane browser={browser} live={live} />
         <div className="flex min-w-0 flex-col gap-3">
-          <TerminalPane calls={calls} />
+          {calls && <TerminalPane calls={calls} />}
           {stay && <StayPane stay={stay} currency={currency} />}
         </div>
         <div className="relative flex flex-col justify-center rounded-[28px] bg-surface px-4 pt-8 pb-5 lg:col-span-2 xl:col-span-1">

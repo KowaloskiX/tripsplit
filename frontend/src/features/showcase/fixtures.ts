@@ -44,6 +44,9 @@ function item(
     price_minor: priceMinor,
     details: "",
     starts_at: FRIDAY,
+    links: [],
+    images: [],
+    provenance: null,
     segments:
       kind === "transport"
         ? [
@@ -205,6 +208,9 @@ export function booking(
     status,
     confirmation_ref: null,
     replaces_booking_id: null,
+    links: [],
+    images: [],
+    provenance: null,
     ...patch,
   };
 }
