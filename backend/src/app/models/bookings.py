@@ -20,6 +20,7 @@ from app.core.domain.trips import (
     upgrade_legacy_kind,
 )
 from app.db.documents import TimestampMixin
+from app.models.trust import TrustLink, TrustProvenance
 
 TEXT_MAX_LENGTH = 4000
 
@@ -68,6 +69,11 @@ class Booking(TimestampMixin, Document):
     card_last4: str | None = None
     # Bumped before each payout / card, so a retry after a failure gets a fresh idempotency key.
     payment_attempts: int = 0
+    # Trust, copied from the package item (see `app.core.domain.trust`). Backfilled on old
+    # documents by migration 20261031_180000_booking_trust.
+    links: list[TrustLink] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
+    provenance: TrustProvenance | None = None
 
     @model_validator(mode="before")
     @classmethod

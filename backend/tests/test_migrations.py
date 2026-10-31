@@ -33,6 +33,7 @@ def _load(name: str) -> ModuleType:
 SUPPLIER_PLUGINS = _load("20261031_120000_supplier_plugins")
 TRIP_PREFERENCES = _load("20261031_150000_trip_preferences")
 ESCROW = _load("20261031_190000_escrow")
+BOOKING_TRUST = _load("20261031_180000_booking_trust")
 DEPARTS = datetime(2026, 11, 20, 7, 52, tzinfo=UTC)
 
 
@@ -285,6 +286,37 @@ async def test_escrow_fields_forward_and_backward(database: Database) -> None:
     await ESCROW.Backward.no_escrow_fields.run(session=None)
     assert "partner_wallet_id" not in await _raw(Wallet, wallet_id)
     assert "payment_kind" not in await _raw(Booking, booking_id)
+
+
+async def test_booking_trust_forward_and_backward(database: Database) -> None:
+    bookings = Booking.get_pymongo_collection()
+    old = {
+        **_old_booking(PydanticObjectId(), "transport", "PKP Intercity"),
+        "mode": "rail",
+        "supplier_id": "pkp_intercity",
+        "offer_ref": "pkp_intercity:131@20261120T0752:c2",
+        "channel": "agent",
+        "supplier_data": {},
+        "hold_ref": None,
+        "hold_expires_at": None,
+        "quoted_at": None,
+    }
+    old.pop("train_query")
+    booking_id = (await bookings.insert_one(old, bypass_document_validation=True)).inserted_id
+    before = await Booking.get(booking_id)  # expand: read before the backfill
+    assert before is not None and before.links == [] and before.provenance is None
+
+    await ESCROW.Forward.escrow_fields.run(session=None)  # a later migration's keys
+    await BOOKING_TRUST.Forward.booking_trust.run(session=None)
+    raw = await _raw(Booking, booking_id)
+    assert (raw["links"], raw["images"], raw["provenance"]) == ([], [], None)
+    after = await Booking.get(booking_id)
+    assert after is not None
+    await after.set({"status": "running"})  # passes the validator
+    await BOOKING_TRUST.Forward.booking_trust.run(session=None)  # idempotent
+
+    await BOOKING_TRUST.Backward.no_booking_trust.run(session=None)
+    assert "links" not in await _raw(Booking, booking_id)
 
 
 def test_pure_mappings_leave_current_documents_alone() -> None:

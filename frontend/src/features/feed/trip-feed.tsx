@@ -1,6 +1,7 @@
-import { type ReactNode, useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useMemo, useRef } from "react";
 
 import { Panel, PanelHeader } from "@/components/ui/panel";
+import { SpeakerToggle, type Spoken, useSpeakArrivals } from "@/features/voice";
 
 import { AGENT_TYPING_MS, FeedList } from "./feed-list";
 import { MessageInput } from "./message-input";
@@ -15,6 +16,16 @@ type TripFeedProps = {
 export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNode {
   const { data: events = [], isPending } = useFeed(tripId);
   const scroller = useRef<HTMLDivElement>(null);
+  // New agent messages are read aloud when unmuted; the history loaded with the page is not.
+  const agentSays = useMemo(
+    () =>
+      isPending
+        ? null
+        : events
+            .filter((event) => event.actor === "agent" && event.message)
+            .map((event) => ({ id: event.id, text: event.message })),
+    [events, isPending],
+  );
 
   // Keep the newest message in view — a chat that does not follow new messages feels broken.
   const count = events.length;
@@ -34,7 +45,10 @@ export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNo
     <Panel className="flex h-[min(72dvh,720px)] flex-col overflow-hidden">
       <PanelHeader>
         <span>Group chat</span>
-        <span>{events.length} messages</span>
+        <span className="inline-flex items-center gap-2">
+          {agentSays && <AgentVoice messages={agentSays} />}
+          <span>{events.length} messages</span>
+        </span>
       </PanelHeader>
       <div ref={scroller} className="flex-1 overflow-y-auto px-4 py-4">
         {isPending ? (
@@ -48,4 +62,10 @@ export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNo
       </div>
     </Panel>
   );
+}
+
+/** Mounted once the feed has loaded, so the first batch counts as history, not as arrivals. */
+function AgentVoice({ messages }: { messages: readonly Spoken[] }): ReactNode {
+  const speech = useSpeakArrivals(messages);
+  return <SpeakerToggle speech={speech} className="-my-1.5" />;
 }

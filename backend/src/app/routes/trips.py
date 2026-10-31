@@ -6,20 +6,24 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Query
 from starlette import status
 
+from app.ai.quick_brief import QuickAnswers
 from app.core.domain.trips import TravelPreferences
 from app.core.errors_http import ErrorResponse
-from app.routes.dependencies import CurrentUser, TripServiceDep
+from app.routes.dependencies import CurrentUser, QuickTripServiceDep, TripServiceDep
 from app.routes.errors import trip_value
 from app.schemas.trips import (
     CreateTripRequest,
     EventResponse,
     JoinTripRequest,
     PostMessageRequest,
+    QuickTripRequest,
+    QuickTripResponse,
     RoomResponse,
     SetPayByRequest,
     TripStatusResponse,
     TripSummaryResponse,
 )
+from app.services.quick_trips import name_from_email
 from app.services.trips import NewTrip
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -51,6 +55,29 @@ async def create_trip(
         ),
     )
     return TripStatusResponse.model_validate(trip_value(result))
+
+
+@router.post("/quick", operation_id="trips-quick-create")
+async def quick_create_trip(
+    payload: QuickTripRequest, service: QuickTripServiceDep, user: CurrentUser
+) -> QuickTripResponse:
+    """A trip from one sentence. Complete -> the trip is created (caller = organizer) and the
+    package research starts (`trip` set, `questions` empty). Otherwise `trip` is null and
+    `questions` say what to ask; send the text again with the answers."""
+    result = await service.create(
+        user.id,
+        payload.text,
+        QuickAnswers(
+            destination=payload.destination,
+            origin=payload.origin,
+            dates=payload.dates,
+            group_size=payload.group_size,
+            budget_per_person_minor=payload.budget_per_person_minor,
+            transport_mode=payload.transport_mode,
+        ),
+        display_name=payload.display_name or name_from_email(user.email),
+    )
+    return QuickTripResponse.model_validate(trip_value(result))
 
 
 @router.get("", operation_id="trips-list")

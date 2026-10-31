@@ -22,8 +22,10 @@ from app.core.domain.trips import (
     TransportMode,
     TripStatus,
 )
+from app.core.domain.trust import OfferLink, Provenance
 from app.db.identifiers import identifier_of, to_text
 from app.models.trips import Contribution, Proposal, Trip, TripEvent, TripMember
+from app.models.trust import TrustLink, TrustProvenance
 from app.services.wallet import PotView
 
 
@@ -90,6 +92,9 @@ class ProposalItemView:
     details: str
     starts_at: datetime | None
     segments: tuple[SegmentView, ...]
+    links: tuple[OfferLink, ...] = ()
+    images: tuple[str, ...] = ()
+    provenance: Provenance | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -218,6 +223,9 @@ def proposal_view(
                     )
                     for segment in item.segments
                 ),
+                links=links_view(item.links),
+                images=tuple(item.images),
+                provenance=provenance_view(item.provenance),
             )
             for item in proposal.items
         ),
@@ -227,6 +235,18 @@ def proposal_view(
         votes=votes,
         voted_by_me=voted_by_me,
         chosen=chosen,
+    )
+
+
+def links_view(links: list[TrustLink]) -> tuple[OfferLink, ...]:
+    return tuple(OfferLink(label=link.label, url=link.url, kind=link.kind) for link in links)
+
+
+def provenance_view(provenance: TrustProvenance | None) -> Provenance | None:
+    if provenance is None:
+        return None
+    return Provenance(
+        source=provenance.source, supplier=provenance.supplier, checked_at=provenance.checked_at
     )
 
 

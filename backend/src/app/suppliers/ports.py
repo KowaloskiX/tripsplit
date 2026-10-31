@@ -17,10 +17,12 @@ from datetime import date, datetime
 from enum import StrEnum
 from typing import Any, Protocol
 
+from app.core.domain.itinerary import describe_leg
 from app.core.domain.result import Result
 from app.core.domain.suppliers import SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import NO_PREFERENCES, TransportMode, TravelPreferences
+from app.core.domain.trust import OfferLink, Provenance
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,9 +54,8 @@ class Segment:
     arrives_at: datetime
 
     def describe(self) -> str:
-        return (
-            f"{self.number} {self.origin} -> {self.destination} "
-            f"{self.departs_at:%Y-%m-%d %H:%M}-{self.arrives_at:%H:%M}"
+        return describe_leg(
+            self.number, self.origin, self.destination, self.departs_at, self.arrives_at
         )
 
 
@@ -75,6 +76,10 @@ class Offer:
     starts_at: datetime | None = None
     # Adapter-owned data handed back on quote/hold/purchase/status. Never from a client.
     supplier_data: Mapping[str, Any] = field(default_factory=dict)
+    # Trust: where to book / verify / find it, photos, and where the data came from.
+    links: tuple[OfferLink, ...] = ()
+    images: tuple[str, ...] = ()
+    provenance: Provenance | None = None
 
 
 @dataclass(frozen=True, slots=True)

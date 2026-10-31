@@ -15,6 +15,7 @@ from. TripSplit instructs; the (simulated) licensed partner holds and moves the 
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from secrets import token_hex
 
 from beanie import PydanticObjectId
 
@@ -211,13 +212,15 @@ class EscrowService:
         escrow = await self.escrow_of(trip_id)
         if escrow is None:
             return Err(InsufficientFunds(shortfall_minor=amount_minor))
-        paid_before = await self._paid_before(trip_id, user_id)
+        # One key per charge: a payer may cover several equal shares in a row (pay for
+        # everyone), and each must move money. The contribution's compare-and-set (not the key)
+        # is what stops a share from being paid twice.
         return await self.wallet.charge(
             user_id,
             trip_id,
             amount_minor,
             to_wallet=escrow,
-            idempotency_key=f"share:{trip_id}:{user_id}:{paid_before}:{amount_minor}",
+            idempotency_key=f"share:{trip_id}:{user_id}:{token_hex(8)}",
         )
 
     async def refund(
@@ -226,23 +229,15 @@ class EscrowService:
         escrow = await self.escrow_of(trip_id)
         if escrow is None:
             return Err(PartnerError.WALLET_NOT_FOUND)
-        paid_before = await self._paid_before(trip_id, user_id)
         return await self.wallet.receive(
             user_id,
             trip_id,
             amount_minor,
             from_wallet=escrow,
             tag=tag,
-            idempotency_key=f"{tag.value}:{trip_id}:{user_id}:{paid_before}:{amount_minor}",
+            idempotency_key=f"{tag.value}:{trip_id}:{user_id}:{token_hex(8)}",
             reference=reference,
         )
-
-    async def _paid_before(self, trip_id: str, user_id: str) -> int:
-        trip_oid, user_oid = to_object_id(trip_id), to_object_id(user_id)
-        if trip_oid is None or user_oid is None:
-            return 0
-        contribution = await self.contributions.get(trip_oid, user_oid)
-        return contribution.paid_minor if contribution is not None else 0
 
     # ---- purchases ------------------------------------------------------------------------
 

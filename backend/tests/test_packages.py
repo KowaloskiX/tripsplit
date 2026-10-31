@@ -11,6 +11,7 @@ from app.ai.claude_research import ClaudeCliResearcher, offers_json, parse_descr
 from app.ai.research import TripBrief
 from app.core.domain.packages import (
     booking_goal,
+    expected_total_clause,
     format_money,
     is_over_budget,
     per_person,
@@ -51,9 +52,28 @@ def test_winner_is_most_voted_and_ties_go_to_the_earliest() -> None:
         pick_winner([], [])
 
 
-def test_format_money() -> None:
-    assert format_money(123_456, "PLN") == "1234.56 PLN"
+def test_format_money_is_the_one_feed_style() -> None:
+    """Regression: proposals/contributions wrote "3288.00 PLN", bookings "3 288.00 PLN"."""
+    assert format_money(328_800, "PLN") == "3 288.00 PLN"
     assert format_money(5, "PLN") == "0.05 PLN"
+
+
+def test_a_return_goal_names_the_return_date_and_the_expected_total() -> None:
+    goal = booking_goal(
+        kind=BookingKind.TRANSPORT,
+        title="EC 111",
+        details="",
+        travellers=3,
+        date_from=date(2026, 11, 30),
+        date_to=date(2026, 12, 3),
+        itinerary="outbound EC 111 A → B 2026-11-30 06:20-14:05",
+        return_date=date(2026, 12, 3),
+    )
+    assert "Return date: 2026-12-03" in goal and "one order" in goal
+    assert expected_total_clause(113_400, "PLN", 0.0).startswith(
+        "Expected total: 1 134.00 PLN for this purchase (tolerance 1%)"
+    )
+    assert "(tolerance 2.5%)" in expected_total_clause(100, "PLN", 2.5)
 
 
 def test_transport_goal_is_a_complete_instruction() -> None:

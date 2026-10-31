@@ -15,7 +15,10 @@ DEMO_SUPPLIER_URL=http://localhost:8000 \
 pnpm dev                                               # frontend -> http://localhost:3000
 ```
 
-- Register the presenter account, then do a **full dry run** with `pace: "fast"` (below) and
+- `cd backend && uv run seed-demo` creates (or keeps) the demo account
+  **demo@tripsplit.app / TripSplitDemo2026!** (organization "Łukasz Demo") and tops its wallet
+  up to 5 000 zł — idempotent, dev/test only. Log in with it on stage.
+- Register the presenter account (or use the demo account), then do a **full dry run** with `pace: "fast"` (below) and
   throw that trip away. A warm run also warms the PKP browser and the agent's trajectory cache
   (the agent then replays the checkout with zero planner LLM calls).
 - Keep a terminal open with the cURL snippets below and the fallback section at hand.

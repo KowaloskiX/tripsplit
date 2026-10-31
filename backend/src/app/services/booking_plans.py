@@ -10,22 +10,26 @@ before anything is bought.
 
 from beanie import PydanticObjectId
 
+from app.core.domain.itinerary import Leg, describe_itinerary, return_date_of
 from app.core.domain.packages import booking_goal
 from app.core.domain.suppliers import SupplierCapabilities, purchase_sizes
 from app.core.domain.trips import SupplierChannel, split_evenly
 from app.db.identifiers import identifier_of
 from app.models.bookings import Booking
 from app.models.trips import ProposalItem, TransportSegment, Trip
+from app.models.trust import stored_links, stored_provenance
 
 TITLE_MAX_LENGTH = 200
 GOAL_MAX_LENGTH = 4000
 
 
+def legs_of(segments: list[TransportSegment]) -> list[Leg]:
+    return [Leg(s.number, s.origin, s.destination, s.departs_at, s.arrives_at) for s in segments]
+
+
 def itinerary(segments: list[TransportSegment]) -> str:
-    """ "LO 401 WAW -> BCN 2026-11-20 07:05; LO 402 BCN -> WAW 2026-11-22 16:40"."""
-    return "; ".join(
-        f"{s.number} {s.origin} -> {s.destination} {s.departs_at:%Y-%m-%d %H:%M}" for s in segments
-    )
+    """ "outbound LO 401 WAW → BCN 2026-11-20 07:05-10:15; return LO 402 ..." in local time."""
+    return describe_itinerary(legs_of(segments))
 
 
 def bookings_for_item(
@@ -57,7 +61,7 @@ def bookings_for_item(
         details = item.details
         title = item.title
         if len(sizes) > 1:
-            title = f"{item.title} (passengers {start + 1}-{end})"
+            title = f"{item.title} · passengers {start + 1}\u2013{end}"
             details = (
                 f"{details} This is purchase {part} of {len(sizes)}: passengers "
                 f"{start + 1}-{end} of the group of {len(passengers)}, exactly {size} "
@@ -82,6 +86,7 @@ def bookings_for_item(
                     date_to=trip.date_to,
                     starts_at=item.starts_at,
                     itinerary=itinerary(item.segments),
+                    return_date=return_date_of(legs_of(item.segments)),
                 )[:GOAL_MAX_LENGTH],
                 passenger_user_ids=passengers[start:end],
                 proposal_item_index=item_index,
@@ -89,6 +94,9 @@ def bookings_for_item(
                 offer_ref=item.offer_ref,
                 channel=channel,
                 supplier_data=dict(item.supplier_data),
+                links=stored_links(item.links),
+                images=list(item.images),
+                provenance=stored_provenance(item.provenance),
             )
         )
         start = end

@@ -69,6 +69,7 @@ from app.harness.scenario import (
     GeneratePackages,
     Leave,
     Pay,
+    PayAllShares,
     SetPayBy,
     SiteAsksMore,
     StartBookings,
@@ -381,11 +382,19 @@ class Driver:
             case CloseVoting():
                 return await self._close(), ("proposal_chosen",)
             case Pay():
-                return await self._pay(step)
+                paid = await self._pay(step)
+                await self._settle_auto_book()
+                return paid
             case TopUp():
                 return await self._top_up(step), ()
             case TopUpAndPay():
-                return await self._top_up_and_pay(step), ("contribution_paid",)
+                line = await self._top_up_and_pay(step)
+                await self._settle_auto_book()
+                return line, ("contribution_paid",)
+            case PayAllShares():
+                line = await self._pay_all_shares(step)
+                await self._settle_auto_book()
+                return line, ("contribution_paid",)
             case StartBookings():
                 return await self._start_step(step), ("booking_started",)
             case AgentOutcome():
@@ -959,6 +968,37 @@ class Driver:
         if not self.trail or self.trail[-1] is not snap.trip.status:
             self.trail.append(snap.trip.status)
         return snap
+
+    async def _settle_auto_book(self) -> None:
+        """With AUTO_BOOK the last payment starts the purchases in the background: wait for
+        them like after "Book everything"."""
+        if not self.scenario.auto_book:
+            return
+        await self.world.runner.drain()
+        await self._wait_for_agents()
+
+    async def _pay_all_shares(self, step: PayAllShares) -> str:
+        world = self.world
+        organizer = world.organizer_id
+        result = await world.pay_all.pay_everyone(
+            world.trip_id, organizer, TopUpRequest(0, PaymentMethod.BLIK, blik_code=step.blik_code)
+        )
+        self._raise_on(result)
+        assert isinstance(result, Ok)
+        view = result.value
+        money = format_money(view.total_minor, "PLN")
+        if view.top_up is None:
+            return (
+                f"{self.scenario.organizer} paid {view.shares} share(s), {money}, from the wallet"
+            )
+        settled = await world.wallet.top_up_status(organizer, view.top_up.id)
+        self._raise_on(settled)
+        assert isinstance(settled, Ok)
+        self._settled(settled.value, self.scenario.organizer)
+        topped = format_money(settled.value.amount_minor, "PLN")
+        return (
+            f"{self.scenario.organizer} topped up {topped} and paid {view.shares} share(s), {money}"
+        )
 
     async def _wait_for_agents(self) -> None:
         loop = asyncio.get_running_loop()
