@@ -59,7 +59,7 @@ export function QuickPackageCard({
         </ul>
       </div>
       <div className="perforation mx-1.5" aria-hidden />
-      <div className="flex items-end justify-between gap-3 px-1.5 pb-1">
+      <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2 px-1.5 pb-1">
         <p
           className={cn(
             "ticket-mono whitespace-nowrap text-xl sm:text-2xl",
