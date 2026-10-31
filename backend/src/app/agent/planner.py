@@ -16,7 +16,6 @@ placeholders for anything sensitive; `act.py` substitutes real values at action 
 import base64
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -28,7 +27,8 @@ You are given a SCREENSHOT of the current page, a compact list of INTERACTIVE EL
 (each with a #ref), and the page text. LOOK AT THE SCREENSHOT FIRST, then act.
 Return EXACTLY ONE action as a single JSON object, nothing else. Valid actions:
   {"action":"click","ref":N}
-  {"action":"type","ref":N,"text":"..."}      # for form fields
+  {"action":"type","ref":N,"text":"..."}      # for a single form field
+  {"action":"fill_form","fields":[{"ref":N,"text":"..."},...]}  # several text fields at once
   {"action":"select","ref":N,"text":"Label"}  # for a native <select>
   {"action":"press","text":"Enter"}           # press a key on the focused field (e.g. Enter to submit a search)
   {"action":"click_xy","x":0,"y":0}           # click a point you SEE; x,y are 0-1000 (fraction of screenshot w/h). Use when the target has no #ref.
@@ -43,7 +43,7 @@ Rules:
   The available vault keys are listed in the user message. Login username/password are {{vault.username}} / {{vault.password}}.
 - Prefer testid/aria labels to guess intent. One logical step at a time.
 - Prefer #ref actions. For something you can SEE but that has NO usable #ref (an option inside a custom dropdown/flyout, a date tile, a canvas control), use click_xy with x,y as integers 0-1000 (fraction of image width/height). A fresh screenshot follows every action so you can verify it worked.
-- Fill ONE field per step with a SINGLE value. NEVER concatenate multiple values into one field.
+- When several text fields are visible (passenger names, contact details), fill them ALL in one fill_form action — one entry per field, a SINGLE value per field. NEVER concatenate multiple values into one field. Use only vault keys that are listed; never invent key names.
 - Check RECENT ACTIONS: if you already typed a value into a field, do not type it again — move to the next field or the next step (e.g. click Continue). Never repeat the exact same action.
 - Dismiss nothing manually — banners are handled for you. Focus on the booking path.
 - If stop_before_pay is set, do NOT submit the final order; call done once the summary page is fully populated and matches the goal.
@@ -63,6 +63,7 @@ ACTION_SCHEMA = {
             "enum": [
                 "click",
                 "type",
+                "fill_form",
                 "select",
                 "press",
                 "click_xy",
@@ -74,6 +75,16 @@ ACTION_SCHEMA = {
             ],
         },
         "ref": {"type": ["integer", "null"]},
+        "fields": {
+            "type": ["array", "null"],
+            "description": "fill_form only: one {ref, text} per text field",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {"ref": {"type": "integer"}, "text": {"type": "string"}},
+                "required": ["ref", "text"],
+            },
+        },
         "text": {"type": ["string", "null"]},
         "direction": {"type": ["string", "null"]},
         "url": {"type": ["string", "null"]},
@@ -91,7 +102,18 @@ ACTION_SCHEMA = {
             "description": "checkout phase of the CURRENT page: browsing|search|results|cart|account|passengers|address|delivery|payment|review|done|blocked",
         },
     },
-    "required": ["action", "ref", "text", "direction", "url", "reason", "x", "y", "milestone"],
+    "required": [
+        "action",
+        "ref",
+        "fields",
+        "text",
+        "direction",
+        "url",
+        "reason",
+        "x",
+        "y",
+        "milestone",
+    ],
 }
 
 
@@ -243,6 +265,10 @@ class ClaudeCliPlanner(BasePlanner):
             system,
             "--allowed-tools",
             "Read",
+            # Schema-validated output: the CLI returns the action in `structured_output`, so a
+            # model that "thinks out loud" around its JSON cannot derail parsing.
+            "--json-schema",
+            json.dumps(ACTION_SCHEMA),
             "--no-session-persistence",
         ]
         last_err = None
@@ -265,6 +291,9 @@ class ClaudeCliPlanner(BasePlanner):
                 self.tokens["in"] += int(usage.get("input_tokens") or 0)
                 self.tokens["out"] += int(usage.get("output_tokens") or 0)
                 self.tokens["total"] = self.tokens["in"] + self.tokens["out"]
+                structured = envelope.get("structured_output")
+                if isinstance(structured, dict) and structured.get("action"):
+                    return structured
                 return _parse(envelope.get("result") or "")
             except Exception as e:
                 last_err = e
@@ -311,15 +340,20 @@ def _envelope_error(stdout):
 
 
 def _parse(text):
+    """The LAST JSON object with an "action" key in free text, else a harmless `wait`.
+
+    A greedy `{.*}` used to swallow prose containing braces (e.g. a mentioned
+    `{{vault.email}}`) and fail, so every step degraded into `wait` until the loop guard fired.
+    """
     if not text:
         return {"action": "wait"}
-    try:
-        return json.loads(text)
-    except Exception:
-        m = re.search(r"\{.*\}", text, re.DOTALL)
-        if not m:
-            return {"action": "wait"}
+    decoder = json.JSONDecoder()
+    found = None
+    for start in (i for i, ch in enumerate(text) if ch == "{"):
         try:
-            return json.loads(m.group(0))
-        except Exception:
-            return {"action": "wait"}
+            candidate, _ = decoder.raw_decode(text, start)
+        except ValueError:
+            continue
+        if isinstance(candidate, dict) and candidate.get("action"):
+            found = candidate
+    return found or {"action": "wait"}

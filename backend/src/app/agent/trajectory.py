@@ -155,6 +155,14 @@ def action_from_cache(cached, elements):
             "text": cached.get("text"),
             "milestone": ms,
         }
+    if kind == "fill_form":
+        fields = []
+        for cached_field in cached.get("fields") or []:
+            ref = _find_ref(elements, cached_field.get("desc"))
+            if ref is None:
+                return None
+            fields.append({"ref": ref, "text": cached_field.get("text")})
+        return {"action": kind, "fields": fields, "milestone": ms} if fields else None
     if kind in ("click", "type", "select"):
         ref = _find_ref(elements, cached.get("desc"))
         if ref is None:
@@ -172,6 +180,16 @@ def record_step(action, elements):
         "url": action.get("url"),
         "milestone": action.get("milestone"),
     }
+    if action.get("fields"):
+        step["fields"] = [
+            {
+                "text": f.get("text"),
+                "desc": descriptor(
+                    next((e for e in elements if e.get("ref") == f.get("ref")), None)
+                ),
+            }
+            for f in action["fields"]
+        ]
     ref = action.get("ref")
     if ref is not None:
         el = next((e for e in elements if e.get("ref") == ref), None)

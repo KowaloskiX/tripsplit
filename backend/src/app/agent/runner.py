@@ -248,7 +248,7 @@ def run(req: RunRequest) -> RunResult:
             sig = (
                 action.get("action"),
                 action.get("ref"),
-                str(action.get("text"))[:40],
+                str(action.get("text") or action.get("fields"))[:80],
                 action.get("x"),
                 action.get("y"),
                 action.get("direction"),
@@ -302,6 +302,8 @@ def run(req: RunRequest) -> RunResult:
                 act(browser, action, vault)
             except Exception as exc:
                 print(f"  [act error] {exc!r:.160} — re-observing")
+                # Tell the planner what went wrong, otherwise it retries the same action blind.
+                history.append({"note": f"The last action FAILED: {str(exc)[:300]}"})
         else:
             result.outcome, result.steps = "max_steps", last
             result.reason = "Hit the step cap without reaching a terminal state."

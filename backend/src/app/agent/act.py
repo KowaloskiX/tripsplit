@@ -20,14 +20,33 @@ import re
 _PLACEHOLDER = re.compile(r"\{\{\s*vault\.([a-zA-Z0-9_.]+)\s*\}\}")
 
 
+class UnknownVaultKey(ValueError):
+    """The planner referenced a vault key that does not exist.
+
+    Substituting "" instead used to leave the field silently empty, and the planner retyped the
+    same placeholder until the loop guard killed the run. The message goes back to the planner.
+    """
+
+
 def _resolve(text, vault):
     if not text:
         return text
 
     def repl(m):
-        return str(vault.get(m.group(1), ""))
+        key = m.group(1)
+        if key not in vault.planner_keys():
+            raise UnknownVaultKey(
+                f"vault key {key!r} does not exist; use one of: {', '.join(vault.planner_keys())}"
+            )
+        return str(vault.get(key))
 
     return _PLACEHOLDER.sub(repl, text)
+
+
+def _fill(page, ref, text, vault):
+    loc = _locator(page, ref)
+    loc.fill("")  # fill() focuses the field; a separate click can time out
+    loc.type(_resolve(text or "", vault), delay=25)
 
 
 def _locator(page, ref):
@@ -61,9 +80,15 @@ def act(browser, action, vault):
     if kind == "click":
         _click(page, action["ref"])
     elif kind == "type":
-        loc = _locator(page, action["ref"])
-        loc.fill("")  # fill() focuses the field; a separate click can time out
-        loc.type(_resolve(action.get("text", ""), vault), delay=25)
+        _fill(page, action["ref"], action.get("text", ""), vault)
+    elif kind == "fill_form":
+        # Many text fields in ONE planner step: a 6-passenger form is 13 fields, i.e. 13
+        # planner calls (~2 minutes on the CLI planner) when filled one by one.
+        fields = action.get("fields") or []
+        if not fields:
+            raise ValueError("fill_form needs a non-empty 'fields' list of {ref, text}")
+        for field in fields:
+            _fill(page, field["ref"], field.get("text", ""), vault)
     elif kind == "select":
         loc = _locator(page, action["ref"])
         val = (_resolve(action.get("text", ""), vault) or "").strip()
