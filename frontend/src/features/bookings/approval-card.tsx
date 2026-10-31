@@ -27,7 +27,7 @@ export function ApprovalCard({
 }: ApprovalCardProps): ReactNode {
   const amount = formatMoney(amountMinor, currency);
   return (
-    <Panel className="border-ink" role="region" aria-label="Approve the payment">
+    <Panel className="shadow-none" role="region" aria-label="Approve the payment">
       <PanelHeader>
         <span className="text-warn">Approval needed</span>
         <span>{supplier}</span>

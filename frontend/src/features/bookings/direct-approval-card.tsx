@@ -23,14 +23,14 @@ export function DirectApprovalCard({
   const approval = useApproveBooking(tripId);
   const travellers = booking.passenger_user_ids.length;
   return (
-    <Panel className="border-accent/60" role="region" aria-label="Approve the payment">
+    <Panel className="shadow-none" role="region" aria-label="Approve the payment">
       <PanelHeader>
-        <span className="text-accent">approval needed</span>
+        <span>Approval needed</span>
         <span>{booking.supplier} · direct</span>
       </PanelHeader>
       <div className="space-y-3 p-4">
         {approval.error && <ErrorCallout>{apiErrorMessage(approval.error)}</ErrorCallout>}
-        <p className="font-mono text-2xl tracking-tight text-ink">
+        <p className="text-2xl font-medium tabular-nums tracking-tight text-ink">
           {formatMoney(booking.amount_minor, currency)}
           {travellers > 0 && <span className="text-xs text-muted"> for {travellers} people</span>}
         </p>

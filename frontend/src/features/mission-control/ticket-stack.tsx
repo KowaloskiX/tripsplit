@@ -66,7 +66,7 @@ export function TicketStack({ tickets, purchases }: TicketStackProps): ReactNode
               <div className="perforation my-2.5 [--color-line:rgb(0_0_0/0.35)]" />
               <div className="flex items-center justify-between">
                 <span className="ticket-mono text-sm">{ticket.ref}</span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2 py-0.5 text-xs text-sun">
+                <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2 py-0.5 text-xs text-bg">
                   <Check className="size-3" strokeWidth={3} aria-hidden />
                   booked
                 </span>

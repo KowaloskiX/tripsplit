@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
-import { ClosingCta, FairSplit, HowItWorks, LandingHero } from "@/features/brand";
+import { ClosingCta, HowItWorks, LandingHero } from "@/features/brand";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -9,10 +9,9 @@ export const Route = createFileRoute("/")({
 
 function LandingPage(): ReactNode {
   return (
-    <div className="bg-surface">
+    <div className="bg-bg">
       <LandingHero />
       <HowItWorks />
-      <FairSplit />
       <ClosingCta />
     </div>
   );

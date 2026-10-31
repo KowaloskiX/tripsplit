@@ -7,6 +7,8 @@ Playwright-driven booking agent.
 
 - Engineering rules: [`CLAUDE.md`](./CLAUDE.md) (and [`frontend/CLAUDE.md`](./frontend/CLAUDE.md)).
 - Product, architecture and key decisions: [`docs/PLAN.md`](./docs/PLAN.md).
+- Look and feel (colours, fonts, radii, button style): [`docs/design/`](./docs/design/README.md) —
+  `tokens.json` is the source of truth for every UI change.
 - Skills (step-by-step playbooks): `.claude/skills/` and `.devin/skills/` (same content).
 
 ## Environment

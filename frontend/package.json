@@ -15,8 +15,6 @@
     "generate:api": "openapi-ts && node scripts/stamp-generated.mjs"
   },
   "dependencies": {
-    "@fontsource-variable/cormorant-garamond": "5.3.0",
-    "@fontsource-variable/dm-sans": "5.3.0",
     "@fontsource-variable/geist-mono": "5.2.7",
     "@hookform/resolvers": "^5.6.0",
     "@radix-ui/react-label": "^2.1.15",

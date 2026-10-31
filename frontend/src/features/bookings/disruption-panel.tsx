@@ -28,7 +28,7 @@ export function DisruptionPanel({ trip }: { trip: TripBookingsResponse }): React
     <Panel>
       <PanelHeader>
         <span>Demo · disruption</span>
-        <span>dev only</span>
+        <span>Dev only</span>
       </PanelHeader>
       <div className="space-y-3 p-4">
         {!result && (
