@@ -206,7 +206,7 @@ export function LoopBody({ node, state, body }: LoopBodyProps): ReactNode {
             <div className="min-w-0 flex-1">
               <p className="text-sm text-ink">{child.label}</p>
               {child.inputs && (
-                <p className="break-all font-mono text-[11px] text-muted">
+                <p className="hidden break-all font-mono text-[11px] text-muted sm:block">
                   {child.inputs.join(" · ")}
                 </p>
               )}
