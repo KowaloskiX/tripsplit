@@ -7,7 +7,7 @@ import { apiErrorMessage, type TripBookingsResponse } from "@/lib/api";
 
 import { BatchRefusals } from "./batch-refusals";
 import { CHANNEL_LABEL } from "./bookings-list";
-import { formatMoney } from "./money";
+import { formatMoney } from "@/lib/money";
 import { useApproveAll } from "./mutations";
 
 /**

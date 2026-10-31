@@ -18,7 +18,7 @@ import { DirectApprovalCard } from "./direct-approval-card";
 import { HoldCountdown } from "./hold-countdown";
 import { LiveAgentPanel } from "./live-agent-panel";
 import { ManualCompletionForm } from "./manual-completion-form";
-import { formatMoney } from "./money";
+import { formatMoney } from "@/lib/money";
 import { useStartBooking } from "./mutations";
 
 /** How a purchase is made: the agent drives the site, the supplier's API, or a human. */

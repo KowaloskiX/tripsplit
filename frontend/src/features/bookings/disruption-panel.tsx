@@ -5,7 +5,7 @@ import { ErrorCallout } from "@/components/ui/callout";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { apiErrorMessage, type TripBookingsResponse } from "@/lib/api";
 
-import { formatDelta, formatMoney } from "./money";
+import { formatDelta, formatMoney } from "@/lib/money";
 import { useSimulateDisruption } from "./mutations";
 
 // Mirrors the backend: a confirmed booking on a trip that is booked, or still booking the rest.
