@@ -9,7 +9,7 @@ import type { StayMission, StayStepState } from "./model";
 
 const DOT: Record<StayStepState, string> = {
   pending: "border border-dashed border-line text-muted",
-  running: "halo bg-lime text-pastel-ink",
+  running: "halo bg-sun text-sun-ink",
   done: "settle bg-ink text-bg",
   failed: "bg-danger-soft text-danger",
 };

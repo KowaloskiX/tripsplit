@@ -41,7 +41,7 @@ export function activeIndexOf(steps: readonly Step[]): number {
 
 /**
  * A horizontal progress stepper. One track runs dot to dot and fills as steps complete; one
- * lime indicator slides to the current step when the trip moves on (springy, transform only).
+ * marigold indicator slides to the current step when the trip moves on (springy, transform only).
  */
 export function Stepper({ steps, label, className }: StepperProps): ReactNode {
   const count = steps.length;
@@ -77,7 +77,7 @@ export function Stepper({ steps, label, className }: StepperProps): ReactNode {
           <span
             className={cn(
               "halo size-8 rounded-full transition-colors duration-300",
-              alert ? "bg-pastel-blush [--halo-color:var(--color-danger)]" : "bg-lime",
+              alert ? "bg-pastel-blush [--halo-color:var(--color-danger)]" : "bg-sun",
             )}
           />
         </span>

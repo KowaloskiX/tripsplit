@@ -3,7 +3,7 @@
  * moment per stage. Every class here has a reduced-motion fallback at the bottom of the file:
  * land on the final state, at most a short opacity fade.
  *
- * Raw custom properties (--lime, --ink…) on purpose: `@theme inline` does not guarantee that
+ * Raw custom properties (--sun, --ink…) on purpose: `@theme inline` does not guarantee that
  * the --color-* aliases exist at runtime.
  */
 
@@ -248,7 +248,7 @@
   transition: transform 520ms var(--ease-spring);
 }
 
-/* The leading package glows lime; the ring lives on a pseudo-element so only opacity animates. */
+/* The leading package glows; the ring lives on a pseudo-element so only opacity animates. */
 .lead-glow {
   position: relative;
 }
@@ -260,8 +260,8 @@
   border-radius: inherit;
   pointer-events: none;
   box-shadow:
-    0 0 0 2px var(--lime),
-    0 18px 60px -12px color-mix(in oklab, var(--lime) 85%, transparent);
+    0 0 0 2px var(--sun),
+    0 18px 60px -12px color-mix(in oklab, var(--sun) 85%, transparent);
   opacity: 0;
   transition: opacity 400ms var(--ease-calm);
 }
@@ -379,7 +379,7 @@
 
 /* ---------------------------------------------------------------- booking ------------------ */
 
-/* "The agent is on it": a lime band travelling along the top edge of the card. */
+/* "The agent is on it": a marigold band travelling along the top edge of the card. */
 @keyframes working-sweep {
   from {
     transform: translateX(-100%);

@@ -69,7 +69,7 @@ function StandInPage(): ReactNode {
           </div>
         ))}
       </div>
-      <span className="mt-5 ml-auto block h-10 w-36 rounded-full bg-[#c7ff9f]" />
+      <span className="mt-5 ml-auto block h-10 w-36 rounded-full bg-sun" />
       <span className="cursor-wander absolute inset-0">
         <MousePointer2 className="size-5 fill-black text-white drop-shadow" />
       </span>
@@ -99,7 +99,7 @@ export function BrowserPane({ browser, live, className }: BrowserPaneProps): Rea
             <span className="truncate">{browser.host}</span>
           </span>
           {live && (
-            <span className="ticket-mono inline-flex items-center gap-1.5 rounded-full bg-lime px-2 py-0.5 text-xs uppercase text-pastel-ink">
+            <span className="ticket-mono inline-flex items-center gap-1.5 rounded-full bg-sun px-2 py-0.5 text-xs uppercase text-sun-ink">
               <span
                 aria-hidden
                 className="size-1.5 animate-pulse rounded-full bg-current motion-reduce:animate-none"

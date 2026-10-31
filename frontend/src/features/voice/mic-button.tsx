@@ -74,7 +74,7 @@ export function MicButton({
         aria-pressed={input.listening}
         aria-label={input.listening ? "Stop listening" : `Speak (${LANG_NAME[lang]})`}
         title={input.listening ? "Listening… tap to finish, Esc to cancel" : "Tap and speak"}
-        className="rounded-full outline-none transition duration-150 focus-visible:ring-2 focus-visible:ring-lime active:scale-[0.95] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100"
+        className="rounded-full outline-none transition duration-150 focus-visible:ring-2 focus-visible:ring-sun active:scale-[0.95] disabled:pointer-events-none disabled:opacity-50 motion-reduce:active:scale-100"
       >
         <MicOrb listening={input.listening} level={input.level} size={size} />
       </button>

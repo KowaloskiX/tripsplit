@@ -81,9 +81,9 @@ export function ProposalsPanel({ room }: { room: RoomResponse }): ReactNode {
           ))}
 
         {proposals.length > 0 && status !== "proposing" && (
-          <div className="grid gap-4">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
             {proposals.map((proposal, index) => (
-              <div key={proposal.id} className="deal-in" style={dealStyle(index)}>
+              <div key={proposal.id} className="deal-in min-w-0" style={dealStyle(index)}>
                 <ProposalCard
                   proposal={proposal}
                   currency={trip.currency}

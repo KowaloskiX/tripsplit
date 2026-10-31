@@ -1,4 +1,4 @@
-import { Check, ExternalLink } from "lucide-react";
+import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,7 @@ type ProposalCardProps = {
   /** `undefined` hides the vote button (voting is over or not open). */
   onVote?: (() => void) | undefined;
   voting?: boolean;
-  /** Most votes so far, while voting is open: the card glows lime. */
+  /** Most votes so far, while voting is open: the card glows. */
   leading?: boolean;
   /** Lost the vote and is on its way out: steps back and fades. */
   receding?: boolean;
@@ -51,6 +51,17 @@ export function segmentLine(segment: SegmentResponse): string {
   return `${segment.number} ${segment.origin} → ${segment.destination} · ${TIME.format(
     new Date(segment.departs_at),
   )}`;
+}
+
+/** "Budget: PKP Intercity train + Mama Shelter…" -> "Budget": the items below say the rest. */
+export function packageHeading(title: string): string {
+  const tier = title.split(":", 1)[0]?.trim();
+  return tier && tier.length < title.length ? tier : title;
+}
+
+/** A transport item reads as its carrier (the legs say where and when); anything else by name. */
+function itemName(item: ProposalResponse["items"][number]): string {
+  return item.kind === "transport" && item.segments.length > 0 ? item.supplier : item.title;
 }
 
 const CAUTION: Record<Provenance["kind"], number> = { live: 0, test: 1, sandbox: 1, example: 2 };
@@ -106,117 +117,94 @@ export function ProposalCard({
     >
       {proposal.chosen && (
         <span className="absolute -top-3 right-5 z-10">
-          <Stamp tone="lime" rotate={-8} delayMs={120}>
+          <Stamp tone="sun" rotate={-8} delayMs={120}>
             <Check className="size-3.5" strokeWidth={3} aria-hidden />
             chosen
           </Stamp>
         </span>
       )}
-      {/* Clips the perforation notches; the stamp and the glow sit outside it. */}
-      <div className="flex min-w-0 flex-col overflow-hidden rounded-[inherit]">
+      {/* A search-result row: photo left, what you get in the middle, the price and the action
+          right. Clipped to the card's corners; the stamp and the glow sit outside it. */}
+      <div className="flex min-w-0 flex-col overflow-hidden rounded-[inherit] sm:flex-row">
         {images.length > 0 && (
           <PhotoStrip
             images={images}
             layout="cover"
             example={example}
-            className="mx-3 mt-3 sm:mx-4 sm:mt-4"
+            className="shrink-0 rounded-none sm:w-52 sm:[&>span]:aspect-auto sm:[&>span]:h-full"
           />
         )}
-        <div className="flex items-start justify-between gap-3 px-5 pt-6 sm:px-6">
-          <h3 className="text-xl leading-snug tracking-[-0.02em] text-ink">{proposal.title}</h3>
-          <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+        <div className="flex min-w-0 flex-1 flex-col p-4 sm:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3
+                className="text-lg font-semibold tracking-[-0.01em] text-ink"
+                title={proposal.title}
+              >
+                {packageHeading(proposal.title)}
+              </h3>
+              {provenance && <ProvenancePill provenance={provenance} className="mt-1" />}
+            </div>
             {proposal.over_budget && <Badge tone="danger">over budget</Badge>}
           </div>
-        </div>
-        {proposal.summary && (
-          <p className="mt-2 px-5 text-[15px] leading-relaxed text-muted sm:px-6">
-            {proposal.summary}
-          </p>
-        )}
-        {provenance && (
-          <div className="mt-2.5 px-5 sm:px-6">
-            <ProvenancePill provenance={provenance} />
-          </div>
-        )}
 
-        <ul className="mt-5 space-y-2 px-3 sm:px-6">
-          {proposal.items.map((item) => (
-            <li
-              key={`${item.kind}-${item.title}`}
-              className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-[20px] bg-surface-sunken px-3 py-2.5"
-            >
-              <span
-                className={cn(
-                  "inline-flex size-10 shrink-0 items-center justify-center rounded-2xl text-pastel-ink",
-                  KIND_FILL[item.kind],
-                )}
-              >
-                <KindIcon kind={item.kind} mode={item.mode} className="size-[18px] shrink-0" />
-              </span>
-              <div className="min-w-[9rem] flex-1">
-                <p className="text-sm font-medium leading-snug text-ink">{item.title}</p>
-                {item.segments.length > 0 && (
-                  <ul className="mt-0.5 space-y-0.5" aria-label="Segments">
-                    {item.segments.map((segment) => (
-                      <li
-                        key={`${segment.number}-${segment.departs_at}`}
-                        className="text-xs tabular-nums text-muted"
-                      >
-                        {segmentLine(segment)}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <a
-                  href={item.supplier_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-muted underline-offset-2 transition duration-150 hover:text-ink hover:underline"
+          <ul className="mt-3 space-y-2.5">
+            {proposal.items.map((item) => (
+              <li key={`${item.kind}-${item.title}`} className="flex items-start gap-2.5">
+                <span
+                  className={cn(
+                    "mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-md text-pastel-ink",
+                    KIND_FILL[item.kind],
+                  )}
                 >
-                  {item.supplier}
-                  <ExternalLink className="size-3" aria-hidden />
-                </a>
-                {(item.links ?? []).length > 0 && (
-                  <LinkChips links={item.links ?? []} className="mt-1.5" />
-                )}
-              </div>
-              <span className="ticket-mono ml-auto shrink-0 text-sm text-ink">
-                {formatMoney(item.price_minor, currency)}
-              </span>
-            </li>
-          ))}
-        </ul>
+                  <KindIcon kind={item.kind} mode={item.mode} className="size-4 shrink-0" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm text-ink" title={item.title}>
+                    {itemName(item)}
+                  </p>
+                  {item.segments.length > 0 && (
+                    <ul aria-label="Segments">
+                      {item.segments.map((segment) => (
+                        <li
+                          key={`${segment.number}-${segment.departs_at}`}
+                          className="truncate text-xs tabular-nums text-muted"
+                        >
+                          {segmentLine(segment)}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
 
-        {/* The stub: a torn-off strip with what each person pays. */}
-        <div aria-hidden className="relative mt-6">
-          <span className="absolute -left-3 top-1/2 size-6 -translate-y-1/2 rounded-full border border-line bg-surface" />
-          <span className="absolute -right-3 top-1/2 size-6 -translate-y-1/2 rounded-full border border-line bg-surface" />
-          <div className="perforation mx-6" />
-        </div>
-        <div className="flex items-end justify-between gap-3 px-6 pt-4 pb-6">
-          <div>
-            <p className="ticket-mono text-2xl text-ink">
-              {formatMoney(proposal.per_person_minor, currency)}
-              <span className="font-sans text-sm text-muted"> / person</span>
-            </p>
-            <p className="ticket-mono mt-1 text-xs text-muted">
-              {formatMoney(proposal.total_minor, currency)} total ·{" "}
+          <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+            <p className="text-xs text-muted">
               <DigitRoll value={proposal.votes} /> {proposal.votes === 1 ? "vote" : "votes"}
             </p>
+            <div className="flex items-center gap-3">
+              <p className="text-right">
+                <span className="ticket-mono block text-xl font-semibold text-ink">
+                  {formatMoney(proposal.per_person_minor, currency)}
+                </span>
+                <span className="text-xs text-muted">per person</span>
+              </p>
+              {onVote && (
+                <Button
+                  variant={proposal.voted_by_me ? "outline" : "sun"}
+                  onClick={onVote}
+                  disabled={voting || proposal.voted_by_me}
+                >
+                  {proposal.voted_by_me && <Check className="size-4" aria-hidden />}
+                  {proposal.voted_by_me ? "Your vote" : "Vote"}
+                </Button>
+              )}
+            </div>
           </div>
-          {onVote && (
-            <Button
-              size="sm"
-              variant={proposal.voted_by_me ? "solid" : "outline"}
-              onClick={onVote}
-              disabled={voting || proposal.voted_by_me}
-            >
-              {proposal.voted_by_me && <Check className="size-4" aria-hidden />}
-              {proposal.voted_by_me ? "Your vote" : "Vote"}
-            </Button>
-          )}
+          {links.length > 0 && <LinkChips links={links} className="mt-3" />}
         </div>
-        {links.length > 0 && <LinkChips links={links} className="-mt-2 px-6 pb-6" />}
       </div>
     </article>
   );

@@ -16,25 +16,25 @@ const STEPS = [
   {
     icon: MessagesSquare,
     title: "Propose",
-    body: "Say where and when. The agent comes back with three ready-to-buy packages: transport, a stay and something to do.",
-    fill: "bg-pastel-sky",
+    body: "Say where and when. Get three ready-to-book packages.",
+    fill: "bg-pastel-sea",
   },
   {
     icon: ThumbsUp,
     title: "Vote",
-    body: "Everyone votes in the chat. Packages over the group's budget are flagged.",
-    fill: "bg-pastel-lime",
+    body: "The group picks one in the chat.",
+    fill: "bg-pastel-apricot",
   },
   {
     icon: Wallet,
-    title: "Everyone pays their share",
-    body: "Each person pays only their part. The agent waits until every share is in before it spends a złoty.",
+    title: "Pay your share",
+    body: "Nothing is bought until everyone has paid.",
     fill: "bg-pastel-blush",
   },
   {
     icon: RefreshCw,
-    title: "The agent books and rebooks",
-    body: "It buys the tickets on the supplier's own site. Train running late? It finds the next one and re-splits the cost.",
+    title: "Go",
+    body: "The agent books it, and rebooks if a train falls through.",
     fill: "bg-surface-sunken",
   },
 ] as const;
@@ -58,9 +58,7 @@ export function HowItWorks(): ReactNode {
       aria-labelledby="how-heading"
       className="mx-auto max-w-6xl px-4 py-24 sm:px-6 sm:py-32"
     >
-      <SectionTitle id="how-heading">
-        How it <span className="accent-word">works</span>
-      </SectionTitle>
+      <SectionTitle id="how-heading">How it works</SectionTitle>
       <ol className="mt-14 grid gap-4 sm:mt-20 md:grid-cols-2">
         {STEPS.map((step, index) => (
           <Reveal
@@ -68,7 +66,7 @@ export function HowItWorks(): ReactNode {
             key={step.title}
             index={index % 2}
             className={cn(
-              "flex min-h-72 flex-col justify-between rounded-[40px] p-8 text-pastel-ink sm:p-10",
+              "flex min-h-56 flex-col justify-between rounded-[var(--radius-panel)] p-8 text-pastel-ink sm:p-10",
               step.fill,
               step.fill === "bg-surface-sunken" && "text-ink",
             )}
@@ -108,17 +106,14 @@ export function FairSplit(): ReactNode {
     <section aria-labelledby="split-heading" className="border-t border-line">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 py-24 sm:px-6 sm:py-32 lg:grid-cols-2 lg:gap-20">
         <Reveal>
-          <p className="eyebrow">Nobody fronts the money</p>
           <h2
             id="split-heading"
-            className="display mt-5 text-[clamp(2.6rem,6vw,4.2rem)] text-balance text-ink"
+            className="display text-[clamp(2.6rem,6vw,4.2rem)] text-balance text-ink"
           >
-            No more &ldquo;I&apos;ll pay, <span className="accent-word">send me a BLIK</span>{" "}
-            later&rdquo;
+            Nobody fronts the money
           </h2>
           <p className="mt-6 max-w-lg text-lg leading-relaxed text-muted">
-            The agent books only once every share is paid, so no one spends weeks chasing friends.
-            If the price drops or a train gets replaced, it re-splits and refunds the difference.
+            Price drops or a train changes? Shares re-split and the difference comes back.
           </p>
         </Reveal>
 
@@ -137,7 +132,7 @@ function SharesFigure(): ReactNode {
       ref={ref}
       data-visible={visible}
       aria-label="Example: four of six shares paid"
-      className="reveal rounded-[40px] bg-surface-sunken p-6 sm:p-8"
+      className="reveal rounded-[var(--radius-panel)] bg-surface-sunken p-6 sm:p-8"
       style={{ "--i": 1 } as CSSProperties}
     >
       <div className="flex items-baseline justify-between">
@@ -173,16 +168,13 @@ function SharesFigure(): ReactNode {
 export function ClosingCta(): ReactNode {
   return (
     <section aria-labelledby="cta-heading" className="px-4 pb-16 sm:px-6 sm:pb-24">
-      <Reveal className="dark mx-auto flex max-w-6xl flex-col items-center rounded-[48px] bg-bg px-6 py-20 text-center text-ink sm:rounded-[60px] sm:py-28">
+      <Reveal className="mx-auto flex max-w-6xl flex-col items-center rounded-[var(--radius-panel)] bg-surface-sunken px-6 py-20 text-center text-ink sm:py-28">
         <h2
           id="cta-heading"
           className="display max-w-3xl text-[clamp(2.6rem,6vw,4.6rem)] text-balance"
         >
-          Plan your next <span className="accent-word text-lime">trip</span>
+          Plan your next trip
         </h2>
-        <p className="mt-5 max-w-md text-lg text-muted">
-          Create a trip, share the link in the group chat, and the agent handles the rest.
-        </p>
         <StartTripButton className="mt-10" />
       </Reveal>
     </section>
@@ -191,41 +183,12 @@ export function ClosingCta(): ReactNode {
 
 export function LandingFooter(): ReactNode {
   return (
-    <footer className="dark bg-bg text-ink">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:grid-cols-[1fr_auto_auto] sm:gap-20 sm:px-6">
-        <div>
-          <Wordmark />
-          <p className="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-            From group chat to tickets: planned, paid and booked in one place.
-          </p>
-        </div>
-        <nav aria-label="Product" className="text-sm">
-          <p className="eyebrow">Product</p>
-          <ul className="mt-4 space-y-2.5">
-            <li>
-              <Link to="/register" className="transition duration-150 hover:text-lime">
-                Start a trip
-              </Link>
-            </li>
-            <li>
-              <Link to="/login" className="transition duration-150 hover:text-lime">
-                Sign in
-              </Link>
-            </li>
-          </ul>
-        </nav>
-        <div className="text-sm">
-          <p className="eyebrow">Promise</p>
-          <ul className="mt-4 space-y-2.5 text-ink">
-            <li>Nobody fronts the money</li>
-            <li>Nothing bought without approval</li>
-          </ul>
-        </div>
-      </div>
-      <div className="border-t border-line">
-        <p className="ticket-mono mx-auto max-w-6xl px-4 py-6 text-xs text-muted sm:px-6">
-          © 2026 tripsplit
-        </p>
+    <footer className="border-t border-line bg-bg text-ink">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-4 py-10 sm:px-6">
+        <Wordmark />
+        <Link to="/login" className="text-sm text-muted transition duration-150 hover:text-ink">
+          Sign in
+        </Link>
       </div>
     </footer>
   );

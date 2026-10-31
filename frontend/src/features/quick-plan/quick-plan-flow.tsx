@@ -23,12 +23,14 @@ type QuickPlanFlowProps = {
 };
 
 /**
- * "Plan a trip" wired to the API: the brief goes to `POST /trips/quick` (answering its
- * questions one by one), then the created trip's packages fill the carousel; "Take this" is
+ * "Plan a trip" wired to the API: the brief goes to `POST /trips/quick`; a tapped chip answers
+ * its question, a typed follow-up joins the brief (the backend reads the whole conversation)
+ * and the agent's reply comes from the response. Then the created trip's packages fill the carousel; "Take this" is
  * the organizer's vote, and the pay choice either invites friends or closes the vote.
  */
 export function QuickPlanFlow({ tripId, onTrip, onOpenRoom }: QuickPlanFlowProps): ReactNode {
   const [prompt, setPrompt] = useState<string | null>(null);
+  const [followUps, setFollowUps] = useState<string[]>([]);
   const [answers, setAnswers] = useState<QuickAnswers>({});
   const [questions, setQuestions] = useState<QuickQuestionResponse[]>([]);
   const quick = useQuickCreate();
@@ -49,24 +51,28 @@ export function QuickPlanFlow({ tripId, onTrip, onOpenRoom }: QuickPlanFlowProps
     );
   };
 
+  const conversation = (more: readonly string[]): string => [prompt, ...more].join("\n");
+
   const submit = (text: string): void => {
-    const question = questions[0];
-    if (prompt && question) {
-      answer(question, text);
+    if (tripId) return;
+    if (prompt) {
+      const next = [...followUps, text];
+      setFollowUps(next);
+      send(conversation(next), answers);
       return;
     }
-    if (tripId) return;
     setPrompt(text);
+    setFollowUps([]);
     setAnswers({});
     send(text, {});
   };
 
-  const answer = (question: QuickQuestionResponse, input: string): void => {
-    const value = answerFor(question, input);
+  const answer = (question: QuickQuestionResponse, option: string): void => {
+    const value = answerFor(question, option);
     if (!value || !prompt) return;
     const next = { ...answers, ...value };
     setAnswers(next);
-    send(prompt, next);
+    send(conversation(followUps), next);
   };
 
   if (tripId) return <TripPackages tripId={tripId} prompt={prompt} onOpenRoom={onOpenRoom} />;
@@ -78,7 +84,8 @@ export function QuickPlanFlow({ tripId, onTrip, onOpenRoom }: QuickPlanFlowProps
       <QuickPlan
         stage={stage}
         prompt={prompt}
-        reply={question ? "Almost there." : "Tell me a bit more."}
+        followUps={followUps}
+        reply={quick.data?.reply ?? ""}
         packages={[]}
         question={question ? clarifyingQuestion(question) : null}
         onSubmit={submit}

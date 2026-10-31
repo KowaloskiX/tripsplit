@@ -22,7 +22,7 @@ function Fallback({ label }: { label: string }): ReactNode {
     <span
       role="img"
       aria-label={label}
-      className="flex size-full items-center justify-center bg-pastel-lime text-pastel-ink/60"
+      className="flex size-full items-center justify-center bg-pastel-apricot text-pastel-ink/60"
     >
       <BedDouble className="size-6" strokeWidth={1.5} aria-hidden />
     </span>

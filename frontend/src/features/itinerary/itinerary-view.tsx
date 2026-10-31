@@ -10,11 +10,11 @@ import type {
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-/** Pastel blocks: travel sky, attractions blush, meals lime, free time plain. */
+/** Pastel blocks: travel sea, attractions blush, meals apricot, free time plain. */
 const BLOCK: Record<ItemKind, string> = {
-  travel: "bg-pastel-sky/70 text-pastel-ink",
+  travel: "bg-pastel-sea/70 text-pastel-ink",
   attraction: "bg-pastel-blush text-pastel-ink",
-  meal: "bg-pastel-lime/80 text-pastel-ink",
+  meal: "bg-pastel-apricot/80 text-pastel-ink",
   free: "bg-surface-sunken text-muted",
 };
 

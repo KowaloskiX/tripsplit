@@ -44,7 +44,7 @@ function Counter({
         <div className="mt-4 flex flex-col items-center gap-3">
           <span className="relative">
             {burst && <ConfettiBurst count={30} spread={180} />}
-            <Stamp tone="lime" rotate={-6}>
+            <Stamp tone="sun" rotate={-6}>
               {total}/{total} paid
             </Stamp>
           </span>

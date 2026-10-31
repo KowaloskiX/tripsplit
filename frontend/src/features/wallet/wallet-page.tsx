@@ -33,7 +33,7 @@ export function WalletBalance({
         Funds held by TripSplit Pay (simulated licensed partner) — TripSplit itself never holds your
         money.
       </p>
-      <Button variant="lime" size="lg" className="mt-6" onClick={onTopUp}>
+      <Button variant="sun" size="lg" className="mt-6" onClick={onTopUp}>
         <Plus className="size-5" aria-hidden /> Top up
       </Button>
     </div>

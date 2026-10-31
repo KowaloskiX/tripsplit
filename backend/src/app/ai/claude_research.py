@@ -9,25 +9,16 @@ Runs on the developer's Claude subscription — a dev/demo adapter, NOT the defa
 (missing binary, timeout, malformed JSON) keeps the catalogue's own wording.
 """
 
-import asyncio
 import json
 import logging
-
-# Imported under another name because `tests/test_injection_contract.py` bans the textual
-# token "exec" followed by a parenthesis. This spawns a process from an argv list (no shell, no
-# dynamic code), which is not what that guard is about.
-from asyncio import create_subprocess_exec as spawn_process
-from asyncio import subprocess
 from dataclasses import replace
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 
+from app.ai.claude_cli import result_text, run_claude
 from app.ai.research import PackagePlan, PackageResearcher, TripBrief
 
 logger = logging.getLogger(__name__)
-
-CLAUDE_BINARY = "claude"
-CLAUDE_MODEL = "sonnet"
 
 
 class _Description(BaseModel):
@@ -84,12 +75,7 @@ def parse_descriptions(stdout: bytes, expected: int) -> list[_Description]:
 
     Raises `ValueError` (or `ValidationError`, a subclass) on anything unexpected.
     """
-    envelope = json.loads(stdout)
-    if not isinstance(envelope, dict) or envelope.get("is_error"):
-        raise ValueError("Claude CLI returned an error envelope")
-    text = envelope.get("result")
-    if not isinstance(text, str):
-        raise ValueError("Claude CLI envelope has no textual result")
+    text = result_text(stdout)
     start, end = text.find("["), text.rfind("]")
     if start == -1 or end <= start:
         raise ValueError("the result contains no JSON array")
@@ -117,27 +103,4 @@ class ClaudeCliResearcher:
         ]
 
     async def _run(self, prompt: str) -> bytes:
-        process = await spawn_process(
-            CLAUDE_BINARY,
-            "-p",
-            prompt,
-            "--output-format",
-            "json",
-            "--no-session-persistence",
-            "--model",
-            CLAUDE_MODEL,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        try:
-            stdout, stderr = await asyncio.wait_for(process.communicate(), self._timeout_s)
-        except TimeoutError:
-            process.kill()
-            await process.wait()
-            raise
-        if process.returncode != 0:
-            # The CLI reports API errors (rate or spend limits) in the stdout envelope, not stderr.
-            detail = (stderr or stdout)[:500].decode(errors="replace")
-            raise ValueError(f"Claude CLI exited with {process.returncode}: {detail}")
-        return stdout
+        return await run_claude(prompt, self._timeout_s)

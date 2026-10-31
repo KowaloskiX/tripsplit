@@ -6,7 +6,7 @@ disruption. Monorepo: TanStack Start frontend + FastAPI/Beanie/MongoDB backend +
 Playwright-driven booking agent.
 
 - Engineering rules: [`CLAUDE.md`](./CLAUDE.md) (and [`frontend/CLAUDE.md`](./frontend/CLAUDE.md)).
-- Product, architecture, phases, work split: [`docs/PLAN.md`](./docs/PLAN.md).
+- Product, architecture and key decisions: [`docs/PLAN.md`](./docs/PLAN.md).
 - Skills (step-by-step playbooks): `.claude/skills/` and `.devin/skills/` (same content).
 
 ## Environment

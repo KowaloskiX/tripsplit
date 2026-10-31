@@ -10,7 +10,7 @@ import { NODE_ICON, NODE_TYPE_LABEL, SourceChip, STATUS_LABEL, STATUS_TONE } fro
 
 const DOT: Record<StepStatus, string> = {
   pending: "border-2 border-dashed border-line bg-surface text-muted",
-  running: "halo bg-lime text-pastel-ink",
+  running: "halo bg-sun text-sun-ink",
   done: "bg-ink text-bg",
   failed: "bg-danger-soft text-danger ring-1 ring-danger/40",
   healed: "bg-pastel-blush text-pastel-ink",
@@ -27,7 +27,7 @@ const CARD: Record<StepStatus, string> = {
 /** Settled connector colour: the line below a node fills once the run has passed it. */
 const LINE: Record<StepStatus, string> = {
   pending: "scale-y-0",
-  running: "scale-y-50 bg-lime",
+  running: "scale-y-50 bg-sun",
   done: "scale-y-100 bg-ink",
   failed: "scale-y-0",
   healed: "scale-y-100 bg-ink",
@@ -120,7 +120,7 @@ export function PipelineNode({ node, state, last, children }: PipelineNodeProps)
             {/* While this step runs, a glow travels down the edge towards the next one. */}
             {state.status === "running" && (
               <span className="edge-travel absolute inset-0">
-                <span className="block h-2/5 w-full rounded-full bg-gradient-to-b from-transparent via-lime to-transparent" />
+                <span className="block h-2/5 w-full rounded-full bg-gradient-to-b from-transparent via-sun to-transparent" />
               </span>
             )}
           </span>
@@ -183,7 +183,7 @@ export function LoopBody({ node, state, body }: LoopBodyProps): ReactNode {
                   key={index}
                   className={cn(
                     "size-2.5 rounded-full transition duration-150",
-                    done ? "bg-ink" : current ? "halo bg-lime" : "bg-line",
+                    done ? "bg-ink" : current ? "halo bg-sun" : "bg-line",
                   )}
                 />
               );

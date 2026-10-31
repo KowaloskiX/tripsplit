@@ -149,7 +149,7 @@ export function TransitionsScene(): ReactNode {
           Switch page
           <ArrowRight className="size-4" aria-hidden />
         </Button>
-        <Button variant="lime">Press me</Button>
+        <Button variant="sun">Press me</Button>
         <Button variant="outline">And me</Button>
       </div>
     </div>

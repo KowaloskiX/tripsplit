@@ -23,8 +23,8 @@ const LABEL: Record<AttractionKind, string> = {
 
 /** Pastel fill per kind, for a card without a photo and for the kind chip. */
 export const ATTRACTION_FILL: Record<AttractionKind, string> = {
-  museum: "bg-[#e6dcff]",
-  landmark: "bg-pastel-sky",
+  museum: "bg-[#f7d6e0]",
+  landmark: "bg-pastel-sea",
   viewpoint: "bg-[#c9f2e2]",
   food: "bg-[#ffe2c2]",
   experience: "bg-pastel-blush",

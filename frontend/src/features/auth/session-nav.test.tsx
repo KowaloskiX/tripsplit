@@ -32,12 +32,14 @@ describe("SessionNav", () => {
     expect(screen.getByRole("link", { name: "Create account" })).toBeInTheDocument();
   });
 
-  it("shows the email and a sign-out button for a signed-in user", async () => {
+  it("shows only a sign-out button for a signed-in user", async () => {
     server.use(http.get(`${API_ORIGIN}/api/auth/session`, () => HttpResponse.json({ user: USER })));
     await renderNav();
 
-    await waitFor(() => expect(screen.getByText(USER.email)).toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText(USER.email)).not.toBeInTheDocument();
   });
 });
 

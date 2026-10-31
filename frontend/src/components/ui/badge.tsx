@@ -10,8 +10,8 @@ const badge = cva(
       tone: {
         neutral: "bg-surface-sunken text-muted",
         /** Pastel fills always carry black text, in both themes. */
-        sky: "bg-pastel-sky text-pastel-ink",
-        lime: "bg-lime text-pastel-ink",
+        sky: "bg-pastel-sea text-pastel-ink",
+        sun: "bg-sun text-sun-ink",
         blush: "bg-pastel-blush text-pastel-ink",
         success: "bg-success-soft text-success",
         warn: "bg-warn-soft text-warn",

@@ -19,6 +19,8 @@ export type QuickPlanProps = {
   stage: QuickPlanStage;
   /** What the user asked; shown as their bubble. */
   prompt: string | null;
+  /** What the user typed after the agent's replies, oldest first; one bubble each. */
+  followUps?: readonly string[];
   /** The agent's answer above the packages. */
   reply?: string;
   packages: readonly QuickPackage[];
@@ -37,10 +39,10 @@ export type QuickPlanProps = {
 function AgentBubble({ children }: { children: ReactNode }): ReactNode {
   return (
     <div className="feed-in-right flex items-start gap-2.5">
-      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-lime/30">
+      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-line">
         <Sparkles className="size-4" aria-hidden />
       </span>
-      <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-lime/20">
+      <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-line">
         {children}
       </div>
     </div>
@@ -54,6 +56,7 @@ function AgentBubble({ children }: { children: ReactNode }): ReactNode {
 export function QuickPlan({
   stage,
   prompt,
+  followUps = [],
   reply = "Here are three ways to do it. Swipe, then take one.",
   packages,
   question,
@@ -90,18 +93,26 @@ export function QuickPlan({
     <div className="space-y-6">
       {stage === "idle" && (
         <div className="mx-auto max-w-2xl space-y-4 text-center">
-          <p className="eyebrow">Plan a trip</p>
           <h2 className="display text-[clamp(2.4rem,7vw,4.2rem)] text-balance text-ink">
-            Where, when, <span className="accent-word">how many</span>, budget?
+            Where are we going?
           </h2>
         </div>
       )}
 
       {prompt && (
         <div className="mx-auto max-w-2xl space-y-4" aria-live="polite">
-          <p className="feed-in-right ml-auto w-fit max-w-[85%] rounded-3xl rounded-br-md bg-pastel-sky px-4 py-2.5 text-[15px] text-pastel-ink">
+          <p className="feed-in-right ml-auto w-fit max-w-[85%] rounded-3xl rounded-br-md bg-pastel-sea px-4 py-2.5 text-[15px] text-pastel-ink">
             {prompt}
           </p>
+          {followUps.map((text, index) => (
+            <p
+              // biome-ignore lint/suspicious/noArrayIndexKey: append-only — a bubble's position is its identity.
+              key={index}
+              className="feed-in-right ml-auto w-fit max-w-[85%] rounded-3xl rounded-br-md bg-pastel-sea px-4 py-2.5 text-[15px] text-pastel-ink"
+            >
+              {text}
+            </p>
+          ))}
           {stage === "thinking" && (
             <AgentBubble>
               <span className="inline-flex h-5 items-center text-agent-tag">
@@ -122,7 +133,7 @@ export function QuickPlan({
                         key={option}
                         type="button"
                         onClick={() => onAnswer?.(question.id, option)}
-                        className="pop ticket-mono rounded-full border border-white/20 px-3 py-1 text-xs text-agent-fg transition duration-150 hover:border-lime hover:text-lime active:scale-[0.95]"
+                        className="pop ticket-mono rounded-full border border-white/20 px-3 py-1 text-xs text-agent-fg transition duration-150 hover:border-sun hover:text-sun active:scale-[0.95]"
                         style={{ "--i": index, "--delay": "300ms" } as CSSProperties}
                       >
                         {option}

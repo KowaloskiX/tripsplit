@@ -46,7 +46,7 @@ export function ContributionsTable({
         {celebrate && (
           <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <ConfettiBurst />
-            <Stamp tone="lime" rotate={-7}>
+            <Stamp tone="sun" rotate={-7}>
               {total}/{total} paid
             </Stamp>
           </span>

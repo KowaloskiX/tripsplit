@@ -1,11 +1,12 @@
 """Reading a one-line trip brief ("weekend w Pradze dla 6, 20-22.11, do 700 zł/os, pociągiem")
 into the fields of a trip, and asking for whatever is missing.
 
-Deterministic text rules in Polish and English — no LLM, so the same sentence always gives the
-same trip. The idea follows Boscart's heuristic path (`heuristicRefine` + `heuristicQuestions`):
-understand what is there, and turn each missing essential into one question with tappable
-answers. Essentials are where (destination), when (dates) and how many (party); the origin
-defaults to Warszawa, budget and mode are optional.
+Deterministic text rules in Polish and English first, so the same sentence always gives the
+same trip; a `BriefReader` adapter may then fill what the rules missed and word the reply. The
+idea follows Boscart's heuristic path (`heuristicRefine` + `heuristicQuestions`): understand
+what is there, and turn each missing essential into one question with tappable answers.
+Essentials are where (destination), when (dates) and how many (party); the origin defaults to
+Warszawa, budget and mode are optional.
 """
 
 import re
@@ -13,6 +14,7 @@ import unicodedata
 from dataclasses import dataclass, replace
 from datetime import date, timedelta
 from enum import StrEnum
+from typing import Protocol
 
 from app.core.domain.places import city_named
 from app.core.domain.trips import TransportMode
@@ -576,3 +578,63 @@ def questions_for(draft: QuickDraft, today: date) -> tuple[QuickQuestion, ...]:
                     )
                 )
     return tuple(asked)
+
+
+# ---- the reader port and the agent's reply ------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class BriefReading:
+    draft: QuickDraft
+    reply: str  # the agent's chat message about this draft
+
+
+class BriefReader(Protocol):
+    """Reads a draft the rules produced: may fill its missing fields, always writes a reply."""
+
+    async def read(self, draft: QuickDraft, today: date) -> BriefReading: ...
+
+
+class RulesBriefReader:
+    """No LLM: the draft as the rules read it, with a reply built from its fields."""
+
+    async def read(self, draft: QuickDraft, today: date) -> BriefReading:
+        return BriefReading(draft=draft, reply=reply_for(draft))
+
+
+_MODE_WORDS = {
+    TransportMode.RAIL: "by train",
+    TransportMode.FLIGHT: "by plane",
+    TransportMode.BUS: "by bus",
+    TransportMode.FERRY: "by ferry",
+}
+_ASKS = {
+    QuickField.DESTINATION: "where to",
+    QuickField.DATES: "when",
+    QuickField.GROUP_SIZE: "how many people",
+}
+
+
+def _understood(draft: QuickDraft) -> list[str]:
+    parts: list[str] = []
+    if draft.destination is not None:
+        parts.append(draft.destination)
+    if draft.date_from is not None and draft.date_to is not None:
+        parts.append(_span(draft.date_from, draft.date_to))
+    if draft.group_size is not None:
+        parts.append(f"{draft.group_size} people" if draft.group_size > 1 else "just you")
+    if draft.transport_mode is not None:
+        parts.append(_MODE_WORDS[draft.transport_mode])
+    return parts
+
+
+def reply_for(draft: QuickDraft) -> str:
+    """ "Prague, by train, got it. Just tell me when and how many people." """
+    understood = ", ".join(_understood(draft))
+    if draft.complete:
+        return f"Got it: {understood}. Looking for packages now."
+    asks = [_ASKS[field] for field in draft.missing]
+    wanted = asks[0] if len(asks) == 1 else f"{', '.join(asks[:-1])} and {asks[-1]}"
+    if not understood:
+        return f"Tell me {wanted}."
+    return f"{understood}, got it. Just tell me {wanted}."

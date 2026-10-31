@@ -312,6 +312,7 @@ class QuickTripResponse(_ReadModel):
     trip: TripStatusResponse | None
     draft: QuickDraftResponse
     questions: list[QuickQuestionResponse]
+    reply: str  # the agent's chat message: what it understood, what it still needs
 
 
 class PaymentResponse(_ReadModel):

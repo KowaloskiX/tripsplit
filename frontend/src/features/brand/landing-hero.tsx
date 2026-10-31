@@ -12,11 +12,8 @@ import { useSession } from "@/features/auth";
 export function StartTripButton({ className }: { className?: string }): ReactNode {
   const { user } = useSession();
   return (
-    <Button size="lg" asChild className={className}>
-      <Link to={user ? "/plan" : "/register"}>
-        Start a trip
-        <ArrowRight className="size-5" aria-hidden />
-      </Link>
+    <Button variant="sun" size="lg" asChild className={className}>
+      <Link to={user ? "/plan" : "/register"}>Start a trip</Link>
     </Button>
   );
 }
@@ -46,33 +43,23 @@ function at(ms: number): CSSProperties {
 /** "From group chat to tickets", one word at a time. */
 export function HeroHeadline({ id }: { id?: string }): ReactNode {
   return (
-    <h1 id={id} className="display mt-8 max-w-5xl text-[clamp(3.4rem,10vw,7.5rem)] text-balance">
-      <Word index={0}>From</Word> <Word index={1}>group</Word>{" "}
-      <Word index={2} className="accent-word text-lime">
-        chat
-      </Word>{" "}
-      <Word index={3}>to</Word>{" "}
-      <Word index={4} className="accent-word text-lime">
-        tickets
-      </Word>
+    <h1 id={id} className="display max-w-4xl text-[clamp(2.75rem,7vw,5rem)] text-balance">
+      <Word index={0}>From</Word> <Word index={1}>group</Word> <Word index={2}>chat</Word>{" "}
+      <Word index={3}>to</Word> <Word index={4}>tickets</Word>
     </h1>
   );
 }
 
 export function LandingHero(): ReactNode {
   return (
-    <section aria-labelledby="hero-heading" className="dark overflow-hidden bg-bg text-ink">
+    <section aria-labelledby="hero-heading" className="overflow-hidden bg-bg text-ink">
       <div className="mx-auto flex max-w-6xl flex-col items-center px-4 pt-16 pb-20 text-center sm:px-6 sm:pt-24 sm:pb-28">
-        <p className="eyebrow rise-in rounded-full border border-line px-3 py-1">
-          A travel agent for your group chat
-        </p>
         <HeroHeadline id="hero-heading" />
         <p
           className="rise-in mt-8 max-w-2xl text-lg leading-relaxed text-muted text-balance sm:text-2xl sm:leading-9"
           style={at(560)}
         >
-          Tell it where and when. It finds a trip the whole group can afford, collects
-          everyone&apos;s share, and books the train and the stay.
+          Say where and when. Everyone pays their own share, then the agent books.
         </p>
         <div
           className="rise-in mt-10 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row"
@@ -101,20 +88,20 @@ export function ChatToTicket(): ReactNode {
         Illustration: a group chat about Prague turns into a booked train ticket
       </figcaption>
       <div className="parallax [--parallax:-18px]">
-        <div className="rounded-[32px] border border-line bg-surface p-5 md:-rotate-2">
-          <p className="eyebrow">Group chat · 6 people</p>
+        <div className="rounded-[var(--radius-panel)] border border-line bg-surface p-5 shadow-card md:-rotate-2">
+          <p className="eyebrow">Group chat</p>
           <div className="mt-4 space-y-3">
             <ChatLine name="Maja Zielińska" text="Prague in December? 🍻" delayMs={250} />
             <ChatLine name="Kuba Mazur" text="In, if it’s under 700 zł" delayMs={850} />
             <div className="relative">
               <span
-                className="cue typing-window absolute top-0 left-0 inline-flex h-11 items-center rounded-2xl rounded-tl-md bg-agent-bg px-4 text-agent-tag ring-1 ring-lime/25"
+                className="cue typing-window absolute top-0 left-0 inline-flex h-11 items-center rounded-2xl rounded-tl-md bg-agent-bg px-4 text-agent-tag ring-1 ring-line"
                 style={{ ...at(1350), "--duration": "900ms" } as CSSProperties}
               >
                 <TypingIndicator />
               </span>
               <div
-                className="cue bubble-in rounded-2xl rounded-tl-md bg-agent-bg px-4 py-3 ring-1 ring-lime/25"
+                className="cue bubble-in rounded-2xl rounded-tl-md bg-agent-bg px-4 py-3 ring-1 ring-line"
                 style={at(2200)}
               >
                 <p className="text-xs font-medium text-agent-tag">tripsplit agent</p>
@@ -129,7 +116,7 @@ export function ChatToTicket(): ReactNode {
 
       <span className="cue rise-in mx-auto" style={at(2600)}>
         <ArrowRight
-          className="size-8 rotate-90 text-lime md:rotate-0"
+          className="size-8 rotate-90 text-sun md:rotate-0"
           strokeWidth={1.5}
           aria-hidden
         />
@@ -144,7 +131,7 @@ export function ChatToTicket(): ReactNode {
           />
           <div className="-mt-1.5 overflow-hidden px-1 pb-4">
             <div className="cue ticket-print text-pastel-ink" style={at(2850)}>
-              <div className="rounded-t-[32px] bg-pastel-sky">
+              <div className="rounded-t-[32px] bg-pastel-sea">
                 <div className="flex items-center justify-between px-6 pt-6">
                   <span className="ticket-mono text-xs uppercase">Boarding · PKP Intercity</span>
                   <TrainFront className="size-5" aria-hidden />
@@ -159,14 +146,14 @@ export function ChatToTicket(): ReactNode {
                 <div className="perforation mx-5 [--color-line:rgb(0_0_0/0.35)]" />
               </div>
               <div
-                className="cue stub-tear relative rounded-b-[32px] bg-pastel-sky"
+                className="cue stub-tear relative rounded-b-[32px] bg-pastel-sea"
                 style={at(4000)}
               >
                 <span className="absolute -top-3 -left-3 size-6 rounded-full bg-bg" />
                 <span className="absolute -top-3 -right-3 size-6 rounded-full bg-bg" />
                 <div className="flex items-center justify-between px-6 py-4">
                   <span
-                    className="cue pop inline-flex items-center gap-1.5 rounded-full bg-pastel-ink px-3 py-1 text-xs text-lime"
+                    className="cue pop inline-flex items-center gap-1.5 rounded-full bg-pastel-ink px-3 py-1 text-xs text-sun"
                     style={at(4300)}
                   >
                     <Check className="size-3.5" aria-hidden />

@@ -1514,6 +1514,10 @@ export type QuickTripResponse = {
      * Questions
      */
     questions: Array<QuickQuestionResponse>;
+    /**
+     * Reply
+     */
+    reply: string;
     trip: TripStatusResponse | null;
 };
 

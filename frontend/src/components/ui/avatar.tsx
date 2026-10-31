@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 
 /** Pastel fills with black initials; a name always lands on the same one. */
 const PALETTE = [
-  "bg-pastel-sky",
-  "bg-pastel-lime",
+  "bg-pastel-sea",
+  "bg-pastel-apricot",
   "bg-pastel-blush",
   "bg-[#e6dcff]",
   "bg-[#ffe2c2]",

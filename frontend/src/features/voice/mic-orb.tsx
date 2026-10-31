@@ -22,7 +22,7 @@ export function barScale(level: number, bar: number, phase: number): number {
 }
 
 /**
- * The mic's face, presentational: an icon at rest; while listening a lime disc with a pulsing
+ * The mic's face, presentational: an icon at rest; while listening a marigold disc with a pulsing
  * ring and four bars that follow the level. Transform and opacity only; reduced motion keeps
  * the bars at the level without the ripple and drops the pulse.
  */
@@ -47,11 +47,11 @@ export function MicOrb({ listening, level, size = "lg", className }: MicOrbProps
         <>
           <span
             aria-hidden
-            className="absolute inset-0 animate-ping rounded-full bg-lime/45 motion-reduce:animate-none"
+            className="absolute inset-0 animate-ping rounded-full bg-sun/45 motion-reduce:animate-none"
           />
           <span
             aria-hidden
-            className="absolute -inset-1 rounded-full ring-2 ring-lime/70 transition-transform duration-150 ease-out"
+            className="absolute -inset-1 rounded-full ring-2 ring-sun/70 transition-transform duration-150 ease-out"
             style={{ transform: `scale(${1 + level * 0.3})` }}
           />
         </>
@@ -59,9 +59,7 @@ export function MicOrb({ listening, level, size = "lg", className }: MicOrbProps
       <span
         className={cn(
           "relative inline-flex size-full items-center justify-center rounded-full transition-colors duration-150",
-          listening
-            ? "bg-lime text-pastel-ink"
-            : "text-muted hover:bg-surface-sunken hover:text-ink",
+          listening ? "bg-sun text-sun-ink" : "text-muted hover:bg-surface-sunken hover:text-ink",
         )}
       >
         {listening ? (

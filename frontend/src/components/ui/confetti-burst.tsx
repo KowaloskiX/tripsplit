@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-const COLORS = ["var(--lime)", "var(--pastel-sky)", "var(--pastel-blush)", "var(--pastel-lime)"];
+const COLORS = ["var(--sun)", "var(--pastel-sea)", "var(--pastel-blush)", "var(--pastel-apricot)"];
 const GOLDEN_ANGLE = 2.39996;
 
 type Fleck = { dx: number; dy: number; rot: number; delay: number; color: string; wide: boolean };
@@ -21,7 +21,7 @@ export function confettiFlecks(count: number, spread = 150): Fleck[] {
       dy: Math.round(Math.sin(angle) * reach * 0.7 + spread * 0.35),
       rot: ((index * 97) % 540) - 270,
       delay: (index % 6) * 30,
-      color: COLORS[index % COLORS.length] ?? "var(--lime)",
+      color: COLORS[index % COLORS.length] ?? "var(--sun)",
       wide: index % 3 === 0,
     };
   });

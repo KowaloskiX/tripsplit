@@ -20,7 +20,7 @@ export function WalletChip({
       aria-label={`Wallet: ${formatMoney(balanceMinor, currency)}`}
       className="inline-flex h-9 items-center gap-2 rounded-full border border-ink/15 px-3.5 text-[13px] font-medium text-ink tabular-nums transition duration-150 hover:border-ink/40"
     >
-      <Wallet className="size-4 text-lime" aria-hidden />
+      <Wallet className="size-4 text-sun" aria-hidden />
       {formatMoney(balanceMinor, currency)}
     </Link>
   );

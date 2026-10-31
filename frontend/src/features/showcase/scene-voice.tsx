@@ -53,7 +53,7 @@ export function VoiceScene(): ReactNode {
               <span className="text-muted">Tap the mic and say where, when, who…</span>
             )}
             {listening && (
-              <span className="caret ml-0.5 inline-block h-5 w-[2px] translate-y-1 bg-lime" />
+              <span className="caret ml-0.5 inline-block h-5 w-[2px] translate-y-1 bg-sun" />
             )}
           </p>
           <p className="ticket-mono text-[11px] uppercase text-muted">

@@ -1,7 +1,6 @@
 @import "tailwindcss";
-@import "@fontsource-variable/instrument-sans";
-@import "@fontsource/instrument-serif/400-italic.css";
-@import "@fontsource/fragment-mono/400.css";
+@import "@fontsource-variable/plus-jakarta-sans";
+@import "@fontsource-variable/geist-mono";
 @import "./motion.css";
 
 /* Theme switching via a class on <html> — not prefers-color-scheme alone. A `.dark` subtree
@@ -11,70 +10,71 @@
 /*
  * One place to reskin the whole app: change these values, not the components.
  *
- * High contrast first: black and white carry the page, lime is the one highlight (never text
- * on white — it fails contrast), pastels are card fills only and always carry black text.
- * Money has three states of its own so a glance tells who is fine: paid, owes, refund.
+ * Travel-search clean: a white page, near-black ink, light grey for quiet fills, and one coral
+ * accent for the action that matters (always with white text). Photos carry the colour; the
+ * pastels are only icon chips. Money keeps three states of its own: paid, owes, refund.
  */
 :root {
   --bg: #ffffff;
   --surface: #ffffff;
-  --surface-sunken: #f4f4f1;
-  --ink: #000000;
-  --muted: #5b5b5b;
-  --line: rgb(0 0 0 / 0.09);
-  --accent: #000000;
+  --surface-sunken: #f7f7f7;
+  --ink: #222222;
+  --muted: #6a6a6a;
+  --line: #ebebeb;
+  --accent: #222222;
   --accent-ink: #ffffff;
-  --live: #000000;
+  --live: #222222;
 
-  --lime: #c7ff9f;
-  --pastel-sky: #8fe3ff;
-  --pastel-lime: #d3efab;
-  --pastel-blush: #ffe3e3;
-  --pastel-ink: #000000;
+  --sun: #ff385c;
+  --sun-ink: #ffffff;
+  --pastel-sea: #e3f5f2;
+  --pastel-apricot: #fff1e2;
+  --pastel-blush: #ffe9ed;
+  --pastel-ink: #222222;
 
-  --success: #1f6a1c;
-  --success-soft: #e2f6cf;
-  --warn: #8a4a00;
-  --warn-soft: #ffeccc;
-  --danger: #b3261e;
-  --danger-soft: #ffe3e3;
-  --info: #0a5a75;
-  --info-soft: #d9f5ff;
+  --success: #008a05;
+  --success-soft: #e8f6e8;
+  --warn: #b25e00;
+  --warn-soft: #fff4e5;
+  --danger: #c13515;
+  --danger-soft: #fff0ed;
+  --info: #006b75;
+  --info-soft: #e6f6f7;
 
-  --agent-bg: #000000;
-  --agent-fg: #ffffff;
-  --agent-tag: #c7ff9f;
+  --agent-bg: #f7f7f7;
+  --agent-fg: #222222;
+  --agent-tag: #e00b41;
 
-  --elev-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -18px rgb(0 0 0 / 0.18);
-  --elev-pop: 0 2px 6px rgb(0 0 0 / 0.08), 0 32px 64px -24px rgb(0 0 0 / 0.35);
+  --elev-card: 0 6px 16px rgb(0 0 0 / 0.12);
+  --elev-pop: 0 8px 28px rgb(0 0 0 / 0.28);
 }
 
 .dark {
-  --bg: #000000;
-  --surface: #0e0e0e;
-  --surface-sunken: #181818;
-  --ink: #ffffff;
-  --muted: #a6a6a6;
-  --line: rgb(255 255 255 / 0.1);
-  --accent: #ffffff;
-  --accent-ink: #000000;
-  --live: #c7ff9f;
+  --bg: #121212;
+  --surface: #1c1c1c;
+  --surface-sunken: #262626;
+  --ink: #f7f7f7;
+  --muted: #a0a0a0;
+  --line: #333333;
+  --accent: #f7f7f7;
+  --accent-ink: #121212;
+  --live: #ff385c;
 
-  --success: #b5f08a;
-  --success-soft: #16260d;
-  --warn: #ffc56e;
-  --warn-soft: #2b1d07;
-  --danger: #ff9b94;
-  --danger-soft: #2e1110;
-  --info: #8fe3ff;
-  --info-soft: #0b2530;
+  --success: #6fd36f;
+  --success-soft: #142a14;
+  --warn: #ffb35c;
+  --warn-soft: #2e1f0b;
+  --danger: #ff8a73;
+  --danger-soft: #34140d;
+  --info: #6fd3dc;
+  --info-soft: #0c2a2d;
 
-  --agent-bg: #172212;
-  --agent-fg: #ffffff;
-  --agent-tag: #c7ff9f;
+  --agent-bg: #262626;
+  --agent-fg: #f7f7f7;
+  --agent-tag: #ff6b86;
 
-  --elev-card: 0 0 0 1px rgb(255 255 255 / 0.04);
-  --elev-pop: 0 0 0 1px rgb(255 255 255 / 0.08), 0 32px 64px -24px rgb(0 0 0 / 0.9);
+  --elev-card: 0 0 0 1px #333333;
+  --elev-pop: 0 0 0 1px #3a3a3a, 0 24px 48px -16px rgb(0 0 0 / 0.8);
 }
 
 @theme inline {
@@ -88,9 +88,10 @@
   --color-accent-ink: var(--accent-ink);
   --color-live: var(--live);
 
-  --color-lime: var(--lime);
-  --color-pastel-sky: var(--pastel-sky);
-  --color-pastel-lime: var(--pastel-lime);
+  --color-sun: var(--sun);
+  --color-sun-ink: var(--sun-ink);
+  --color-pastel-sea: var(--pastel-sea);
+  --color-pastel-apricot: var(--pastel-apricot);
   --color-pastel-blush: var(--pastel-blush);
   --color-pastel-ink: var(--pastel-ink);
 
@@ -108,13 +109,13 @@
   --color-agent-tag: var(--agent-tag);
 
   --font-sans:
-    "Instrument Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Plus Jakarta Sans Variable", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --font-serif: "Instrument Serif", Georgia, "Times New Roman", serif;
-  --font-mono: "Fragment Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --font-serif: var(--font-sans);
+  --font-mono: "Geist Mono Variable", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
 
-  --radius-control: 16px;
-  --radius-panel: 32px;
+  --radius-control: 8px;
+  --radius-panel: 16px;
   --radius-pill: 9999px;
 
   --shadow-card: var(--elev-card);
@@ -150,35 +151,23 @@
   }
 }
 
-/* A small uppercase mono tag above a heading or a card section. */
+/* A quiet label above a heading or a card section — only where it says something new. */
 @utility eyebrow {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 500;
   color: var(--color-muted);
 }
 
-/* Display type: large, regular weight, tight. */
+/* Display type: bold and tight, like a search site's big question. */
 @utility display {
-  font-weight: 400;
-  letter-spacing: -0.05em;
-  line-height: 0.95;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
 }
 
-/* The serif-italic accent word inside a headline. */
-@utility accent-word {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-weight: 400;
-  letter-spacing: -0.02em;
-}
-
-/* Amounts, refs, train numbers and times: monospaced and tabular, like a ticket. */
+/* Amounts, refs, train numbers and times: tabular figures so columns line up. */
 @utility ticket-mono {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
 }
 
 /* A perforated tear line — the one ticket motif, used sparingly. */
@@ -225,7 +214,7 @@
 /* A soft halo around whatever is happening right now (the running agent step, the live stage). */
 @keyframes halo {
   0% {
-    box-shadow: 0 0 0 0 color-mix(in oklab, var(--halo-color, var(--color-lime)) 80%, transparent);
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--halo-color, var(--color-sun)) 80%, transparent);
   }
   100% {
     box-shadow: 0 0 0 10px transparent;

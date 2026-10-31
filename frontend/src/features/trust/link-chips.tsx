@@ -35,7 +35,7 @@ export function LinkChips({ links, inverted = false, className }: LinkChipsProps
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition duration-150 active:scale-[0.97]",
                 inverted
-                  ? "border-white/15 text-agent-fg/80 hover:border-lime/60 hover:text-agent-fg"
+                  ? "border-white/15 text-agent-fg/80 hover:border-sun/60 hover:text-agent-fg"
                   : "border-line text-muted hover:border-ink/30 hover:text-ink",
               )}
             >

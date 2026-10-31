@@ -25,7 +25,7 @@ export function RunCounters({ counters }: { counters: Counters }): ReactNode {
       label: "Replayed",
       value: String(counters.replayed),
       icon: Repeat,
-      tone: "bg-pastel-sky text-pastel-ink",
+      tone: "bg-pastel-sea text-pastel-ink",
     },
     {
       label: "Rules",
@@ -37,7 +37,7 @@ export function RunCounters({ counters }: { counters: Counters }): ReactNode {
       label: "Time",
       value: formatDuration(counters.totalMs),
       icon: Clock,
-      tone: "bg-lime text-pastel-ink",
+      tone: "bg-sun text-sun-ink",
     },
   ];
   return (

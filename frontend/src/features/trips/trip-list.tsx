@@ -11,7 +11,7 @@ import { useMyTrips } from "./queries";
 const STATUS_TONE: Record<TripStatus, BadgeTone> = {
   collecting: "neutral",
   proposing: "sky",
-  voting: "lime",
+  voting: "sun",
   paying: "warn",
   booking: "sky",
   booked: "success",

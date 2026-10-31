@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useMemo, useRef } from "react";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { SpeakerToggle, type Spoken, useSpeakArrivals } from "@/features/voice";
 
-import { AGENT_TYPING_MS, FeedList } from "./feed-list";
+import { AGENT_TYPING_MS, FeedList, isConversation } from "./feed-list";
 import { MessageInput } from "./message-input";
 import { useFeed } from "./queries";
 
@@ -14,7 +14,8 @@ type TripFeedProps = {
 };
 
 export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNode {
-  const { data: events = [], isPending } = useFeed(tripId);
+  const { data: feed, isPending } = useFeed(tripId);
+  const events = useMemo(() => (feed ?? []).filter(isConversation), [feed]);
   const scroller = useRef<HTMLDivElement>(null);
   // New agent messages are read aloud when unmuted; the history loaded with the page is not.
   const agentSays = useMemo(
@@ -45,10 +46,7 @@ export function TripFeed({ tripId, myUserId, currency }: TripFeedProps): ReactNo
     <Panel className="flex h-[min(72dvh,720px)] flex-col overflow-hidden">
       <PanelHeader>
         <span>Group chat</span>
-        <span className="inline-flex items-center gap-2">
-          {agentSays && <AgentVoice messages={agentSays} />}
-          <span>{events.length} messages</span>
-        </span>
+        {agentSays && <AgentVoice messages={agentSays} />}
       </PanelHeader>
       <div ref={scroller} className="flex-1 overflow-y-auto px-4 py-4">
         {isPending ? (

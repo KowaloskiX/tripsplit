@@ -51,7 +51,7 @@ const SOURCE_TONE: Record<StepSource, BadgeTone> = {
   flow: "sky",
   rule: "neutral",
   llm: "blush",
-  human: "lime",
+  human: "sun",
 };
 const SOURCE_ICON: Record<StepSource, LucideIcon> = {
   flow: Repeat,
@@ -87,7 +87,7 @@ export const STATUS_LABEL: Record<StepStatus, string> = {
 
 export const STATUS_TONE: Record<StepStatus, BadgeTone> = {
   pending: "outline",
-  running: "lime",
+  running: "sun",
   done: "success",
   failed: "danger",
   healed: "blush",

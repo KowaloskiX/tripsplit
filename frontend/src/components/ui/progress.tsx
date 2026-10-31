@@ -6,7 +6,7 @@ const TONE = {
   accent: "bg-ink",
   success: "bg-success",
   warn: "bg-warn",
-  lime: "bg-lime",
+  sun: "bg-sun",
 } as const;
 
 type ProgressProps = {

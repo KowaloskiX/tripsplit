@@ -15,7 +15,7 @@ export function isWorking(status: BookingStatus): boolean {
   return WORKING.has(status);
 }
 
-/** A lime band sweeping along the card's top edge while the agent is buying. Decorative. */
+/** A sun band sweeping along the card's top edge while the agent is buying. Decorative. */
 export function AgentWorkingBar({ active }: { active: boolean }): ReactNode {
   if (!active) return null;
   return (
@@ -23,7 +23,7 @@ export function AgentWorkingBar({ active }: { active: boolean }): ReactNode {
       aria-hidden
       className="pointer-events-none absolute inset-x-0 top-0 h-1 overflow-hidden rounded-t-[var(--radius-panel)]"
     >
-      <span className="working-sweep absolute inset-y-0 left-0 w-2/5 rounded-full bg-gradient-to-r from-transparent via-lime to-transparent" />
+      <span className="working-sweep absolute inset-y-0 left-0 w-2/5 rounded-full bg-gradient-to-r from-transparent via-sun to-transparent" />
     </span>
   );
 }
@@ -79,7 +79,7 @@ export function BookingTicket({ booking, currency }: BookingTicketProps): ReactN
           <div className={cn("rounded-[24px]", KIND_FILL[booking.kind])}>
             <div className="flex items-center justify-between gap-3 px-5 pt-5">
               <span className="ticket-mono text-[11px] uppercase">Ticket · {booking.supplier}</span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2.5 py-0.5 text-xs text-lime">
+              <span className="inline-flex items-center gap-1 rounded-full bg-pastel-ink px-2.5 py-0.5 text-xs text-sun">
                 <Check className="size-3.5" strokeWidth={3} aria-hidden />
                 booked
               </span>

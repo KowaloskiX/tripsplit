@@ -21,7 +21,7 @@ export function BookEverything({ trip }: { trip: TripBookingsResponse }): ReactN
     <div className="space-y-2">
       {startable.length > 0 && (
         <Button
-          variant="lime"
+          variant="sun"
           size="lg"
           className="w-full"
           disabled={batch.isPending}

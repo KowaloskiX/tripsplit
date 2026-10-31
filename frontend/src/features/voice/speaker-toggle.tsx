@@ -24,7 +24,7 @@ export function SpeakerToggle({ speech, className }: SpeakerToggleProps): ReactN
       title={muted ? "Read replies aloud" : "Mute the agent"}
       className={cn(
         "inline-flex size-8 items-center justify-center rounded-full transition duration-150 active:scale-[0.95] motion-reduce:active:scale-100",
-        muted ? "text-muted hover:bg-surface-sunken hover:text-ink" : "bg-lime/20 text-ink",
+        muted ? "text-muted hover:bg-surface-sunken hover:text-ink" : "bg-sun/20 text-ink",
         className,
       )}
     >

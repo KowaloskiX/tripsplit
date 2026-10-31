@@ -27,7 +27,7 @@ export function ChoiceSheet({ pkg, currency, people, onChoose }: ChoiceSheetProp
         <button
           type="button"
           onClick={() => onChoose?.("invite")}
-          className="group flex flex-col items-start gap-3 rounded-[24px] bg-lime p-5 text-left text-pastel-ink transition duration-150 hover:brightness-95 active:scale-[0.98]"
+          className="group flex flex-col items-start gap-3 rounded-[24px] bg-sun p-5 text-left text-sun-ink transition duration-150 hover:brightness-95 active:scale-[0.98]"
         >
           <Users className="size-6" strokeWidth={1.5} aria-hidden />
           <span className="text-lg leading-snug tracking-[-0.02em]">

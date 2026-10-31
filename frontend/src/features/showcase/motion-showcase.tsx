@@ -89,7 +89,7 @@ export const SCENES: readonly Scene[] = [
   {
     key: "voting",
     title: "Voting",
-    caption: "Counts roll, the leader glows lime, the winner is stamped, the rest step back.",
+    caption: "Counts roll, the leader glows, the winner is stamped, the rest step back.",
     durationMs: 8000,
     render: () => <VotingScene />,
   },
@@ -196,9 +196,7 @@ export function MotionShowcase(): ReactNode {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="eyebrow">Dev · motion rehearsal</p>
-          <h1 className="display mt-3 text-5xl text-ink sm:text-6xl">
-            Every <span className="accent-word">moment</span>, in order
-          </h1>
+          <h1 className="display mt-3 text-5xl text-ink sm:text-6xl">Every moment, in order</h1>
           {reduced && (
             <p className="mt-3 text-sm text-warn">
               Reduced motion is on: you are seeing the calm fallbacks.

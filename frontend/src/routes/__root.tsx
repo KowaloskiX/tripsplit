@@ -91,7 +91,7 @@ function RootLayout(): ReactNode {
 function SiteHeader(): ReactNode {
   // Black in both themes: a `.dark` subtree gets the night palette whatever the page uses.
   return (
-    <header className="vt-header dark sticky top-0 z-30 border-b border-line bg-bg text-ink">
+    <header className="vt-header sticky top-0 z-30 border-b border-line bg-bg/95 text-ink backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <Link
           to="/"
@@ -113,14 +113,6 @@ function SiteHeader(): ReactNode {
 
 function SiteFooter(): ReactNode {
   const onLanding = useRouterState({ select: (state) => state.location.pathname === "/" });
-  // The landing page ends with a larger, editorial footer.
-  if (onLanding) return <LandingFooter />;
-  return (
-    <footer className="border-t border-line">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-sm text-muted sm:px-6">
-        <Wordmark className="text-lg text-ink" />
-        <p>From group chat to tickets. Nobody fronts the money.</p>
-      </div>
-    </footer>
-  );
+  // Only the landing page has a footer; inside the app it would repeat the header.
+  return onLanding ? <LandingFooter /> : null;
 }

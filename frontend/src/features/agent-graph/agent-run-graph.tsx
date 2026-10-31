@@ -22,7 +22,7 @@ export function runPhaseOf(entries: readonly PipelineEntry[]): RunPhase {
 
 const PHASE: Record<RunPhase, { label: string; tone: BadgeTone }> = {
   waiting: { label: "Not started", tone: "outline" },
-  running: { label: "Agent working", tone: "lime" },
+  running: { label: "Agent working", tone: "sun" },
   done: { label: "Run complete", tone: "success" },
   failed: { label: "Needs attention", tone: "danger" },
 };

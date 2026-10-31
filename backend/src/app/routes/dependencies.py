@@ -9,7 +9,7 @@ from starlette import status
 
 from app.agent.launcher import SubprocessLauncher
 from app.ai.link_check import LinkInspector
-from app.ai.researchers import build_researcher
+from app.ai.researchers import build_brief_reader, build_researcher
 from app.core.config import PkpTransportKind, Settings
 from app.core.deps import BackgroundRunnerDep, SettingsDep
 from app.core.domain.errors import ApiError, AuthError
@@ -243,9 +243,9 @@ ProposalServiceDep = Annotated[ProposalService, Depends(get_proposal_service)]
 
 
 def get_quick_trip_service(
-    trips: TripServiceDep, proposals: ProposalServiceDep
+    trips: TripServiceDep, proposals: ProposalServiceDep, settings: SettingsDep
 ) -> QuickTripService:
-    return QuickTripService(trips, proposals)
+    return QuickTripService(trips, proposals, reader=build_brief_reader(settings))
 
 
 QuickTripServiceDep = Annotated[QuickTripService, Depends(get_quick_trip_service)]

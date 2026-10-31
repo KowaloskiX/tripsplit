@@ -1,7 +1,7 @@
 """Counts LLM calls made while the research runs — the deterministic search must make none.
 
 Every way this codebase reaches a model is patched for the duration: the OpenAI SDK's chat and
-responses endpoints (sync and async) and the subprocess the Claude CLI researcher spawns. A call
+responses endpoints (sync and async) and the subprocess the Claude CLI adapters spawn. A call
 is counted and refused (it raises), so a regression shows up as a number in the report rather
 than a bill.
 """
@@ -37,7 +37,7 @@ _SYNC_TARGETS = (
 _ASYNC_TARGETS = (
     "openai.resources.chat.completions.AsyncCompletions.create",
     "openai.resources.responses.AsyncResponses.create",
-    "app.ai.claude_research.spawn_process",
+    "app.ai.claude_cli.spawn_process",
 )
 
 

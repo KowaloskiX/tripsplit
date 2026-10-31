@@ -61,7 +61,7 @@ export function ResearchProgress({
                 className={cn(
                   "ticket-mono inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs transition-colors duration-300",
                   done
-                    ? "bg-lime text-pastel-ink"
+                    ? "bg-sun text-sun-ink"
                     : current
                       ? "bg-white/10 text-agent-fg"
                       : "bg-white/5 text-agent-fg/45",

@@ -24,6 +24,7 @@ _HOST_COOKIE_PREFIX = "__Host-"
 _MIN_AUTH_SECRET_LENGTH = 32
 
 type ResearcherKind = Literal["catalog", "claude-cli"]
+type BriefReaderKind = Literal["rules", "claude-cli"]
 type PaymentsKind = Literal["fake", "wallet"]
 type PkpTransportKind = Literal["browser", "http"]
 type HoldsMode = Literal["off", "on"]
@@ -90,6 +91,11 @@ class Settings(BaseSettings):
     # by Claude Code in `-p` mode (falls back to the catalogue wording on any failure).
     researcher: ResearcherKind = "catalog"
     research_timeout_s: int = 300
+    # Who reads a quick brief ("Prague in December for 6"): `rules` = the deterministic text
+    # rules only; `claude-cli` = the rules, then Claude Code in `-p` mode fills what they missed
+    # and words the agent's reply (falls back to the rules on any failure).
+    brief_reader: BriefReaderKind = "rules"
+    brief_timeout_s: float = Field(default=60.0, gt=0.0)
     # Supplier searches of one research run concurrently; one slower than this contributes no
     # offers (it keeps running and fills the cache). Results are cached in-process for
     # `search_cache_ttl_s` (0 = off) so a re-generate on the same route is instant.

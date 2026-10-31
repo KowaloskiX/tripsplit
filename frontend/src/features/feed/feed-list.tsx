@@ -34,6 +34,12 @@ const SYSTEM_PILL: Partial<Record<EventKind, string>> = {
   member_left: "bg-danger-soft text-danger",
 };
 
+/** Per-supplier search reports ("PKP Intercity ✓ 2 offers · 13.0 s") are progress, not talk:
+ *  the chat leaves them out and the packages panel shows the research while it runs. */
+export function isConversation(event: EventResponse): boolean {
+  return !("supplier_progress" in event.payload);
+}
+
 /** The group total in the "everyone paid" message — the one money event without an amount. */
 export function totalOf(event: EventResponse): number | null {
   const total = event.payload.total_minor;
@@ -71,7 +77,7 @@ function useTyping(fresh: boolean): boolean {
 
 function AgentAvatar(): ReactNode {
   return (
-    <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-lime/30">
+    <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-line">
       <Sparkles className="size-4" aria-hidden />
     </span>
   );
@@ -86,7 +92,7 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
     return (
       <li className="feed-in-right flex items-start gap-2.5">
         <AgentAvatar />
-        <span className="inline-flex h-11 items-center rounded-3xl rounded-tl-md bg-agent-bg px-4 text-agent-tag ring-1 ring-lime/20">
+        <span className="inline-flex h-11 items-center rounded-3xl rounded-tl-md bg-agent-bg px-4 text-agent-tag ring-1 ring-line">
           <TypingIndicator />
           <span className="sr-only">The agent is typing</span>
         </span>
@@ -116,13 +122,13 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
     return (
       <li className={cn("flex items-start gap-2.5", entrance)}>
         <AgentAvatar />
-        <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-lime/20">
+        <div className="min-w-0 max-w-[88%] rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-agent-fg ring-1 ring-line">
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
             <span className="font-medium text-agent-tag">tripsplit agent</span>
             <span className="ticket-mono text-agent-fg/60">{time(event.created_at)}</span>
             {tag && <Badge tone={tag.tone}>{tag.label}</Badge>}
             {total !== null && (
-              <Badge tone="lime" className="ticket-mono">
+              <Badge tone="sun" className="ticket-mono">
                 {formatMoney(total, currency)}
               </Badge>
             )}
@@ -141,7 +147,7 @@ function FeedItem({ event, variant, currency, fresh }: FeedItemProps): ReactNode
         className={cn(
           "min-w-0 max-w-[80%] rounded-3xl px-4 py-2.5",
           mine
-            ? "rounded-br-md bg-pastel-sky text-pastel-ink"
+            ? "rounded-br-md bg-pastel-sea text-pastel-ink"
             : "rounded-bl-md bg-surface-sunken text-ink",
         )}
       >

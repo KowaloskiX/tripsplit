@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { type ApiCall, type CallTone, callTone, formatCall } from "./model";
 
 const TONE: Record<CallTone, string> = {
-  ok: "text-lime",
-  redirect: "text-pastel-sky",
+  ok: "text-sun",
+  redirect: "text-pastel-sea",
   client: "text-[#ffc56e]",
   server: "text-[#ff9b94]",
 };
@@ -35,7 +35,7 @@ function Line({ call, fresh }: { call: ApiCall; fresh: boolean }): ReactNode {
       {fresh && (
         <span
           aria-hidden
-          className="type-cover absolute inset-0 border-l-2 border-lime bg-agent-bg"
+          className="type-cover absolute inset-0 border-l-2 border-sun bg-agent-bg"
           style={typing(text)}
         />
       )}
@@ -62,7 +62,10 @@ export function TerminalPane({ calls, className }: TerminalPaneProps): ReactNode
   return (
     <section
       aria-label="Supplier API calls"
-      className={cn("flex min-h-0 flex-col overflow-hidden rounded-[28px] bg-agent-bg", className)}
+      className={cn(
+        "dark flex min-h-0 flex-col overflow-hidden rounded-[28px] bg-agent-bg",
+        className,
+      )}
     >
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
         <span className="ticket-mono text-xs uppercase text-agent-tag">api · suppliers</span>

@@ -15,17 +15,17 @@ const button = cva(
   {
     variants: {
       variant: {
-        /** Black pill on white, white pill on black. */
-        solid: "bg-accent text-accent-ink hover:opacity-85",
+        /** Ink on the light page, white on the dark one. */
+        solid: "bg-accent text-accent-ink hover:opacity-90",
         outline:
           "border border-ink/15 bg-transparent text-ink hover:border-ink/40 hover:bg-ink/[0.03]",
         ghost: "text-muted hover:bg-surface-sunken hover:text-ink",
-        /** The one highlight: lime with black text. */
-        lime: "bg-lime text-pastel-ink hover:brightness-95",
+        /** The one highlight: coral with white text — the action that matters on the page. */
+        sun: "bg-sun text-sun-ink hover:brightness-95",
         danger: "border border-danger/40 bg-transparent text-danger hover:bg-danger-soft",
       },
       size: {
-        lg: "h-14 px-7 text-[17px]",
+        lg: "h-12 px-6 text-base",
         md: "h-11 px-5 text-sm",
         sm: "h-9 px-3.5 text-[13px]",
         icon: "size-9",

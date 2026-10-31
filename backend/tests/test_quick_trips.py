@@ -1,18 +1,23 @@
-"""A trip from one sentence: the deterministic brief parser (Polish + English) and
-`POST /api/trips/quick` (questions for what is missing, then a trip with research running)."""
+"""A trip from one sentence: the deterministic brief parser (Polish + English), the Claude
+reader that fills what it missed, and `POST /api/trips/quick` (questions for what is
+missing, then a trip with research running)."""
 
+import json
 from datetime import date
 
 import pytest
 from fastapi import FastAPI
 
+from app.ai.claude_brief import ClaudeCliBriefReader, merge, parse_reading
 from app.ai.quick_brief import (
+    EN_DASH,
     QuickAnswers,
     QuickField,
     apply_answers,
     dates_of,
     parse_quick_brief,
     questions_for,
+    reply_for,
 )
 from app.core.domain.trips import TransportMode, TripStatus
 from app.services.quick_trips import name_from_email
@@ -150,6 +155,7 @@ async def test_quick_asks_then_creates_the_trip_and_researches(
     assert body["draft"]["destination"] == "Prague"
     assert body["draft"]["transport_mode"] == "rail"
     assert sorted(body["draft"]["missing"]) == ["dates", "group_size"]
+    assert body["reply"] == "Prague, by train, got it. Just tell me when and how many people."
     asked = {q["field"]: q for q in body["questions"]}
     dates = asked["dates"]["options"][1]["value"]
 
@@ -180,3 +186,85 @@ async def test_quick_refuses_a_blank_brief(
     organizer = await member_factory("blank@example.com")
     response = await organizer.post("/api/trips/quick", {"text": "   "})
     assert response.status_code == 422
+
+
+def _envelope(reading: dict[str, object]) -> bytes:
+    return json.dumps({"type": "result", "result": f"Sure:\n{json.dumps(reading)}"}).encode()
+
+
+def test_the_rules_reply_says_what_was_understood_and_what_is_missing() -> None:
+    assert reply_for(parse_quick_brief("weekend w Pradze, pociągiem", TODAY)) == (
+        "Prague, by train, got it. Just tell me when and how many people."
+    )
+    assert reply_for(parse_quick_brief("hello", TODAY)) == (
+        "Tell me where to, when and how many people."
+    )
+    assert reply_for(parse_quick_brief("Prague 20-22.11 for 6", TODAY)) == (
+        f"Got it: Prague, 20{EN_DASH}22 Nov, 6 people. Looking for packages now."
+    )
+
+
+async def test_claude_fills_only_what_the_rules_missed(monkeypatch: pytest.MonkeyPatch) -> None:
+    reader = ClaudeCliBriefReader(timeout_s=1)
+    draft = parse_quick_brief("Praga w grudniu, pociągiem", TODAY)
+    assert draft.date_from is None
+
+    async def read(prompt: str) -> bytes:
+        assert "Praga w grudniu" in prompt
+        return _envelope(
+            {
+                "destination": "Berlin",  # the rules already found Prague: ignored
+                "date_from": "2026-12-04",
+                "date_to": "2026-12-06",
+                "transport_mode": "flight",  # the rules already found rail: ignored
+                "reply": "Prague, 4-6 Dec. How many of you?",
+            }
+        )
+
+    monkeypatch.setattr(reader, "_run", read)
+    reading = await reader.read(draft, TODAY)
+    assert reading.draft.destination == "Prague"
+    assert (reading.draft.date_from, reading.draft.date_to) == (
+        date(2026, 12, 4),
+        date(2026, 12, 6),
+    )
+    assert reading.draft.transport_mode is TransportMode.RAIL
+    assert reading.reply == "Prague, 4-6 Dec. How many of you?"
+
+
+@pytest.mark.parametrize(
+    ("date_from", "date_to"),
+    [("2026-10-01", "2026-10-03"), ("2026-12-06", "2026-12-04"), ("2026-12-01", "2027-02-01")],
+)
+def test_claude_dates_in_the_past_backwards_or_too_long_are_dropped(
+    date_from: str, date_to: str
+) -> None:
+    draft = parse_quick_brief("Prague for 6", TODAY)
+    reading = parse_reading(
+        _envelope({"date_from": date_from, "date_to": date_to, "reply": "When?"})
+    )
+    assert merge(draft, reading, TODAY).date_from is None
+
+
+async def test_a_claude_failure_keeps_the_rules_reading(monkeypatch: pytest.MonkeyPatch) -> None:
+    reader = ClaudeCliBriefReader(timeout_s=1)
+    draft = parse_quick_brief("Praga w grudniu", TODAY)
+
+    async def broken(_prompt: str) -> bytes:
+        return b"not json"
+
+    monkeypatch.setattr(reader, "_run", broken)
+    reading = await reader.read(draft, TODAY)
+    assert reading.draft == draft
+    assert reading.reply == reply_for(draft)
+
+
+async def test_a_complete_brief_never_calls_claude(monkeypatch: pytest.MonkeyPatch) -> None:
+    reader = ClaudeCliBriefReader(timeout_s=1)
+
+    async def unexpected(_prompt: str) -> bytes:
+        raise AssertionError("Claude was asked about a complete brief")
+
+    monkeypatch.setattr(reader, "_run", unexpected)
+    reading = await reader.read(parse_quick_brief("Prague 20-22.11 for 6", TODAY), TODAY)
+    assert reading.draft.complete

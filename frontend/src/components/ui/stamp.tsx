@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const TONE = {
-  lime: "border-ink bg-lime text-pastel-ink",
+  sun: "border-ink bg-sun text-sun-ink",
   ink: "border-ink bg-surface text-ink",
   danger: "border-danger bg-danger-soft text-danger",
   success: "border-success bg-success-soft text-success",
@@ -22,7 +22,7 @@ type StampProps = {
 /** A rubber stamp that lands on whatever it is placed over: "chosen", "6/6 paid", "replaced". */
 export function Stamp({
   children,
-  tone = "lime",
+  tone = "sun",
   rotate = -10,
   delayMs = 0,
   className,

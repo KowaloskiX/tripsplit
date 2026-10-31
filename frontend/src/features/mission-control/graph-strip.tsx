@@ -8,7 +8,7 @@ import type { GraphStep } from "./model";
 
 const DOT: Record<StepStatus, string> = {
   pending: "border border-dashed border-line bg-surface",
-  running: "halo bg-lime",
+  running: "halo bg-sun",
   done: "bg-ink text-bg",
   healed: "bg-pastel-blush text-pastel-ink",
   failed: "bg-danger-soft text-danger",
@@ -59,7 +59,7 @@ export function GraphStrip({ steps }: { steps: readonly GraphStep[] }): ReactNod
                   )}
                 />
                 {step.status === "running" && (
-                  <span className="edge-travel-x absolute inset-y-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-lime to-transparent" />
+                  <span className="edge-travel-x absolute inset-y-0 left-0 w-1/2 rounded-full bg-gradient-to-r from-transparent via-sun to-transparent" />
                 )}
               </span>
             )}

@@ -71,7 +71,7 @@ export function AttractionCard({
           {attractionKindLabel(attraction.kind)}
         </span>
         {wanted && (
-          <span className="pop absolute right-3 top-3 rounded-full bg-lime px-2.5 py-0.5 text-xs font-medium text-pastel-ink">
+          <span className="pop absolute right-3 top-3 rounded-full bg-sun px-2.5 py-0.5 text-xs font-medium text-sun-ink">
             in the plan
           </span>
         )}

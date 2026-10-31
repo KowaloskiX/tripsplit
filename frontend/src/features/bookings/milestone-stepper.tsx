@@ -44,7 +44,7 @@ export function MilestoneStepper({
           className={cn(
             "rounded-full px-2.5 py-0.5 capitalize",
             index < current && "bg-ink text-bg",
-            index === current && "bg-lime text-pastel-ink",
+            index === current && "bg-sun text-sun-ink",
             index > current && "bg-surface-sunken text-muted",
           )}
         >

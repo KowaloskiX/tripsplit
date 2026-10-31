@@ -6,9 +6,12 @@ from dataclasses import dataclass, replace
 from datetime import date
 
 from app.ai.quick_brief import (
+    BriefReader,
+    BriefReading,
     QuickAnswers,
     QuickDraft,
     QuickQuestion,
+    RulesBriefReader,
     apply_answers,
     parse_quick_brief,
     questions_for,
@@ -39,6 +42,7 @@ class QuickTripView:
     trip: TripStatusView | None
     draft: QuickDraft
     questions: tuple[QuickQuestion, ...]
+    reply: str  # the agent's chat message about the draft
 
 
 def name_from_email(email: str) -> str:
@@ -51,19 +55,25 @@ def name_from_email(email: str) -> str:
 
 class QuickTripService:
     def __init__(
-        self, trips: TripService, proposals: ProposalService, *, today: Today = _today
+        self,
+        trips: TripService,
+        proposals: ProposalService,
+        *,
+        reader: BriefReader | None = None,
+        today: Today = _today,
     ) -> None:
         self.trips = trips
         self.proposals = proposals
+        self.reader = reader or RulesBriefReader()
         self.today = today
 
-    def understand(self, text: str, answers: QuickAnswers) -> QuickDraft:
+    async def understand(self, text: str, answers: QuickAnswers) -> BriefReading:
         today = self.today()
         draft = apply_answers(parse_quick_brief(text, today), answers, today)
         if draft.date_from is not None and draft.date_from < today:
             # A trip in the past cannot be booked: ask for the dates again.
             draft = replace(draft, date_from=None, date_to=None)
-        return draft
+        return await self.reader.read(draft, today)
 
     async def create(
         self,
@@ -73,7 +83,8 @@ class QuickTripService:
         *,
         display_name: str,
     ) -> Result[QuickTripView, TripError]:
-        draft = self.understand(text, answers)
+        reading = await self.understand(text, answers)
+        draft = reading.draft
         questions = questions_for(draft, self.today())
         if (
             questions
@@ -82,7 +93,9 @@ class QuickTripService:
             or draft.date_to is None
             or draft.group_size is None
         ):
-            return Ok(QuickTripView(trip=None, draft=draft, questions=questions))
+            return Ok(
+                QuickTripView(trip=None, draft=draft, questions=questions, reply=reading.reply)
+            )
         created = await self.trips.create(
             user_id,
             NewTrip(
@@ -102,4 +115,4 @@ class QuickTripService:
             return created
         started = await self.proposals.generate(created.value.trip_id, user_id)
         trip = started.value if isinstance(started, Ok) else created.value
-        return Ok(QuickTripView(trip=trip, draft=draft, questions=()))
+        return Ok(QuickTripView(trip=trip, draft=draft, questions=(), reply=reading.reply))

@@ -75,7 +75,7 @@ export function QuickPackageCard({
             Take this
           </Button>
         ) : (
-          <Button size="sm" variant="lime" onClick={() => onTake?.(pkg.id)}>
+          <Button size="sm" variant="sun" onClick={() => onTake?.(pkg.id)}>
             Take this
             <ArrowRight className="size-4" aria-hidden />
           </Button>

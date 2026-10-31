@@ -19,7 +19,7 @@ function Action({
   const amount = formatMoney(phone.amount, currency);
   if (phase === "voting") {
     return phone.voted_for ? (
-      <span className="pop flex items-center justify-center gap-1 truncate rounded-full bg-lime px-2 py-1.5 text-[11px] font-medium text-pastel-ink">
+      <span className="pop flex items-center justify-center gap-1 truncate rounded-full bg-sun px-2 py-1.5 text-[11px] font-medium text-sun-ink">
         <Check className="size-3 shrink-0" strokeWidth={3} aria-hidden />
         <span className="truncate" title={phone.voted_for}>
           Voted<span className="sr-only"> for {phone.voted_for}</span>
@@ -55,7 +55,7 @@ export function PhoneFrame({ phone, phase, currency }: PhoneFrameProps): ReactNo
       aria-label={`${phone.name}'s phone`}
       className={cn(
         "relative mx-auto flex aspect-[9/16] w-full max-w-[11rem] flex-col overflow-hidden rounded-[22px] border-4 sm:rounded-[28px] sm:border-[5px] border-[#2b2b2b] bg-surface shadow-pop transition-shadow duration-500",
-        settled && "ring-2 ring-lime ring-offset-2 ring-offset-bg",
+        settled && "ring-2 ring-sun ring-offset-2 ring-offset-bg",
       )}
     >
       <span aria-hidden className="mx-auto mt-1.5 h-3 w-10 shrink-0 rounded-full bg-black" />
@@ -77,7 +77,7 @@ export function PhoneFrame({ phone, phase, currency }: PhoneFrameProps): ReactNo
         {phone.last_message && (
           <p
             key={phone.last_message}
-            className="feed-in-right ml-auto line-clamp-2 max-w-[90%] rounded-2xl rounded-br-sm bg-pastel-sky px-2.5 py-1.5 text-[10px] leading-snug text-pastel-ink"
+            className="feed-in-right ml-auto line-clamp-2 max-w-[90%] rounded-2xl rounded-br-sm bg-pastel-sea px-2.5 py-1.5 text-[10px] leading-snug text-pastel-ink"
           >
             {phone.last_message}
           </p>

@@ -1,9 +1,9 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { Sparkles } from "lucide-react";
+import { ChevronDown, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Panel } from "@/components/ui/panel";
 import { StatusScreen } from "@/components/ui/status-screen";
 import { sessionQueryOptions, useSession } from "@/features/auth";
 import { CreateTripForm, TripList } from "@/features/trips";
@@ -43,28 +43,32 @@ function AppPage(): ReactNode {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
-      <p className="eyebrow">Your trips</p>
-      <h1 className="display mt-3 text-5xl text-ink sm:text-6xl">Where to next?</h1>
-      <p className="mt-3 max-w-xl text-base leading-relaxed text-muted">
-        Create a trip, send the invite link, and the agent proposes three packages. The group votes,
-        everyone pays their own share, and only then does the agent book.
-      </p>
-      <Button asChild variant="lime" size="lg" className="mt-6">
-        <Link to="/plan">
-          <Sparkles className="size-5" aria-hidden />
-          Plan a trip in one sentence
-        </Link>
-      </Button>
+      <div className="flex flex-wrap items-end justify-between gap-6">
+        <h1 className="display text-5xl text-ink sm:text-6xl">Where to next?</h1>
+        <Button asChild variant="sun" size="lg">
+          <Link to="/plan">
+            <Sparkles className="size-5" aria-hidden />
+            Plan a trip
+          </Link>
+        </Button>
+      </div>
 
-      <div className="mt-8 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+      <div className="mt-10 grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
         <TripList />
         <Panel>
-          <PanelHeader>
-            <span>Or fill in the details</span>
-          </PanelHeader>
-          <div className="p-5">
-            <CreateTripForm defaultDisplayName={user.email.split("@")[0] ?? ""} />
-          </div>
+          {/* The long form is the fallback to the one-sentence plan, so it starts folded. */}
+          <details className="group">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-4 text-ink">
+              Set every detail yourself
+              <ChevronDown
+                className="size-4 text-muted transition group-open:rotate-180"
+                aria-hidden
+              />
+            </summary>
+            <div className="border-t border-line p-5">
+              <CreateTripForm defaultDisplayName={user.email.split("@")[0] ?? ""} />
+            </div>
+          </details>
         </Panel>
       </div>
     </div>

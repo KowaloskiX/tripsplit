@@ -5,10 +5,10 @@ import type { BookingKind, TransportMode } from "@/lib/api";
 
 type Icon = typeof TrainFront;
 
-/** Pastel card fill per kind: transport sky, stay lime, activity blush. */
+/** Pastel card fill per kind: transport sea, stay apricot, activity blush. */
 export const KIND_FILL: Record<BookingKind, string> = {
-  transport: "bg-pastel-sky",
-  stay: "bg-pastel-lime",
+  transport: "bg-pastel-sea",
+  stay: "bg-pastel-apricot",
   activity: "bg-pastel-blush",
 };
 

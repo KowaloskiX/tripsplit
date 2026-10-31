@@ -2746,6 +2746,10 @@
             "title": "Questions",
             "type": "array"
           },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
           "trip": {
             "anyOf": [
               {
@@ -2760,7 +2764,8 @@
         "required": [
           "trip",
           "draft",
-          "questions"
+          "questions",
+          "reply"
         ],
         "title": "QuickTripResponse",
         "type": "object"

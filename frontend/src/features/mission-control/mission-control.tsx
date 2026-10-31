@@ -40,7 +40,7 @@ export function MissionControl({
             {live && (
               <span
                 aria-hidden
-                className="size-1.5 animate-pulse rounded-full bg-lime motion-reduce:animate-none"
+                className="size-1.5 animate-pulse rounded-full bg-sun motion-reduce:animate-none"
               />
             )}
             Mission control
@@ -70,7 +70,7 @@ export function MissionControl({
           {celebrate && (
             <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
               <ConfettiBurst count={32} spread={190} />
-              <Stamp tone="lime" rotate={-8} delayMs={500}>
+              <Stamp tone="sun" rotate={-8} delayMs={500}>
                 all booked
               </Stamp>
             </span>
