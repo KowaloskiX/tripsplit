@@ -5,6 +5,7 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import { agentRunFrameUrl, apiErrorMessage, type BookingResponse } from "@/lib/api";
 
 import { ApprovalCard } from "./approval-card";
+import { bookingTitle } from "./booking-title";
 import { MilestoneStepper } from "./milestone-stepper";
 import { useApproveBooking } from "./mutations";
 import { useRunStatus } from "./queries";
@@ -83,7 +84,12 @@ export function LiveAgentPanel({
           milestone={live?.milestone ?? run.milestone}
           finished={booking.status === "confirmed"}
         />
-        <RunGraph runId={run.run_id} active={working} steps={live?.steps} title={booking.title} />
+        <RunGraph
+          runId={run.run_id}
+          active={working}
+          steps={live?.steps}
+          title={bookingTitle(booking.title)}
+        />
         {failedTick === tick && <p className="text-sm text-muted">Waiting for the first frame…</p>}
         <img
           src={frameUrl}
