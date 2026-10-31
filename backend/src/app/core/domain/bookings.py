@@ -109,9 +109,7 @@ def priced_purchase_url(url: str, amount_minor: int, travellers: int) -> str:
     if not any(key == PURCHASE_URL_FARE_PARAM for key, _ in query):
         return url
     fare = round(amount_minor / max(travellers, 1))
-    priced = [
-        (key, str(fare) if key == PURCHASE_URL_FARE_PARAM else value) for key, value in query
-    ]
+    priced = [(key, str(fare) if key == PURCHASE_URL_FARE_PARAM else value) for key, value in query]
     return urlunsplit(parts._replace(query=urlencode(priced)))
 
 
