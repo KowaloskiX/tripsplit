@@ -24,6 +24,32 @@ describe("ProposalCard", () => {
     expect(screen.getByText("over budget")).toBeInTheDocument();
   });
 
+  it("shows the transport segments generically, whatever the mode", () => {
+    const flight = {
+      kind: "transport" as const,
+      mode: "flight" as const,
+      title: "Ryanair FR 2659 WMI -> BCN (return)",
+      supplier: "Ryanair",
+      supplier_url: "https://sim.tripsplit.invalid/x",
+      price_minor: 410_400,
+      details: "",
+      starts_at: null,
+      segments: [
+        {
+          carrier: "Ryanair",
+          number: "FR 2659",
+          origin: "WMI",
+          destination: "BCN",
+          departs_at: "2026-11-20T06:25:00+01:00",
+          arrives_at: "2026-11-20T09:50:00+01:00",
+        },
+      ],
+    };
+    render(<ProposalCard proposal={{ ...PROPOSAL, items: [flight] }} currency="PLN" />);
+    expect(screen.getByRole("img", { name: "Flight" })).toBeInTheDocument();
+    expect(screen.getByText(/FR 2659 WMI → BCN/)).toBeInTheDocument();
+  });
+
   it("shows no budget badge for a package that fits", () => {
     render(<ProposalCard proposal={PROPOSAL} currency="PLN" />);
     expect(screen.queryByText("over budget")).not.toBeInTheDocument();

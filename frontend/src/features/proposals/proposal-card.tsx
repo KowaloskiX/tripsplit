@@ -2,7 +2,7 @@ import { ExternalLink } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import type { ProposalResponse } from "@/lib/api";
+import type { ProposalResponse, SegmentResponse } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,19 @@ type ProposalCardProps = {
   onVote?: (() => void) | undefined;
   voting?: boolean;
 };
+
+const TIME = new Intl.DateTimeFormat(undefined, {
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** "LO 401 WAW → BCN · Fri 07:05" — one line per leg, whatever the mode. */
+export function segmentLine(segment: SegmentResponse): string {
+  return `${segment.number} ${segment.origin} → ${segment.destination} · ${TIME.format(
+    new Date(segment.departs_at),
+  )}`;
+}
 
 export function ProposalCard({ proposal, currency, onVote, voting }: ProposalCardProps): ReactNode {
   return (
@@ -50,9 +63,21 @@ export function ProposalCard({ proposal, currency, onVote, voting }: ProposalCar
       <ul className="mt-3 space-y-2">
         {proposal.items.map((item) => (
           <li key={`${item.kind}-${item.title}`} className="flex items-start gap-2">
-            <KindIcon kind={item.kind} />
+            <KindIcon kind={item.kind} mode={item.mode} />
             <div className="min-w-0 flex-1">
               <p className="text-xs text-ink">{item.title}</p>
+              {item.segments.length > 0 && (
+                <ul className="mt-0.5 space-y-0.5" aria-label="Segments">
+                  {item.segments.map((segment) => (
+                    <li
+                      key={`${segment.number}-${segment.departs_at}`}
+                      className="font-mono text-[10px] text-muted"
+                    >
+                      {segmentLine(segment)}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <a
                 href={item.supplier_url}
                 target="_blank"

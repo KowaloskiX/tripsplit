@@ -1,29 +1,33 @@
-import { BedDouble, Ticket, TrainFront } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel } from "@/components/ui/panel";
+import { KindIcon } from "@/features/proposals";
 import {
   apiErrorMessage,
-  type BookingKind,
   type BookingResponse,
   type BookingStatus,
+  type SupplierChannel,
   type TripBookingsResponse,
   type TripStatus,
 } from "@/lib/api";
 
 import { BookingStatusBadge } from "./booking-status-badge";
+import { DirectApprovalCard } from "./direct-approval-card";
+import { HoldCountdown } from "./hold-countdown";
 import { LiveAgentPanel } from "./live-agent-panel";
 import { ManualCompletionForm } from "./manual-completion-form";
 import { formatMoney } from "./money";
 import { useStartBooking } from "./mutations";
 
-const KIND_ICON: Record<BookingKind, typeof TrainFront> = {
-  train: TrainFront,
-  stay: BedDouble,
-  activity: Ticket,
+/** How a purchase is made: the agent drives the site, the supplier's API, or a human. */
+export const CHANNEL_LABEL: Record<SupplierChannel, string> = {
+  agent: "agent",
+  api: "direct",
+  manual: "manual",
 };
+const LIVE_HOLD: ReadonlySet<BookingStatus> = new Set(["pending", "failed", "awaiting_approval"]);
 
 // Mirrors the backend's rule; the server enforces it regardless of what the UI shows.
 const TRIP_STATUSES_THAT_BUY: ReadonlySet<TripStatus> = new Set(["booking", "rebooking"]);
@@ -66,18 +70,28 @@ export function BookingsList({
     <div className="space-y-4">
       {start.error && <ErrorCallout>{apiErrorMessage(start.error)}</ErrorCallout>}
       {trip.bookings.map((booking) => {
-        const Icon = KIND_ICON[booking.kind];
         const showRun = booking.run !== null && booking.status !== "cancelled";
+        const directApproval =
+          trip.is_organizer && booking.channel === "api" && booking.status === "awaiting_approval";
         return (
           <Panel key={booking.id} className={booking.status === "cancelled" ? "opacity-60" : ""}>
             <div className="flex flex-wrap items-center gap-3 px-4 py-3">
-              <Icon aria-label={booking.kind} className="size-5 shrink-0 text-muted" />
+              <KindIcon
+                kind={booking.kind}
+                mode={booking.mode}
+                className="size-5 shrink-0 text-muted"
+              />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-ink">{booking.title}</p>
                 <p className="font-mono text-xs text-muted">
-                  {booking.supplier} · {formatMoney(booking.amount_minor, trip.currency)}
+                  {booking.supplier} ·{" "}
+                  <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}
+                  {formatMoney(booking.amount_minor, trip.currency)}
                   {passengersLabel(booking)}
                 </p>
+                {booking.hold_expires_at && LIVE_HOLD.has(booking.status) && (
+                  <HoldCountdown expiresAt={booking.hold_expires_at} />
+                )}
               </div>
               <BookingStatusBadge status={booking.status} />
               {canStart(trip, booking) && (
@@ -93,6 +107,15 @@ export function BookingsList({
             {canCompleteManually(trip, booking) && (
               <div className="border-t border-line px-4 pt-3">
                 <ManualCompletionForm tripId={trip.trip_id} bookingId={booking.id} />
+              </div>
+            )}
+            {directApproval && (
+              <div className="border-t border-line p-3">
+                <DirectApprovalCard
+                  tripId={trip.trip_id}
+                  booking={booking}
+                  currency={trip.currency}
+                />
               </div>
             )}
             {showRun && (
