@@ -8,7 +8,9 @@ only then does the runner ask the planner. Confidence is structural, never a gue
   - "sold out"/"too many"  -> handoff with the supplier's reason
   - search form            -> type the goal date (and return date), select the party size,
                               click the one CTA
-  - offer list             -> click the offer the goal names (or the earliest, per profile)
+  - offer list             -> click the offer the goal names (or the earliest / cheapest), once
+                              the page is priced for the goal's party
+  - opened offer's fares   -> the goal's class: the first fare (cheapest) or the flexible one
   - passenger form         -> fill every field whose label maps to a vault key, click the CTA
   - review/summary         -> verify names, count, date and total against the goal; `done`
                               (stop-before-pay) or `handoff` when the supplier total differs
@@ -45,6 +47,8 @@ class FieldKind(StrEnum):
     TRAVEL_DATE = "travel_date"
     RETURN_DATE = "return_date"
     PARTY_SIZE = "party_size"
+    ORIGIN = "origin"
+    DESTINATION = "destination"
     OPTIONAL_EXTRA = "optional_extra"
 
 
@@ -60,6 +64,16 @@ _FIELD_PATTERNS: tuple[tuple[FieldKind, str], ...] = (
     (FieldKind.FIRST_NAME, r"first\s*name|given\s*name|forename|imi[eę]|_first\b|\bfirst\b|fname"),
     (FieldKind.LAST_NAME, r"last\s*name|family\s*name|surname|nazwisk|_last\b|\blast\b|lname"),
     (FieldKind.RETURN_DATE, r"\breturn\b|powr[óo]t"),
+    (
+        FieldKind.ORIGIN,
+        r"\bfrom_?(?:port|city|airport|station)\b|\borigin\b|leaving from|"
+        r"departure (?:city|airport|station)|skąd",
+    ),
+    (
+        FieldKind.DESTINATION,
+        r"\bto_?(?:port|city|airport|station)\b|\bdestination\b|going to|"
+        r"arrival (?:city|airport|station)|dokąd",
+    ),
     (FieldKind.PARTY_SIZE, r"passengers|pasażer|pasazer|travell?ers|persons|osób|osoby|liczba"),
     (FieldKind.TRAVEL_DATE, r"\bdate\b|\bdata\b|yyyy|rrrr|departure day|dzień"),
 )
@@ -76,8 +90,12 @@ _INDEX_IN_LABEL = re.compile(
     re.I,
 )
 _INDEX_IN_NAME = re.compile(r"(?:^|[^a-z])p(?:assenger)?[_-]?(\d+)(?:[_-]|$)|[_-](\d+)[_-]", re.I)
-_TIME = re.compile(r"\b([0-2]\d):([0-5]\d)\b")
-_PRICE = re.compile(r"(\d[\d\s\u00a0]*[.,]\d{2})\s*(?:PLN|zł|EUR|CZK)", re.I)
+_TIME = re.compile(r"\b([0-2]?\d):([0-5]\d)\b(?:\s*([AP]M)\b)?", re.I)
+# "123.45 PLN" / "123,45 zł" / "$472.56" / "€ 99.00" / "99.00 USD".
+_PRICE = re.compile(
+    r"(?:[$€£]\s?(\d[\d,\u00a0]*\.\d{2}))|(\d[\d\s\u00a0]*[.,]\d{2})\s*(?:PLN|zł|EUR|CZK|USD|GBP)",
+    re.I,
+)
 _MAX_WAITS = 4
 _MAX_SAME_PLAN = 2
 
@@ -156,6 +174,9 @@ def classify_field(el: Element) -> FieldRole | None:
         if re.search(pattern, hay, re.I):
             if role == "checkbox" and kind is not FieldKind.OPTIONAL_EXTRA:
                 return FieldRole(FieldKind.OPTIONAL_EXTRA)
+            if kind in (FieldKind.ORIGIN, FieldKind.DESTINATION) and el.get("tag") != "select":
+                return None  # a typed station/airport box needs its suggestion clicked
+
             return FieldRole(kind, _passenger_index(el) if kind in _PER_PASSENGER else None)
     return FieldRole(FieldKind.OPTIONAL_EXTRA) if role == "checkbox" else None
 
@@ -204,12 +225,21 @@ def offer_buttons(elements: list[Element]) -> list[Element]:
 
 def _departure(el: Element) -> tuple[int, int]:
     m = _TIME.search(str(el.get("context") or ""))
-    return (int(m.group(1)), int(m.group(2))) if m else (99, 99)
+    if not m:
+        return (99, 99)
+    hour, minute, half = int(m.group(1)), int(m.group(2)), (m.group(3) or "").upper()
+    if half:
+        hour = hour % 12 + (12 if half == "PM" else 0)
+    return (hour, minute)
 
 
 def _price(el: Element) -> float:
     m = _PRICE.search(str(el.get("context") or ""))
-    return _number(m.group(1)) if m else float("inf")
+    if not m:
+        return float("inf")
+    if m.group(1):  # "$1,234.56": the comma groups thousands
+        return float(re.sub(r"[,\s\u00a0]", "", m.group(1)))
+    return _number(m.group(2))
 
 
 def _minutes_from(el: Element, departs: str | None) -> int:
@@ -243,9 +273,29 @@ def choose_offer(elements: list[Element], goal: GoalSpec, profile: SiteProfile) 
         return None  # "the next train after the delayed one" needs judgement -> planner
     if goal.departs and profile.unmatched_offer == OfferFallback.CLOSEST_DEPARTURE:
         return min(offers, key=lambda o: _minutes_from(o, goal.departs))  # a timed entry
-    if profile.offer_policy == "cheapest":
+    if goal.cheapest or profile.offer_policy == "cheapest":
         return min(offers, key=_price)
     return min(offers, key=_departure)
+
+
+def fare_buttons(elements: list[Element], profile: SiteProfile) -> list[tuple[Element, int]]:
+    """Enabled fare buttons of an opened offer with their travel class, in page order."""
+    if not profile.fare_buttons:
+        return []
+    out = []
+    for el in elements:
+        if is_button(el) and (m := re.search(profile.fare_buttons, button_label(el), re.I)):
+            out.append((el, int(m.group(1))))
+    return out
+
+
+def choose_fare(elements: list[Element], goal: GoalSpec, profile: SiteProfile) -> Element | None:
+    """The goal's class (default 2nd); the first fare (cheapest) or, if flexible, the last."""
+    wanted = goal.travel_class or 2
+    fares = [el for el, travel_class in fare_buttons(elements, profile) if travel_class == wanted]
+    if not fares:
+        return None
+    return fares[-1] if goal.flexible else fares[0]
 
 
 def _cta(elements: list[Element], stage: Stage, profile: SiteProfile) -> Element | None:
@@ -270,6 +320,23 @@ def _cta(elements: list[Element], stage: Stage, profile: SiteProfile) -> Element
         if el.get("type") in ("submit", "") and el["tag"] in ("button", "input")
     ]
     return submits[0] if len(submits) == 1 else None
+
+
+def _option_named(el: Element, place: str) -> str | None:
+    """The select option that IS the named place (case/whitespace-insensitive), else None."""
+    wanted = _norm(place)
+    hits = [str(o).strip() for o in el.get("options") or [] if _norm(str(o)) == wanted]
+    return hits[0] if len(hits) == 1 else None
+
+
+def _unfilled_form(elements: list[Element]) -> bool:
+    """Any empty text field the vault could fill (names, email, billing, card)."""
+    return any(
+        el.get("role") == "textbox"
+        and el.get("type") not in ("hidden", "search")
+        and not el.get("value")
+        for el in elements
+    )
 
 
 def pay_button(elements: list[Element], profile: SiteProfile) -> Element | None:
@@ -297,11 +364,18 @@ def detect_stage(state: dict[str, Any], profile: SiteProfile) -> Stage:
     kinds = {r.kind for r in roles if r is not None}
     if kinds & {FieldKind.FIRST_NAME, FieldKind.LAST_NAME, FieldKind.EMAIL}:
         return Stage.PASSENGERS
+    if fare_buttons(elements, profile):
+        return Stage.FARE
     if offer_buttons(elements):
         return Stage.RESULTS
     if any_match(profile.unavailable, text):
         return Stage.UNAVAILABLE
-    if kinds & {FieldKind.TRAVEL_DATE, FieldKind.PARTY_SIZE}:
+    if kinds & {
+        FieldKind.TRAVEL_DATE,
+        FieldKind.PARTY_SIZE,
+        FieldKind.ORIGIN,
+        FieldKind.DESTINATION,
+    }:
         return Stage.SEARCH
     return Stage.UNKNOWN
 
@@ -314,9 +388,19 @@ def verify_summary(
     `names` are vault values: compared here, never echoed into a reason.
     """
     record = extract_summary(state, profile)
-    page = _norm(str(state.get("text") or state.get("text_preview") or ""))
+    # Names typed into the page's own form (a billing form next to the pay button) count too.
+    typed = " | ".join(
+        str(el.get("value") or "")
+        for el in state.get("elements") or []
+        if el.get("role") == "textbox" and el.get("value")
+    )
+    page = _norm(f"{state.get('text') or state.get('text_preview') or ''} | {typed}")
     problems: list[str] = []
     notes: list[str] = []
+    if profile.lead_passenger_only:
+        # The site sells the whole party under the lead traveller's name.
+        names = names[:1]
+        notes.append(f"site books under the lead passenger's name only ({goal.passengers} pax)")
     wanted = [_norm(f"{first} {last}") for first, last in names]
     if record.passengers:
         shown = [_norm(n) for n in record.passengers]
@@ -374,6 +458,8 @@ class RuleEngine:
     _wait_url: str = ""
     _last_sig: tuple[str, str] | None = None
     _same: int = 0
+    _offer_clicked: str = ""
+    _offer_waits: int = 0
     last_stage: Stage = Stage.UNKNOWN
     last_summary: SummaryRecord | None = None
     notes: list[str] = field(default_factory=list)
@@ -412,6 +498,8 @@ class RuleEngine:
             wait = [{"action": "wait", "ms": 1000, "milestone": None}]
             return RuleDecision(stage, wait, "page not rendered yet")
         self._waits = 0
+        if (wall := self._pass_wall(state)) is not None:
+            return wall
         handler = {
             Stage.CONFIRMATION: self._confirmation,
             Stage.UNAVAILABLE: self._unavailable,
@@ -420,8 +508,56 @@ class RuleEngine:
             Stage.PASSENGERS: self._form,
             Stage.SEARCH: self._form,
             Stage.RESULTS: self._results,
+            Stage.FARE: self._fare,
         }.get(stage)
         return handler(state, stage) if handler else None
+
+    def _pass_wall(self, state: dict[str, Any]) -> RuleDecision | None:
+        """Click the profile's way through a sign-in wall ("Continue as Guest"), if shown."""
+        if not self.profile.handoff_pass:
+            return None
+        elements: list[Element] = state.get("elements") or []
+        hits = [
+            el
+            for el in elements
+            if el.get("role") in ("link", "button")
+            and re.search(self.profile.handoff_pass, button_label(el), re.I)
+        ]
+        if len(hits) != 1 or _unfilled_form(elements):
+            return None
+        click = {"action": "click", "ref": hits[0]["ref"], "milestone": "guest_screen"}
+        return RuleDecision(Stage.UNKNOWN, [click], "through the sign-in wall as a guest")
+
+    def _handoff_form(self, state: dict[str, Any], stage: Stage) -> RuleDecision:
+        """Fill what the vault can, then stop BEFORE any checkbox or submit: a planned handoff.
+
+        Checkboxes (the regulations, marketing consents) are never ticked and nothing is
+        clicked; an unmapped field is left for the person who takes over.
+        """
+        fills: list[dict[str, Any]] = []
+        positions: dict[FieldKind, int] = {}
+        for el in state["elements"]:
+            role = classify_field(el)
+            if role is None or el.get("role") != "textbox" or el.get("tag") == "select":
+                continue
+            positions[role.kind] = positions.get(role.kind, 0) + 1
+            value = self.field_value(el, role, positions[role.kind])
+            if not value or self._current_matches(el, value):
+                continue
+            fills.append({"ref": el["ref"], "text": value})
+        milestone = self.profile.handoff_milestone or "handoff"
+        plan: list[Action] = []
+        if fills:
+            plan.append({"action": "fill_form", "fields": fills, "milestone": stage.value})
+        plan.append(
+            {
+                "action": "handoff",
+                "reason": f"planned handoff at {milestone}: the form is filled, nothing "
+                "submitted — a person accepts the regulations and pays",
+                "milestone": milestone,
+            }
+        )
+        return RuleDecision(stage, plan, f"{len(fills)} field(s) filled, then handoff")
 
     def _confirmation(self, state: dict[str, Any], stage: Stage) -> RuleDecision:
         m = re.search(self.profile.confirmation_ref, str(state.get("text") or ""))
@@ -470,6 +606,11 @@ class RuleEngine:
 
     def _review(self, state: dict[str, Any], stage: Stage) -> RuleDecision | None:
         check = self.summary_check(state)
+        if not check.ok and _unfilled_form(state["elements"]):
+            # A pay page that still asks for data (a billing form next to the pay button):
+            # filling it is the flow's or the planner's job; the check runs again after.
+            self.notes.append("the summary page still has empty form fields to fill")
+            return None
         if not check.ok:
             return RuleDecision(
                 stage,
@@ -488,12 +629,42 @@ class RuleEngine:
         click = {"action": "click", "ref": pay["ref"], "milestone": "payment"}
         return RuleDecision(stage, [click], "pay")
 
+    def _party_differs(self, state: dict[str, Any]) -> bool:
+        """The page prices offers for a different party than the goal's."""
+        if not self.profile.party_shown:
+            return False
+        m = re.search(self.profile.party_shown, str(state.get("text") or ""), re.I)
+        if m is None or int(m.group(1)) == self.goal.passengers:
+            return False
+        self.notes.append(
+            f"the page is set for {m.group(1)} passenger(s), the goal needs "
+            f"{self.goal.passengers}: change the party first"
+        )
+        return True
+
     def _results(self, state: dict[str, Any], stage: Stage) -> RuleDecision | None:
+        if self._party_differs(state):
+            return None
         offer = choose_offer(state["elements"], self.goal, self.profile)
         if offer is None:
             return None
+        # The same offer still listed right after clicking it: it is opening in place (fare
+        # boxes still loading). Clicking again would fold it, so wait a moment instead.
+        context = str(offer.get("context") or "")[:60]
+        if context and context == self._offer_clicked and self._offer_waits < _MAX_WAITS:
+            self._offer_waits += 1
+            wait = [{"action": "wait", "ms": 1500, "milestone": None}]
+            return RuleDecision(stage, wait, "offer opening")
+        self._offer_clicked, self._offer_waits = context, 0
         click = {"action": "click", "ref": offer["ref"], "milestone": "results", "choice": "offer"}
         return RuleDecision(stage, [click], "offer chosen")
+
+    def _fare(self, state: dict[str, Any], stage: Stage) -> RuleDecision | None:
+        fare = choose_fare(state["elements"], self.goal, self.profile)
+        if fare is None or self._party_differs(state):
+            return None  # the wanted class is unavailable on this train: judgement needed
+        click = {"action": "click", "ref": fare["ref"], "milestone": "fare", "choice": "fare"}
+        return RuleDecision(stage, [click], "fare chosen")
 
     def field_value(self, el: Element, role: FieldRole, position: int) -> str | None:
         """The placeholder/literal for a field; "" = leave it; None = cannot decide."""
@@ -507,6 +678,9 @@ class RuleEngine:
             return self.goal.return_date or (None if el.get("value") else "")
         if kind is FieldKind.PARTY_SIZE:
             return str(self.goal.passengers)
+        if kind in (FieldKind.ORIGIN, FieldKind.DESTINATION):
+            place = self.goal.origin if kind is FieldKind.ORIGIN else self.goal.destination
+            return _option_named(el, place) if place else None
         if kind in (FieldKind.EMAIL, FieldKind.PHONE):
             key = kind.value
             if key in self.vault_keys:
@@ -531,6 +705,8 @@ class RuleEngine:
         return current == value
 
     def _form(self, state: dict[str, Any], stage: Stage) -> RuleDecision | None:
+        if stage is Stage.PASSENGERS and self.profile.handoff_pass:
+            return self._handoff_form(state, stage)
         elements: list[Element] = state["elements"]
         fills: list[dict[str, Any]] = []
         actions: list[Action] = []
@@ -545,7 +721,10 @@ class RuleEngine:
             value = self.field_value(el, role, positions[role.kind])
             if value is None:
                 return None
-            if value == "" or self._current_matches(el, value):
+            # A route select is always set explicitly, even when it already shows the goal's
+            # city: the recorded flow must carry the step to replay another route.
+            route = role.kind in (FieldKind.ORIGIN, FieldKind.DESTINATION)
+            if value == "" or (not route and self._current_matches(el, value)):
                 continue
             if el.get("tag") == "select":
                 options = [str(o).strip() for o in el.get("options") or []]

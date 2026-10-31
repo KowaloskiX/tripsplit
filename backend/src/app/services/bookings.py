@@ -23,12 +23,14 @@ from pymongo.errors import DuplicateKeyError
 from app.agent.launcher import AgentLauncher, LaunchSpec, PidHandle, RunHandle, live_pid
 from app.core.domain.bookings import (
     BOOKING_STATUSES_THAT_START,
+    REAL_EIC_CHECKOUT,
     TRIP_STATUSES_THAT_BUY,
     all_confirmed,
     booking_status_after,
     contribution_status,
     format_delta,
     format_money,
+    is_real_eic,
     is_valid_run_id,
     priced_purchase_url,
     refund_minor,
@@ -400,8 +402,11 @@ class BookingService:
         holds: bool = False,
         call_log: CallLog = CALL_LOG,
         escrow: EscrowService | None = None,
+        guest_email: str = "demo.guest@example.com",
     ) -> None:
         self.db = db
+        # The (fake) contact e-mail typed into a real shop's guest form (`PKP_CHECKOUT=real`).
+        self.guest_email = guest_email
         # The supplier API calls, for the trip's live terminal (`activity`).
         self.call_log = call_log
         # The trip escrow at the payment partner (PAYMENTS=wallet): payouts to API suppliers,
@@ -775,6 +780,8 @@ class BookingService:
         expected = expected_total_clause(
             booking.amount_minor, currency, self.prices.price_tolerance_percent
         )
+        if is_real_eic(booking.supplier_url):
+            return f"{booking.goal} Passengers on this purchase: {travellers}. {REAL_EIC_CHECKOUT}"
         return (
             f"{booking.goal} Passengers on this purchase: {travellers}. {expected} Fill "
             "traveller names and the contact email from the vault. Stop at the final summary, "
@@ -795,6 +802,8 @@ class BookingService:
         vault: dict[str, str] = {"passengers": str(len(travellers))}
         if organizer is not None:
             vault["email"] = organizer.email
+        if is_real_eic(booking.supplier_url):
+            vault["email"] = self.guest_email  # a real shop gets the demo contact, not ours
         lead = next((member for member in members if member.role is MemberRole.ORGANIZER), None)
         if lead is not None:
             vault["first_name"], vault["last_name"] = split_name(lead.display_name)
@@ -938,6 +947,11 @@ class BookingService:
             # not trusted blindly — a human checks it on the supplier site.
             status = BookingStatus.HANDOFF
             reason = f"The agent reported a purchase nobody approved. Please check it. {reason}"
+        if status is BookingStatus.HANDOFF and is_real_eic(booking.supplier_url):
+            reason = (
+                "ready for you to pay on intercity.pl — the train, fare and seats are selected "
+                f"and the guest form is filled; accept the regulations and pay there. ({reason})"
+            )
         if self.escrow is not None:
             status, reason = await self._settle_card(trip, booking, status, reason)
         confirmation = str((raw or {}).get("confirmation_ref") or "") or None

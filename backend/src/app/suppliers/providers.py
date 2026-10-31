@@ -95,6 +95,7 @@ def _adapter(
     liteapi: LiteApiConfig | None,
     duffel: DuffelConfig | None,
     pkp: Transport | None,
+    pkp_real_checkout: bool = False,
 ) -> SupplierAdapter | None:
     if supplier_id in SIM_CAPABILITIES:
         # In a demo the agent buys the simulated trains on our fake rail site too.
@@ -106,7 +107,9 @@ def _adapter(
         return AttractionSupplier(supplier_id, site_url=demo_rail_url, clock=utc_now)
     if supplier_id == PKP_INTERCITY:
         # In a demo (`demo_rail_url`) the agent buys PKP's trains on our fake rail site.
-        site = f"{demo_rail_url}{DEMO_RAIL_PATH}" if demo_rail_url is not None else None
+        # `pkp_real_checkout`: the agent goes to the real e-IC page (and stops before paying).
+        demo = demo_rail_url is not None and not pkp_real_checkout
+        site = f"{demo_rail_url}{DEMO_RAIL_PATH}" if demo else None
         return PkpIntercitySupplier(pkp or HttpTransport(), purchase_site=site)
     if supplier_id == DEMO_RAIL and demo_rail_url is not None:
         return DemoRailSupplier(demo_rail_url)
@@ -126,13 +129,15 @@ def build_registry(
     liteapi: LiteApiConfig | None = None,
     duffel: DuffelConfig | None = None,
     pkp: Transport | None = None,
+    pkp_real_checkout: bool = False,
 ) -> SupplierRegistry:
     """The enabled suppliers, in configuration order (`Settings.supplier_ids`). Unknown ids
     are skipped, and so are `demo_rail` outside a demo (no `demo_rail_url`), `liteapi`
     without a usable key (`liteapi_config`) and `duffel` without a usable key
     (`duffel_config`). `pkp` is PKP Intercity's transport (see `pkp_transport`; plain HTTP
-    when not given)."""
+    when not given); `pkp_real_checkout` sends PKP purchases to the real e-IC site."""
     adapters = [
-        _adapter(supplier_id, demo_rail_url, liteapi, duffel, pkp) for supplier_id in supplier_ids
+        _adapter(supplier_id, demo_rail_url, liteapi, duffel, pkp, pkp_real_checkout)
+        for supplier_id in supplier_ids
     ]
     return SupplierRegistry(adapter for adapter in adapters if adapter is not None)

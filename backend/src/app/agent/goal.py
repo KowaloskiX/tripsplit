@@ -31,6 +31,13 @@ _DEPARTS = re.compile(r"\bdep(?:arts?|arture)?\.?\s*(?:at\s*)?([0-2]?\d:[0-5]\d)
 # A timed entry (attraction tickets): "entry at 14:30", "time slot 14:30".
 _SLOT = re.compile(r"\b(?:entry|time slot)\s*(?:at\s*)?([0-2]?\d:[0-5]\d)", re.I)
 _TOLERANCE = re.compile(r"tolerance[^\d]{0,10}(\d+(?:[.,]\d+)?)\s*%", re.I)
+_CHEAPEST = re.compile(r"\bcheapest\b|\blowest price\b|najtańsz", re.I)
+# "from Paris to London" -> the route a flow binds as {{goal.origin}} / {{goal.destination}}.
+_CLASS = re.compile(
+    r"\b(1st|2nd|first|second)\s+class\b|\bclass\s*([12])\b|\b([12])\.?\s*klas", re.I
+)
+_PLACE = r"[A-ZÀ-ÖØ-ÞĄĆĘŁŃÓŚŹŻ][\w.'-]*(?:\s+[A-ZÀ-ÖØ-ÞĄĆĘŁŃÓŚŹŻ][\w.'-]*)*"
+_ROUTE = re.compile(rf"\bfrom\s+({_PLACE})\s+(?:to|->|→)\s+({_PLACE})")
 _DEFAULT_TOLERANCE_PERCENT = 2.0
 
 
@@ -46,10 +53,22 @@ class GoalSpec:
     departs: str | None = None
     # A return journey: the summary must show this date too (both legs on one order).
     return_date: str | None = None
+    # "cheapest" in the goal: pick the lowest listed price whatever the site's default policy.
+    cheapest: bool = False
+    origin: str | None = None
+    destination: str | None = None
+    # Fare preferences: travel class (1/2) and a refundable ("flexible") fare over the
+    # cheapest non-refundable one.
+    travel_class: int | None = None
+    flexible: bool = False
 
     def variables(self) -> dict[str, str]:
         """`{{goal.<key>}}` bindings a flow may reference."""
         out = {"passengers": str(self.passengers)}
+        if self.origin:
+            out["origin"] = self.origin
+        if self.destination:
+            out["destination"] = self.destination
         if self.date:
             out["date"] = self.date
         if self.return_date:
@@ -107,4 +126,23 @@ def parse_goal(goal: str, vault: Any = None) -> GoalSpec:
             m.group(1) if (m := _DEPARTS.search(goal) or _SLOT.search(goal)) is not None else None
         ),
         return_date=m.group(1) if (m := _RETURN_DATE.search(goal)) is not None else None,
+        cheapest=_CHEAPEST.search(goal) is not None,
+        origin=route.group(1) if (route := _ROUTE.search(goal)) is not None else None,
+        destination=route.group(2) if route is not None else None,
+        travel_class=_travel_class(goal),
+        flexible=_flexible(goal),
     )
+
+
+def _travel_class(goal: str) -> int | None:
+    if (m := _CLASS.search(goal)) is None:
+        return None
+    word = (m.group(1) or "").lower()
+    if word:
+        return 1 if word in ("1st", "first") else 2
+    return int(m.group(2) or m.group(3))
+
+
+def _flexible(goal: str) -> bool:
+    text = goal.lower()
+    return "flexible" in text or ("refundable" in text.replace("non-refundable", ""))

@@ -100,6 +100,7 @@ time — do not run two agents on the same `AGENT_PROFILE_DIR` concurrently.
 |---|---|---|
 | `done` | the planner reached the goal (with `stop_before_pay`: a populated, ready-to-submit summary) | check the `-done.png` frame matches the goal |
 | `handoff` | a human-only gate: CAPTCHA, login required, secure payment iframe, BLIK/SMS code | expected; the UI shows the frame and a person takes over |
+| `handoff` at a planned milestone | the site profile's `handoff_markers` matched (e.g. e-IC's sign-in / "Continue as Guest" wall -> `guest_screen`) | success by design: the selection is done, the flow is saved, a person continues |
 | `stuck` | the same action repeated five times with no visible progress | look at `-stuck.png` and `trace.json`; usually a banner or a playbook gap |
 | `max_steps` | step cap hit without a terminal state | raise `--max-steps` or tighten the goal / playbook |
 | `error` | an exception in the loop (browser crash, network, missing key); `reason` holds the repr | fix the environment, rerun with `--headful` |
@@ -188,6 +189,9 @@ uv run agent-eval run --mode live_llm --variants baseline,split_pages --party 3 
 
 Reports: `backend/var/agent-evals/<ts>/report.{md,json}`. `replay`/`rules_only` exit 2 if a
 model was ever called; `live_llm` stops at the call budget or the first rate limit.
+
+Real third-party sites (BlazeDemo end to end, intercity.pl to the guest screen): exact
+commands and findings in AGENTS.md, section "Real sites (real_sites)".
 
 ## Traps
 

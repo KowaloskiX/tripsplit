@@ -13,6 +13,7 @@ import argparse
 import contextlib
 import json
 import os
+import re
 import secrets
 import time
 from collections.abc import Callable
@@ -30,7 +31,7 @@ from app.agent.paths import run_dir
 from app.agent.planner import NullPlanner, PlannerUnavailable, make_planner
 from app.agent.recover import auto_dismiss, detect_block
 from app.agent.rules import RuleEngine, detect_stage, pay_button
-from app.agent.site_profiles import Stage, profile_for
+from app.agent.site_profiles import SiteProfile, Stage, profile_for
 from app.agent.skills import notes_for
 from app.agent.vault import Vault
 
@@ -246,6 +247,29 @@ def _queue(action: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
     return {"action": action, "url": state.get("url"), "descs": descs}
 
 
+def _planned_handoff(page: Any, profile: SiteProfile) -> str | None:
+    """The site's planned-handoff phrase visible on the page now, else None."""
+    if not profile.handoff_markers:
+        return None
+    try:
+        text = str(page.evaluate("() => (document.body && document.body.innerText) || ''"))
+    except Exception:
+        return None
+    for pattern in profile.handoff_markers:
+        if (m := re.search(pattern, text, re.I)) is not None:
+            return m.group(0)
+    return None
+
+
+def reached_planned_handoff(result: RunResult, profile: SiteProfile) -> bool:
+    """A handoff at the site's planned stop point: the selection itself succeeded."""
+    return (
+        result.outcome == "handoff"
+        and bool(profile.handoff_milestone)
+        and profile.handoff_milestone in result.milestones
+    )
+
+
 def run(req: RunRequest) -> RunResult:
     started = time.monotonic()
     if req.engine:
@@ -399,8 +423,25 @@ def run(req: RunRequest) -> RunResult:
             stop_before_pay=stop_before_pay,
         )
         for step in range(first, last + 1):
-            # RECOVER (pre): clear overlays, then check for human-only gates.
-            auto_dismiss(browser.page)
+            # A planned handoff point of this site (e.g. a sign-in / guest wall): stop BEFORE
+            # anything else runs — auto_dismiss would close that very modal.
+            marker = _planned_handoff(browser.page, profile)
+            if marker is not None and not profile.handoff_pass:
+                browser.screenshot(os.path.join(artifacts, f"{step:02d}-handoff.png"))
+                milestone = profile.handoff_milestone or "handoff"
+                if milestone != last_milestone:
+                    last_milestone = milestone
+                    milestones.append(milestone)
+                    print(f"[milestone] {milestone}")
+                print(f"[step {step}] HANDOFF (planned) -> {marker}")
+                result.outcome, result.steps = "handoff", step
+                result.reason = f"planned handoff at {milestone}: the site shows '{marker}'"
+                status(step, result.reason)
+                break
+            # RECOVER (pre): clear overlays (never the wall the rules are about to pass), then
+            # check for human-only gates.
+            if marker is None:
+                auto_dismiss(browser.page)
             blocked, reason = detect_block(browser.page)
             if blocked:
                 browser.screenshot(os.path.join(artifacts, f"{step:02d}-handoff.png"))
@@ -457,7 +498,13 @@ def run(req: RunRequest) -> RunResult:
             )
             for action in plan:
                 if action.get("action") not in ("done", "handoff"):
-                    recorded.append(flows.record_step(action, state["elements"]))
+                    step_action = action
+                    if source in (Source.LLM, Source.PLAN):
+                        # The model's milestone label is free text; a flow keys its stage
+                        # checks on it, so record the stage the page was observed in.
+                        observed = None if stage is Stage.UNKNOWN else stage.value
+                        step_action = {**action, "milestone": observed}
+                    recorded.append(flows.record_step(step_action, state["elements"]))
 
             milestone = plan[-1].get("milestone") or plan[0].get("milestone")
             if milestone and milestone != last_milestone:
@@ -592,6 +639,9 @@ def run(req: RunRequest) -> RunResult:
             result.outcome = "unknown"
             drive(PAY_GOAL, False, result.steps + 1, result.steps + PAY_MAX_STEPS, False)
             del recorded[keep:]
+            ref = re.search(profile_for(req.url).confirmation_ref, result.reason or "")
+            if result.outcome == "done" and ref is not None:
+                result.confirmation_ref = ref.group(0)
             return
         step = result.steps + 1
         browser.screenshot(os.path.join(artifacts, f"{step:02d}-done.png"))
@@ -625,7 +675,8 @@ def run(req: RunRequest) -> RunResult:
     _write_json(os.path.join(artifacts, "trace.json"), trace)
     _write_json(os.path.join(artifacts, "result.json"), asdict(result))
     healed = player is None or player.misses > 0
-    if req.use_trajectory and req.save_flow and result.outcome == "done" and recorded and healed:
+    succeeded = result.outcome == "done" or reached_planned_handoff(result, profile_for(req.url))
+    if req.use_trajectory and req.save_flow and succeeded and recorded and healed:
         with contextlib.suppress(Exception):
             compiled = flows.compile_flow(recorded, goal, vault.lookup())
             path = flows.save(req.url, compiled)

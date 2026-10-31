@@ -14,6 +14,12 @@ it directly instead of filling the form (station codes come from
 Warszawa Centralna = 5100065, Praga Gł./Praha hl.n. = 5400014. Domestic trips use a sibling path
 (`/polaczenia` — UNVERIFIED).
 
+The URL always carries ONE adult (`ticket100=1010`). Do not put more passengers into the URL
+(`ticket100=1010;1010;1010` lists "3x Passengers" but "1 x Adults", and the summary then crashes
+with "Oops! Something went wrong", verified 2026-10-31). For a group, open the header's
+"CHANGE" (next to "1x Passenger 1 x Adults"), raise the adults to the party size, confirm, and
+check the header reads "N x Adults" before choosing a connection.
+
 ## Search form (only if you must)
 
 - Fields: `#stname-0` "Jadę z", `#stname-1` "Jadę do", `#date_picker` (RRRR-MM-DD, accepts
@@ -38,11 +44,12 @@ Warszawa Centralna = 5100065, Praga Gł./Praha hl.n. = 5400014. Domestic trips u
   automatic assignment), "Additional tickets" (bicycle, dog — leave at 0).
 - Press "GO TO PAYMENTS". Despite the label this opens the sign-in step, not a payment.
 
-## Account (milestone `account`)
+## Account (milestone `guest_screen` = planned handoff)
 
 - URL `.../podsumowanie` shows a "Sign in" modal: Google / Facebook / Apple / LOG IN / REGISTER
-  and a "Continue as Guest" link. Take "Continue as Guest" unless the persistent profile is
-  already logged in.
+  and a "Continue as Guest" link. The run STOPS here (the site profile hands off as soon as
+  "Continue as Guest" is visible): going on means an e-mail address and accepting the e-IC
+  regulations on someone's behalf. The steps below are what a person does next.
 - Guest goes to `sso.intercity.pl/oauth_server/oauth/register?client_id=eic_guest...` with
   `email`, `email-repeat` and consent toggles. Fill `{{vault.email}}` twice. Tick ONLY the
   mandatory "I declare that I am familiar with the e-IC Regulations..." toggle; leave profiling

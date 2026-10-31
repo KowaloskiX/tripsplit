@@ -52,13 +52,26 @@ _JS = r"""
     if (row) return clean(row.innerText, 120);
     return '';
   };
-  const els = document.querySelectorAll(sel);
+  // An open modal dialog is all a person can interact with: observe only its controls, so
+  // neither the rules nor the planner act on the page behind it.
+  const shown = (d) => {
+    const r = d.getBoundingClientRect(); const st = window.getComputedStyle(d);
+    return r.width > 50 && r.height > 50 && st.visibility !== 'hidden' && st.display !== 'none';
+  };
+  const modals = Array.from(document.querySelectorAll(
+    '[aria-modal="true"], dialog[open], [role="dialog"], [role="alertdialog"]'
+  )).filter((d) => shown(d) && d.querySelector(sel));
+  const scope = modals.length ? modals[modals.length - 1] : document;
+  // Refs from an earlier observation must not survive on elements outside this one, or a
+  // click on ref N could land on a stale element behind the modal.
+  for (const old of document.querySelectorAll('[data-agent-ref]')) old.removeAttribute('data-agent-ref');
+  const els = scope.querySelectorAll(sel);
   for (const el of els) {
     const r = el.getBoundingClientRect();
     const style = window.getComputedStyle(el);
     const visible = r.width > 1 && r.height > 1 &&
         style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0' &&
-        r.bottom > 0 && r.top < (window.innerHeight + 1200) &&
+        r.bottom > -1200 && r.top < (window.innerHeight + 1200) &&
         r.right > 0 && r.left < window.innerWidth;
     if (!visible) continue;
     if (el.type === 'hidden' || el.disabled) continue;
