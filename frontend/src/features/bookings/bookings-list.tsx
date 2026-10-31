@@ -12,8 +12,16 @@ import {
   type TripBookingsResponse,
   type TripStatus,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 import { BookingStatusBadge } from "./booking-status-badge";
+import {
+  AgentWorkingBar,
+  BookingTicket,
+  isWorking,
+  ReplacedStamp,
+  StrikeLine,
+} from "./booking-ticket";
 import { DirectApprovalCard } from "./direct-approval-card";
 import { HoldCountdown } from "./hold-countdown";
 import { LiveAgentPanel } from "./live-agent-panel";
@@ -74,16 +82,30 @@ export function BookingsList({
         const directApproval =
           trip.is_organizer && booking.channel === "api" && booking.status === "awaiting_approval";
         return (
-          <Panel key={booking.id} className={booking.status === "cancelled" ? "opacity-60" : ""}>
+          <Panel
+            key={booking.id}
+            className={cn(
+              "relative",
+              booking.status === "cancelled" && "opacity-60",
+              booking.replaces_booking_id && booking.status !== "cancelled" && "slide-in-right",
+            )}
+          >
+            <AgentWorkingBar active={isWorking(booking.status)} />
+            <ReplacedStamp status={booking.status} />
             <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
               <span
-                className={`inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-pastel-ink ${KIND_FILL[booking.kind]}`}
+                className={cn(
+                  "inline-flex size-11 shrink-0 items-center justify-center rounded-2xl text-pastel-ink",
+                  KIND_FILL[booking.kind],
+                  isWorking(booking.status) && "halo",
+                )}
               >
                 <KindIcon kind={booking.kind} mode={booking.mode} className="size-5" />
               </span>
               <div className="min-w-[12rem] flex-1">
-                <p className="text-base font-medium leading-snug tracking-[-0.01em] text-ink">
+                <p className="relative inline-block text-base font-medium leading-snug tracking-[-0.01em] text-ink">
                   {booking.title}
+                  <StrikeLine active={booking.status === "cancelled"} />
                 </p>
                 <p className="ticket-mono mt-0.5 text-xs text-muted">
                   {booking.supplier} ·{" "}
@@ -106,6 +128,7 @@ export function BookingsList({
                 </Button>
               )}
             </div>
+            <BookingTicket booking={booking} currency={trip.currency} />
             {canCompleteManually(trip, booking) && (
               <div className="border-t border-line px-4 pt-3">
                 <ManualCompletionForm tripId={trip.trip_id} bookingId={booking.id} />
