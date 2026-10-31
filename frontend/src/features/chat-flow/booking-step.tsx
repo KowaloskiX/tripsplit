@@ -9,6 +9,7 @@ import { apiErrorMessage, type BookingResponse } from "@/lib/api";
 import { formatMoney } from "@/lib/money";
 
 import { AgentMessage } from "./chat-bubbles";
+import { LivePreview } from "./live-preview";
 
 const FRAME_MS = 700;
 
@@ -120,6 +121,7 @@ export function BookingStep({ tripId, title }: { tripId: string; title: string }
 
   return (
     <>
+      <LivePreview tripId={tripId} />
       {!done && (
         <AgentMessage
           label="Booking"
