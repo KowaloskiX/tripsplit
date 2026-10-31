@@ -407,6 +407,24 @@ async def test_an_offer_gone_at_the_order_cannot_be_held(
     assert await duffel.hold(offer, SIX) is None
 
 
+async def test_an_airline_that_refuses_holds_is_no_longer_offered_as_holdable(
+    duffel: DuffelSupplier, api: FakeDuffel
+) -> None:
+    assert "Iberia" in duffel.hold_refusers  # seen on Duffel's test API
+    offer = await _searched(duffel)
+    api.override = lambda request: (
+        httpx.Response(422, json=error("invalid_order_create_type", "type", "bad type", 422))
+        if request.url.path == "/air/orders"
+        else None
+    )
+    with pytest.raises(SupplierUnavailableError):
+        await duffel.hold(offer, SIX)
+
+    assert "British Airways" in duffel.hold_refusers
+    api.override = None
+    assert BA not in {found.offer_ref for found in await duffel.search(BARCELONA)}
+
+
 async def test_a_refused_hold_names_fields_never_values(
     duffel: DuffelSupplier, api: FakeDuffel
 ) -> None:

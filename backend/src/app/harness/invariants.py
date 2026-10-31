@@ -303,7 +303,8 @@ def _traveller_details_before_purchase(ctx: InvariantContext) -> list[str]:
 
 def _hold_live_at_purchase(ctx: InvariantContext) -> list[str]:
     """With holds on, a supplier that holds prices never sees a purchase step on a lapsed
-    hold. With holds off nothing is held; `price_fresh_at_purchase` guards the re-quote."""
+    hold. With holds off nothing is held, and a supplier that refused to hold this offer
+    holds nothing either: there `price_fresh_at_purchase` guards the re-quote."""
     if ctx.now is None or not ctx.holds:
         return []
     problems = []
@@ -311,6 +312,8 @@ def _hold_live_at_purchase(ctx: InvariantContext) -> list[str]:
         capabilities = ctx.capabilities(booking)
         if capabilities is None or not capabilities.supports_hold:
             continue
+        if booking.hold_ref is None and booking.hold_expires_at is None:
+            continue  # never held (refused): bought on a fresh quote instead
         if not hold_is_live(booking.hold_expires_at, ctx.now):
             problems.append(
                 f"'{booking.title}' moved {old} -> {booking.status} on a hold that expired at "

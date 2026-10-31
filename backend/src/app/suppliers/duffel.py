@@ -77,6 +77,12 @@ DEFAULT_CONTACT_EMAIL = "trips@tripsplit.example"
 DEFAULT_CONTACT_PHONE = "+48500100200"
 # Offer gone / no longer holdable: "sold out" for the trip flow, not "could not ask".
 PRICE_CHANGED_CODE = "price_changed"
+# A hold order refused for the offer's airline although the offer advertises
+# `requires_instant_payment: false`: that airline does not hold through Duffel.
+HOLD_REFUSED_CODE = "invalid_order_create_type"
+# Seen on Duffel's TEST API: these airlines' offers advertise holds but every hold order is
+# refused with `HOLD_REFUSED_CODE`. Any other airline that refuses is learned at runtime.
+TEST_MODE_HOLD_REFUSERS = frozenset({"Iberia"})
 # How many matching offers of a fresh search are read in full before giving up.
 _REFIND_CHECKS = 3
 _GONE_CODES = frozenset(
@@ -407,6 +413,8 @@ class DuffelSupplier:
         mode = "" if client.live_mode else ", test mode"
         self.display_name = f"Duffel (airline API{mode})"
         self.log = DuffelLog()
+        # Airlines (offer owners) whose offers are not offered as holdable any more.
+        self.hold_refusers: set[str] = set() if client.live_mode else set(TEST_MODE_HOLD_REFUSERS)
 
     # ---- calls, timed and logged (paths and codes only) -----------------------------------
 
@@ -485,6 +493,7 @@ class DuffelSupplier:
         return (
             not offer.requires_instant_payment
             and offer.hold_until is not None
+            and offer.owner not in self.hold_refusers
             and offer.currency in self.rates
         )
 
@@ -696,6 +705,9 @@ class DuffelSupplier:
         if isinstance(answer, Err):
             if answer.error.has(*_GONE_CODES):
                 return None
+            if answer.error.has(HOLD_REFUSED_CODE):
+                self.hold_refusers.add(current.owner)
+                self.log.notes.append(f"{current.owner} does not hold: offered as instant only")
             raise SupplierUnavailableError(f"Duffel refused the hold: {answer.error.describe()}")
         order = answer.value if isinstance(answer.value, dict) else {}
         amount = decimal_of(order.get("total_amount")) or current.total_amount

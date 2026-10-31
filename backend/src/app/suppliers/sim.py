@@ -36,6 +36,7 @@ from app.suppliers.ports import (
     Quote,
     SearchRequest,
     Segment,
+    SupplierUnavailableError,
 )
 from app.suppliers.sim_catalogue import (
     AIRLINES,
@@ -71,6 +72,8 @@ class SimBehaviour:
     price_change_percent: float | None = None  # one-shot: the next quote or hold moves
     sold_out: bool = False
     hold_ttl: timedelta | None = None  # overrides the capability's TTL for new holds
+    # Every hold is refused as "could not ask" (an airline that advertises but never holds).
+    hold_refused: bool = False
     purchase_failure: str | None = None
     agent_outcome: ScriptedAgentOutcome | None = None  # the harness's scripted agent reads it
     disruption: SimDisruption | None = None  # one-shot: reported by the next `status` call
@@ -346,6 +349,8 @@ class SimSupplier:
         ttl = self.behaviour.hold_ttl or self.capabilities.hold_ttl
         if not self.capabilities.supports_hold or ttl is None or self.behaviour.sold_out:
             return None
+        if self.behaviour.hold_refused:
+            raise SupplierUnavailableError(f"{self.display_name} refused the hold")
         price = self._price(offer, len(travellers))
         ref = f"{self.id.upper()}-H{len(self.holds) + 1:03d}"
         expires_at = self.clock() + ttl

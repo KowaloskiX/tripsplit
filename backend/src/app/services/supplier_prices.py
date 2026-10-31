@@ -18,6 +18,7 @@ the trip back to PAYING (Rule #1). A supplier that no longer offers it fails the
 import logging
 from collections.abc import Callable
 from datetime import datetime
+from enum import Enum
 from typing import Any
 
 from pymongo.asynchronous.client_session import AsyncClientSession
@@ -43,6 +44,15 @@ from app.suppliers.ports import OfferRef, SupplierAdapter, SupplierUnavailableEr
 from app.suppliers.registry import SupplierRegistry
 
 logger = logging.getLogger(__name__)
+
+
+class _Unheld(Enum):
+    """A hold that was not placed because the supplier could not (or would not) give one."""
+
+    UNHELD = "unheld"
+
+
+_UNHELD = _Unheld.UNHELD
 
 type Clock = Callable[[], datetime]
 
@@ -149,11 +159,20 @@ class SupplierPrices:
         ):
             return None
         if adapter.capabilities.supports_hold and self.holds:
-            return await self._hold(
+            held = await self._hold(
                 trip, booking, adapter, members, expired=booking.hold_ref is not None
             )
+            if held is not _UNHELD:
+                return held
+            # The supplier could not hold this one: a fresh quote binds the price instead,
+            # and the purchase pays it directly.
         if quote_is_fresh(booking.quoted_at, adapter.capabilities.quote_ttl, self.clock()):
             return None  # quoted moments ago (e.g. a rebooking): still binding
+        return await self._requote(trip, booking, adapter, members)
+
+    async def _requote(
+        self, trip: Trip, booking: Booking, adapter: SupplierAdapter, members: list[TripMember]
+    ) -> BookingError | None:
         party = len(passengers_of(booking, members)) or len(members)
         try:
             quote = await adapter.quote(offer_of(booking), party)
@@ -176,7 +195,9 @@ class SupplierPrices:
         members: list[TripMember],
         *,
         expired: bool,
-    ) -> BookingError | None:
+    ) -> BookingError | _Unheld | None:
+        """Places a hold. None = held; `_UNHELD` = the supplier could not be asked or would
+        not hold this offer (nothing changed)."""
         if expired and booking.hold_expires_at is not None:
             await self._say(
                 trip,
@@ -194,7 +215,7 @@ class SupplierPrices:
             )
         except SupplierUnavailableError:
             logger.warning("supplier %s unavailable for a hold", booking.supplier_id)
-            return None
+            return _UNHELD
         if hold is None:
             return await self._sold_out(trip, booking)
         changes: dict[str, Any] = {

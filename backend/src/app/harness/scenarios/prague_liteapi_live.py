@@ -19,13 +19,14 @@ from app.harness.scenarios.common import FRIENDS, ORGANIZER, PRAGUE
 
 SCENARIO = Scenario(
     name="prague_liteapi_live",
-    title="Prague with a REAL hotel: LiteAPI sandbox prebook at the vote, book at the approval",
+    title="Prague with a REAL hotel: LiteAPI sandbox prebook and book at the approval",
     description=(
         "Six friends, Warszawa -> Praha 20-22 Nov 2026. The stays come from the real LiteAPI "
-        "sandbox (hotels, rates for 3 double rooms in PLN). Closing the vote PREBOOKS the "
-        "winning hotel (the hold), everyone pays, the train goes to the agent and the stay "
-        "waits for the organizer's approval; approving BOOKS it through LiteAPI with the "
-        "sandbox test card and the booking carries LiteAPI's booking id. Needs --live-stays; "
+        "sandbox (hotels, rates for 3 double rooms in PLN). With HOLDS=off (the app's default) "
+        "closing the vote holds nothing; everyone pays, starting re-quotes the stay, the train "
+        "goes to the agent and the stay waits for the organizer's approval; approving "
+        "PREBOOKS and BOOKS it through LiteAPI with the sandbox test card and the booking "
+        "carries LiteAPI's booking id. Needs --live-stays; "
         "with --live-search the train is a real PKP Intercity fare too."
     ),
     brief=PRAGUE,
@@ -44,8 +45,7 @@ SCENARIO = Scenario(
         CastVotes(0),
         CloseVoting(),
         ExpectStatus(TripStatus.PAYING),
-        ExpectEvent(EventKind.HOLD_PLACED),
-        ExpectHold("stay"),
+        ExpectHold("stay", live=False),
         ExpectShares(status=ContributionStatus.PENDING, members=6),
         Pay(),
         ExpectStatus(TripStatus.BOOKING),
