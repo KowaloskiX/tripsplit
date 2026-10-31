@@ -78,9 +78,10 @@ class BookingResponse(BaseModel):
     passenger_user_ids: list[str]
     run: AgentRunResponse | None
     # Trust: where to book / verify / find it, photos, where the data came from.
-    links: list[LinkResponse]
-    images: list[str]
-    provenance: ProvenanceResponse | None
+    # Always sent; optional in the schema so clients built before them keep compiling.
+    links: list[LinkResponse] = Field(default_factory=list)
+    images: list[str] = Field(default_factory=list)
+    provenance: ProvenanceResponse | None = None
 
 
 class TripBookingsResponse(BaseModel):

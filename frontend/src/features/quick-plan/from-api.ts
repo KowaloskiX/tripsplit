@@ -23,7 +23,7 @@ export function quickPackage(proposal: ProposalResponse): QuickPackage {
       ),
     perPersonMinor: proposal.per_person_minor,
     provenance: packageProvenance(proposal),
-    links: proposal.items.flatMap((item) => item.links).slice(0, MAX_LINKS),
+    links: proposal.items.flatMap((item) => item.links ?? []).slice(0, MAX_LINKS),
   };
 }
 

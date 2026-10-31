@@ -21,6 +21,11 @@ _PARTY = (
 )
 # "EC 113 Vltava", "EN 407 Chopin", "IC 5300", "TLK 1234 Name" — a train category + number.
 _TRAIN = re.compile(r"\b((?:EC|EN|EIC|EIP|IC|TLK|RJ|ICE|RE|R)\s?\d{2,5}(?:\s+[A-Z][\w-]+)?)")
+# The services state the amount the group paid for THIS purchase; it wins over a "budget".
+_EXPECTED = re.compile(
+    r"expected total[^\d]{0,5}(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(PLN|EUR|CZK|zł|USD)?", re.I
+)
+_RETURN_DATE = re.compile(r"return date[^\d]{0,5}(20\d\d-[01]\d-[0-3]\d)", re.I)
 _BUDGET = re.compile(r"budget[^\d]{0,20}(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(PLN|EUR|CZK|zł|USD)?", re.I)
 _DEPARTS = re.compile(r"\bdep(?:arts?|arture)?\.?\s*(?:at\s*)?([0-2]?\d:[0-5]\d)", re.I)
 _TOLERANCE = re.compile(r"tolerance[^\d]{0,10}(\d+(?:[.,]\d+)?)\s*%", re.I)
@@ -37,12 +42,16 @@ class GoalSpec:
     tolerance_percent: float = _DEFAULT_TOLERANCE_PERCENT
     rebooking: bool = False
     departs: str | None = None
+    # A return journey: the summary must show this date too (both legs on one order).
+    return_date: str | None = None
 
     def variables(self) -> dict[str, str]:
         """`{{goal.<key>}}` bindings a flow may reference."""
         out = {"passengers": str(self.passengers)}
         if self.date:
             out["date"] = self.date
+        if self.return_date:
+            out["return_date"] = self.return_date
         if self.train:
             out["train"] = self.train
         return out
@@ -76,7 +85,7 @@ def parse_goal(goal: str, vault: Any = None) -> GoalSpec:
     date = m.group(1) if (m := _ISO_DATE.search(goal)) is not None else None
     train = m.group(1).strip() if (m := _TRAIN.search(goal)) is not None else None
     budget = currency = None
-    if (m := _BUDGET.search(goal)) is not None:
+    if (m := _EXPECTED.search(goal) or _BUDGET.search(goal)) is not None:
         budget = _number(m.group(1))
         currency = (m.group(2) or "").upper().replace("ZŁ", "PLN") or None
     tolerance = (
@@ -93,4 +102,5 @@ def parse_goal(goal: str, vault: Any = None) -> GoalSpec:
         tolerance_percent=tolerance,
         rebooking="rebooking" in goal.lower(),
         departs=m.group(1) if (m := _DEPARTS.search(goal)) is not None else None,
+        return_date=m.group(1) if (m := _RETURN_DATE.search(goal)) is not None else None,
     )

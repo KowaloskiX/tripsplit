@@ -20,8 +20,9 @@ Two entry points:
   - `main()` — the `agent-run` CLI for development and recon:
         uv run agent-run --url https://www.saucedemo.com --goal "..." --run-id demo
 
-Per step the runner writes `runs/<run_id>/NN.png`, `status.json` (milestone, step, cost) and,
-on Chromium, a continuously refreshed `live.jpg`. A caller streams those to the UI.
+Per step the runner writes `runs/<run_id>/NN.png`, `status.json` (milestone, step, cost) and
+a continuously refreshed `live.jpg` (a CDP screencast on Chromium, a screenshot every ~300 ms
+on Camoufox/Firefox). A caller streams those to the UI.
 """
 
 import argparse
@@ -429,7 +430,7 @@ def run(req: RunRequest) -> RunResult:
                 for _ in range(_RENDER_PATIENCE):
                     if state["elements"] or detect_stage(state, rules.profile) != Stage.UNKNOWN:
                         break
-                    browser.page.wait_for_timeout(500)
+                    browser.idle(0.5)
                     state = observe(browser.page)
             except Exception as exc:
                 print(f"  [observe error] {exc!r:.120} — settling & retrying")
@@ -583,7 +584,7 @@ def run(req: RunRequest) -> RunResult:
         status(result.steps, result.reason)
         print(f"[approval] waiting for {os.path.join(artifacts, APPROVAL_FILE)}")
         waited_from = time.monotonic()
-        decision = wait_for_approval(artifacts, approval_timeout_s())
+        decision = wait_for_approval(artifacts, approval_timeout_s(), sleep=browser.idle)
         step_log.append(
             {
                 "index": result.steps,

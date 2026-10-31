@@ -125,18 +125,18 @@ export type BookingResponse = {
     /**
      * Images
      */
-    images: Array<string>;
+    images?: Array<string>;
     kind: BookingKind;
     /**
      * Links
      */
-    links: Array<LinkResponse>;
+    links?: Array<LinkResponse>;
     mode: TransportMode | null;
     /**
      * Passenger User Ids
      */
     passenger_user_ids: Array<string>;
-    provenance: ProvenanceResponse | null;
+    provenance?: ProvenanceResponse | null;
     /**
      * Replaces Booking Id
      */
@@ -824,6 +824,33 @@ export type OrganizationSummary = {
 };
 
 /**
+ * PayAllResponse
+ *
+ * The organizer pays for everyone. `payments` lists the shares paid now (the organizer's wallet
+ * covered the total); otherwise `top_up` (the whole shortfall) is pending and every share is
+ * paid as soon as the bank confirms it. `all_paid` = the trip moved on to booking.
+ */
+export type PayAllResponse = {
+    /**
+     * All Paid
+     */
+    all_paid: boolean;
+    /**
+     * Payments
+     */
+    payments: Array<PaymentResponse>;
+    /**
+     * Shares
+     */
+    shares: number;
+    top_up: WalletTransactionResponse | null;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
+};
+
+/**
  * PaymentMethod
  */
 export type PaymentMethod = 'blik' | 'card' | 'wallet';
@@ -962,18 +989,18 @@ export type ProposalItemResponse = {
     /**
      * Images
      */
-    images: Array<string>;
+    images?: Array<string>;
     kind: BookingKind;
     /**
      * Links
      */
-    links: Array<LinkResponse>;
+    links?: Array<LinkResponse>;
     mode: TransportMode | null;
     /**
      * Price Minor
      */
     price_minor: number;
-    provenance: ProvenanceResponse | null;
+    provenance?: ProvenanceResponse | null;
     /**
      * Segments
      */
@@ -2595,6 +2622,48 @@ export type ContributionsPayResponses = {
 };
 
 export type ContributionsPayResponse = ContributionsPayResponses[keyof ContributionsPayResponses];
+
+export type ContributionsPayAllSharesData = {
+    body: TopUpAndPayRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/contributions/pay-all-shares';
+};
+
+export type ContributionsPayAllSharesErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: InsufficientFundsResponse;
+    /**
+     * Unprocessable Entity
+     */
+    422: ErrorResponse;
+};
+
+export type ContributionsPayAllSharesError = ContributionsPayAllSharesErrors[keyof ContributionsPayAllSharesErrors];
+
+export type ContributionsPayAllSharesResponses = {
+    /**
+     * Successful Response
+     */
+    200: PayAllResponse;
+};
+
+export type ContributionsPayAllSharesResponse = ContributionsPayAllSharesResponses[keyof ContributionsPayAllSharesResponses];
 
 export type ContributionsTopUpAndPayData = {
     body: TopUpAndPayRequest;

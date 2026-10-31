@@ -70,7 +70,9 @@ export function packageProvenance(proposal: ProposalResponse): Provenance | unde
 
 /** The stay's photos make the card's cover. */
 export function packageImages(proposal: ProposalResponse): TrustImage[] {
-  const stay = proposal.items.find((item) => item.kind === "stay" && item.images.length > 0);
+  const stay = proposal.items.find(
+    (item) => item.kind === "stay" && (item.images ?? []).length > 0,
+  );
   return stay ? imagesFromApi(stay.images, stay.title) : [];
 }
 
@@ -175,7 +177,7 @@ export function ProposalCard({
                   <ExternalLink className="size-3" aria-hidden />
                 </a>
                 {(item.links ?? []).length > 0 && (
-                  <LinkChips links={item.links} className="mt-1.5" />
+                  <LinkChips links={item.links ?? []} className="mt-1.5" />
                 )}
               </div>
               <span className="ticket-mono ml-auto shrink-0 text-sm text-ink">

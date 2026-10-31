@@ -108,8 +108,11 @@ function RoomPage(): ReactNode {
               <TripPotCard pot={room.pot} currency={room.trip.currency} />
             </div>
           )}
-          <TravellerDetailsPanel room={room} />
+          {/* Before buying, the packages/vote card is the stage action: the (long) details
+              form goes below it, collapsed. */}
+          {showBookings && <TravellerDetailsPanel room={room} />}
           <ProposalsPanel room={room} />
+          {!showBookings && <TravellerDetailsPanel room={room} />}
           {import.meta.env.DEV && <DemoPanel room={room} />}
         </div>
       </div>

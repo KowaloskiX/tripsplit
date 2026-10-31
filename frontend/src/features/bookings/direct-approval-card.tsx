@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { apiErrorMessage, type BookingResponse } from "@/lib/api";
-
+import { formatMoney } from "@/lib/money";
 import { HoldCountdown } from "./hold-countdown";
-import { formatMoney } from "./money";
 import { useApproveBooking } from "./mutations";
 
 type DirectApprovalCardProps = {

@@ -63,9 +63,9 @@ export function isExample(provenance: Provenance | null | undefined): boolean {
 
 /** What the API sends on a package item or a booking — absent fields on older records. */
 export type ApiTrust = {
-  links?: readonly LinkResponse[] | null;
-  images?: readonly string[] | null;
-  provenance?: ProvenanceResponse | null;
+  links?: readonly LinkResponse[] | null | undefined;
+  images?: readonly string[] | null | undefined;
+  provenance?: ProvenanceResponse | null | undefined;
 };
 
 export function provenanceFromApi(

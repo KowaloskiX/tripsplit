@@ -344,10 +344,7 @@
           "confirmation_ref",
           "replaces_booking_id",
           "passenger_user_ids",
-          "run",
-          "links",
-          "images",
-          "provenance"
+          "run"
         ],
         "title": "BookingResponse",
         "type": "object"
@@ -1486,6 +1483,49 @@
         "title": "OrganizationSummary",
         "type": "object"
       },
+      "PayAllResponse": {
+        "description": "The organizer pays for everyone. `payments` lists the shares paid now (the organizer's wallet\ncovered the total); otherwise `top_up` (the whole shortfall) is pending and every share is\npaid as soon as the bank confirms it. `all_paid` = the trip moved on to booking.",
+        "properties": {
+          "all_paid": {
+            "title": "All Paid",
+            "type": "boolean"
+          },
+          "payments": {
+            "items": {
+              "$ref": "#/components/schemas/PaymentResponse"
+            },
+            "title": "Payments",
+            "type": "array"
+          },
+          "shares": {
+            "title": "Shares",
+            "type": "integer"
+          },
+          "top_up": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WalletTransactionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_minor": {
+            "title": "Total Minor",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_minor",
+          "shares",
+          "payments",
+          "top_up",
+          "all_paid"
+        ],
+        "title": "PayAllResponse",
+        "type": "object"
+      },
       "PaymentMethod": {
         "enum": [
           "blik",
@@ -1776,10 +1816,7 @@
           "price_minor",
           "details",
           "starts_at",
-          "segments",
-          "links",
-          "images",
-          "provenance"
+          "segments"
         ],
         "title": "ProposalItemResponse",
         "type": "object"
@@ -4646,6 +4683,89 @@
           }
         },
         "summary": "Pay My Share",
+        "tags": [
+          "contributions"
+        ]
+      }
+    },
+    "/api/trips/{trip_id}/contributions/pay-all-shares": {
+      "post": {
+        "description": "The organizer pays for everyone (organizer only): tops the organizer's wallet up by the total\nshortfall (BLIK / card) and pays every outstanding share from it; each is recorded as paid\nby the organizer. Pays right away when the wallet already covers the total.",
+        "operationId": "contributions-pay-all-shares",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "trip_id",
+            "required": true,
+            "schema": {
+              "title": "Trip Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopUpAndPayRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayAllResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsufficientFundsResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Entity"
+          }
+        },
+        "summary": "Pay All Shares",
         "tags": [
           "contributions"
         ]

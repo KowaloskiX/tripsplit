@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { useCloseVoting, useVote } from "@/features/proposals";
 import { inviteUrl, useRoom } from "@/features/trips";
+import { PayAllForm } from "@/features/wallet";
 import { apiErrorMessage, type QuickQuestionResponse, type RoomResponse } from "@/lib/api";
 
 import { answerFor, clarifyingQuestion, type QuickAnswers, quickPackage } from "./from-api";
@@ -110,6 +111,7 @@ function TripPackages({
   const vote = useVote(tripId);
   const close = useCloseVoting(tripId);
   const [takenId, setTakenId] = useState<string | null>(null);
+  const [payingAll, setPayingAll] = useState(false);
   const path = { trip_id: tripId };
   const proposals = room?.proposals ?? [];
   const stage: QuickPlanStage =
@@ -133,15 +135,21 @@ function TripPackages({
       onOpenRoom(tripId);
       return;
     }
-    // Paying for everyone: the vote is decided now; the shares follow in the room.
+    // Paying for everyone: the vote is decided now, then one payment covers every share.
     if (room.trip.status !== "voting") {
-      onOpenRoom(tripId);
+      setPayingAll(true);
       return;
     }
-    close.mutate({ path }, { onSuccess: () => onOpenRoom(tripId) });
+    close.mutate({ path }, { onSuccess: () => setPayingAll(true) });
   };
 
   const error = vote.error ?? close.error;
+  const taken = proposals.find((proposal) => proposal.id === takenId);
+  // After the vote closes the shares are the truth (only the members who joined are split).
+  const outstanding = (room?.contributions ?? []).reduce(
+    (sum, share) => sum + share.outstanding_minor,
+    0,
+  );
   return (
     <div className="space-y-4">
       <QuickPlan
@@ -149,11 +157,21 @@ function TripPackages({
         prompt={prompt ?? room?.trip.brief ?? null}
         packages={proposals.map(quickPackage)}
         takenId={takenId}
-        people={room?.trip.group_size ?? 1}
+        people={room?.members.length ?? 1}
         currency={room?.trip.currency ?? "PLN"}
         onTake={take}
         onChoose={choose}
       />
+      {payingAll && taken && room && room.contributions.length > 0 && (
+        <div className="mx-auto max-w-2xl">
+          <PayAllForm
+            tripId={tripId}
+            totalMinor={outstanding}
+            currency={room.trip.currency}
+            onPaid={() => onOpenRoom(tripId)}
+          />
+        </div>
+      )}
       {error && (
         <div className="mx-auto max-w-2xl">
           <ErrorCallout>{apiErrorMessage(error)}</ErrorCallout>
