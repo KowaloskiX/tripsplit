@@ -1,4 +1,14 @@
-import { BedDouble, Bus, Check, MapPin, Plane, Ship, Star, TrainFront } from "lucide-react";
+import {
+  BedDouble,
+  Bus,
+  Check,
+  ExternalLink,
+  MapPin,
+  Plane,
+  Ship,
+  Star,
+  TrainFront,
+} from "lucide-react";
 import { type CSSProperties, type ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -44,6 +54,24 @@ function verifyLinks(option: OptionResponse) {
   const links = optionLinks(option);
   const preferred = links.filter((link) => link.kind === "verify" || link.kind === "map");
   return (preferred.length > 0 ? preferred : links).slice(0, 2);
+}
+
+/** One small "check it yourself" link (the map for a stay) — the chips are too wide here. */
+function CheckLink({ option }: { option: OptionResponse }): ReactNode {
+  const link = verifyLinks(option)[0];
+  if (!link) return null;
+  return (
+    <a
+      href={link.url}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={link.label}
+      className="inline-flex items-center gap-1 text-xs text-muted underline-offset-2 hover:text-ink hover:underline"
+    >
+      <ExternalLink className="size-3" aria-hidden />
+      {link.kind === "map" ? "Map" : "Check"}
+    </a>
+  );
 }
 
 type PickProps = {
@@ -155,7 +183,7 @@ export function StayCard({ option, currency, index, picked, onPick }: PickProps)
           {item?.details && <p className="line-clamp-2 text-xs text-muted">{item.details}</p>}
           <div className="mt-auto flex items-end justify-between gap-2 pt-1">
             <PerPerson option={option} currency={currency} align="left" />
-            <LinkChips links={verifyLinks(option)} />
+            <CheckLink option={option} />
           </div>
           <Button
             size="sm"

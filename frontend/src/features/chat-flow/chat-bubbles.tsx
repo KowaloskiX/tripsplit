@@ -10,18 +10,25 @@ export function AgentMessage({
   children,
   wide = false,
   label,
+  continued = false,
 }: {
   text?: ReactNode;
   children?: ReactNode;
   /** Widgets such as a row of cards need the full width. */
   wide?: boolean;
   label?: string;
+  /** Continues the agent's previous message: no second avatar. */
+  continued?: boolean;
 }): ReactNode {
   return (
     <section aria-label={label} className="feed-in-right flex items-start gap-2.5">
-      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-line">
-        <Sparkles className="size-4" aria-hidden />
-      </span>
+      {continued ? (
+        <span aria-hidden className="w-8 shrink-0" />
+      ) : (
+        <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-agent-bg text-agent-tag ring-1 ring-line">
+          <Sparkles className="size-4" aria-hidden />
+        </span>
+      )}
       <div className={cn("min-w-0 space-y-3", wide ? "flex-1" : "max-w-[88%]")}>
         {text && (
           <div className="w-fit max-w-full rounded-3xl rounded-tl-md bg-agent-bg px-4 py-3 text-[15px] leading-relaxed text-agent-fg ring-1 ring-line">

@@ -41,6 +41,7 @@ test.describe("the trip as one chat", () => {
     const understood = page.getByRole("region", { name: "Brief" });
     await expect(understood.getByText("People")).toBeVisible({ timeout: 15_000 });
     await expect(page).toHaveURL(/\/plan\?trip=/);
+    await shot(page, "02-understood");
 
     // Steps 2-3: suppliers ticked off, then the ways to get there.
     const transport = page.getByRole("region", { name: "How do you want to get there?" });
@@ -106,7 +107,14 @@ test.describe("the trip as one chat", () => {
     await shot(page, "08-approve");
     await approve.click();
     const tickets = page.getByRole("region", { name: "Tickets" });
-    await expect(tickets.getByText(/Done — all \d+ booked/)).toBeVisible({ timeout: 60_000 });
+    const done = tickets.getByText(/Done — all \d+ booked/);
+    // A live supplier can re-quote after the approval and ask once more; approve that too.
+    const again = page.getByRole("button", { name: /Approve basket \(total/, disabled: false });
+    for (let tries = 0; tries < 60 && !(await done.isVisible()); tries += 1) {
+      if (await again.isVisible()) await again.click({ timeout: 2_000 }).catch(() => undefined);
+      await page.waitForTimeout(1_000);
+    }
+    await expect(done).toBeVisible({ timeout: 60_000 });
     await expect(tickets.getByRole("listitem").first()).toContainText("booking ref");
     await shot(page, "09-tickets");
   });

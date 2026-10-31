@@ -106,7 +106,7 @@ function PickWidget({
     return (
       <ul
         aria-label="Places to stay"
-        className="-mr-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pr-4 pb-2 sm:-mr-6 sm:pr-6"
+        className="-mr-4 flex snap-x snap-mandatory items-start gap-3 overflow-x-auto pr-4 pb-2 sm:-mr-6 sm:pr-6"
       >
         {options.stays.slice(0, SHOWN_STAYS).map((option, index) => (
           <StayCard
@@ -287,7 +287,12 @@ export function TripChat({
   return (
     <>
       {showBrief && room.trip.brief && <UserMessage>{room.trip.brief}</UserMessage>}
-      <AgentMessage text="Got it. Here's what I understood:" wide label="Brief">
+      <AgentMessage
+        text={showBrief ? "Got it. Here's what I understood:" : undefined}
+        continued={!showBrief}
+        wide
+        label="Brief"
+      >
         <BriefChips chips={tripChips(room.trip)} />
       </AgentMessage>
       <AgentMessage

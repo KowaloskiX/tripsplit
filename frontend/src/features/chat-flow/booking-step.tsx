@@ -125,10 +125,12 @@ export function BookingStep({ tripId, title }: { tripId: string; title: string }
           label="Booking"
           wide
           text={
-            waiting.length > 0
-              ? `Everything is ready at the suppliers. Nothing is paid until you approve.`
-              : working
-                ? "Booking everything…"
+            working
+              ? waiting.length > 0
+                ? `${waiting.length} of ${current.length - confirmed.length} ready, still preparing the rest…`
+                : "Booking everything…"
+              : waiting.length > 0
+                ? "Everything is ready at the suppliers. Nothing is paid until you approve."
                 : "Everyone has paid. Shall I book it all?"
           }
         >
@@ -138,7 +140,8 @@ export function BookingStep({ tripId, title }: { tripId: string; title: string }
               {start.isPending ? "Starting…" : "Book everything"}
             </Button>
           )}
-          {data.is_organizer && waiting.length > 0 && (
+          {/* One approval for the whole basket: offered once nothing is still being prepared. */}
+          {data.is_organizer && waiting.length > 0 && !working && (
             <Button variant="sun" onClick={() => approve.approveAll()} disabled={approve.isPending}>
               {approve.isPending
                 ? "Approving…"
