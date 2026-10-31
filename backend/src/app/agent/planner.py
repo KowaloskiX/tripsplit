@@ -198,7 +198,8 @@ class BasePlanner:
     def __init__(self) -> None:
         self.tokens = {"in": 0, "out": 0, "total": 0}  # cumulative usage
         self.calls = 0
-        self.max_calls: int | None = None  # a hard cap on model calls for this run; None = unlimited
+        # A hard cap on model calls for this run; None = unlimited.
+        self.max_calls: int | None = None
 
     def budget_left(self):
         return self.max_calls is None or self.calls < self.max_calls
