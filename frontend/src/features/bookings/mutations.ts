@@ -1,9 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
+  bookingsApproveAllMutation,
   bookingsApproveMutation,
   bookingsCompleteManuallyMutation,
   bookingsListQueryKey,
+  bookingsStartAllMutation,
   bookingsStartMutation,
   demoDisruptionMutation,
   tripsFeedQueryKey,
@@ -70,4 +72,18 @@ export function useSimulateDisruption(tripId: string) {
         body: { delay_minutes: 140, price_change_percent: 5 },
       }),
   };
+}
+
+/** "Book everything": starts every startable booking; refusals come back per booking. */
+export function useStartAll(tripId: string) {
+  const invalidate = useInvalidateBookings(tripId);
+  const mutation = useMutation({ ...bookingsStartAllMutation(), onSuccess: invalidate });
+  return { ...mutation, startAll: (): void => mutation.mutate({ path: { trip_id: tripId } }) };
+}
+
+/** "Approve the basket": approves every summary awaiting approval in one click. */
+export function useApproveAll(tripId: string) {
+  const invalidate = useInvalidateBookings(tripId);
+  const mutation = useMutation({ ...bookingsApproveAllMutation(), onSuccess: invalidate });
+  return { ...mutation, approveAll: (): void => mutation.mutate({ path: { trip_id: tripId } }) };
 }

@@ -150,6 +150,7 @@ export const SOURCE_LABEL: Record<StepSource, string> = {
   flow: "replay",
   rule: "rule",
   llm: "AI",
+  human: "you",
 };
 
 export function formatDuration(ms: number): string {

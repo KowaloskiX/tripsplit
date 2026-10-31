@@ -119,6 +119,25 @@ class AgentOutcome(StrEnum):
     UNKNOWN = "unknown"
 
 
+class RunStepStatus(StrEnum):
+    """One step of an agent run, as `status.json` reports it."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
+    HEALED = "healed"  # a replayed step that missed and was re-planned
+
+
+class RunStepSource(StrEnum):
+    """Where a step's decision came from."""
+
+    FLOW = "flow"  # a recorded flow, replayed
+    RULE = "rule"  # a deterministic rule
+    LLM = "llm"  # the planner model (including the follow-ups of one macro plan)
+    HUMAN = "human"  # the approval
+
+
 class ContributionStatus(StrEnum):
     PENDING = "pending"  # owes `amount_minor - paid_minor`
     PAID = "paid"  # paid in full

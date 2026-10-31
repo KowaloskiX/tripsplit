@@ -596,3 +596,125 @@ async def test_demo_routes_are_absent_outside_dev_and_test(
         headers=_csrf(client),
     )
     assert response.status_code == 404
+
+
+@pytest.mark.usefixtures("drain_monitors")
+async def test_book_everything_then_approve_the_basket_in_one_click(
+    booking_app: FastAPI, client: AsyncClient, launcher: FakeLauncher
+) -> None:
+    organizer = await _register(client, "org@example.com")
+    trip, train, stay = await _seed_trip(organizer, [], TripStatus.BOOKING)
+
+    started = await client.post(f"/api/trips/{trip.id}/bookings/start-all", headers=_csrf(client))
+    assert started.status_code == 202, started.text
+    items = started.json()["items"]
+    assert {item["booking"]["id"] for item in items} == {str(train.id), str(stay.id)}
+    assert all(item["error"] is None for item in items)
+    assert len(launcher.started) == 2
+
+    async def both_waiting() -> bool:
+        statuses = {await _booking_status(client, trip, b) for b in (train, stay)}
+        return statuses == {BookingStatus.AWAITING_APPROVAL}
+
+    await _until(both_waiting, "both summaries")
+    again = await client.post(f"/api/trips/{trip.id}/bookings/start-all", headers=_csrf(client))
+    assert again.json()["items"] == []  # nothing left to start
+
+    approved = await client.post(
+        f"/api/trips/{trip.id}/bookings/approve-all", headers=_csrf(client)
+    )
+    assert approved.status_code == 200, approved.text
+    assert [item["error"] for item in approved.json()["items"]] == [None, None]
+
+    async def booked() -> bool:
+        listing = (await client.get(f"/api/trips/{trip.id}/bookings")).json()
+        return bool(listing["trip_status"] == TripStatus.BOOKED)
+
+    await _until(booked, "the trip booked")
+    nothing = await client.post(f"/api/trips/{trip.id}/bookings/approve-all", headers=_csrf(client))
+    assert nothing.status_code == 409
+    assert nothing.json()["code"] == BookingError.NOT_AWAITING_APPROVAL
+
+
+async def test_the_batch_endpoints_keep_rule_one(
+    booking_app: FastAPI, client: AsyncClient, launcher: FakeLauncher
+) -> None:
+    organizer = await _register(client, "org@example.com")
+    paying, _, _ = await _seed_trip(organizer, [], TripStatus.PAYING, paid_minor=0)
+    refused = await client.post(f"/api/trips/{paying.id}/bookings/start-all", headers=_csrf(client))
+    assert refused.status_code == 409
+    assert refused.json()["code"] == BookingError.TRIP_NOT_READY
+    # Buying, but somebody's share is not paid: the basket is not approved.
+    unpaid, _, _ = await _seed_trip(
+        organizer, [], TripStatus.BOOKING, BookingStatus.AWAITING_APPROVAL, paid_minor=0
+    )
+    basket = await client.post(
+        f"/api/trips/{unpaid.id}/bookings/approve-all", headers=_csrf(client)
+    )
+    assert basket.status_code == 409
+    assert basket.json()["code"] == BookingError.TRIP_NOT_READY
+    assert launcher.started == []
+
+
+@pytest.mark.usefixtures("drain_monitors")
+async def test_the_run_graph_and_steps_are_served_to_members_only(
+    booking_app: FastAPI, client: AsyncClient, friend: AsyncClient, runs_dir: Path
+) -> None:
+    organizer = await _register(client, "org@example.com")
+    await _register(friend, "stranger@example.com")
+    trip, train, _ = await _seed_trip(organizer, [], TripStatus.BOOKING)
+    started = await client.post(
+        f"/api/trips/{trip.id}/bookings/{train.id}/start", headers=_csrf(client)
+    )
+    run_id = started.json()["run"]["run_id"]
+    assert (await client.get(f"/api/agent-runs/{run_id}/graph")).status_code == 404  # not yet
+    _write(
+        runs_dir / run_id / "flow_graph.json",
+        {
+            "nodes": [
+                {"id": "open", "type": "open_url", "label": "Open", "inputs": [], "stage": None},
+                {"id": "s0", "type": "loop", "label": "Fill", "inputs": ["vault.email"]},
+                {"type": "click"},  # malformed: skipped
+            ],
+            "edges": [{"from": "open", "to": "s0"}, {"from": 1}],
+        },
+    )
+    _write(
+        runs_dir / run_id / "status.json",
+        {
+            "step": 2,
+            "flow_steps": 1,
+            "rule_steps": 0,
+            "llm_calls": 1,
+            "tokens": 900,
+            "steps": [
+                {
+                    "index": 1,
+                    "node_id": "open",
+                    "kind": "goto",
+                    "status": "done",
+                    "duration_ms": 120,
+                    "source": "flow",
+                },
+                {
+                    "index": 2,
+                    "node_id": "s0",
+                    "kind": "fill_form",
+                    "status": "running",
+                    "duration_ms": 0,
+                    "source": "plan",
+                },
+                {"index": 3, "status": "exploded", "source": "flow"},
+            ],
+        },
+    )
+    graph = (await client.get(f"/api/agent-runs/{run_id}/graph")).json()
+    assert [node["id"] for node in graph["nodes"]] == ["open", "s0"]
+    assert graph["edges"] == [{"from": "open", "to": "s0"}]
+    live = (await client.get(f"/api/agent-runs/{run_id}/status")).json()["live"]
+    assert [(s["node_id"], s["status"], s["source"]) for s in live["steps"]] == [
+        ("open", "done", "flow"),
+        ("s0", "running", "llm"),  # a macro-plan follow-up counts as the planner's
+    ]
+    assert (live["flow_steps"], live["llm_calls"], live["tokens"]) == (1, 1, 900)
+    assert (await friend.get(f"/api/agent-runs/{run_id}/graph")).status_code == 404

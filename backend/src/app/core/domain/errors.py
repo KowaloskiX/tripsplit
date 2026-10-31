@@ -39,6 +39,7 @@ class BookingError(StrEnum):
     BOOKING_NOT_FOUND = "booking_not_found"
     RUN_NOT_FOUND = "run_not_found"
     FRAME_NOT_FOUND = "frame_not_found"
+    GRAPH_NOT_FOUND = "graph_not_found"  # the run has not written its plan (yet)
     NOT_ORGANIZER = "not_organizer"
     TRIP_NOT_READY = "trip_not_ready"  # Rule #1: nobody buys before everyone has paid
     BOOKING_NOT_STARTABLE = "booking_not_startable"

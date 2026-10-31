@@ -5,7 +5,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
+import type { AgentRunsFrameData, AgentRunsFrameErrors, AgentRunsFrameResponses, AgentRunsGraphData, AgentRunsGraphErrors, AgentRunsGraphResponses, AgentRunsStatusData, AgentRunsStatusErrors, AgentRunsStatusResponses, AuthLoginData, AuthLoginErrors, AuthLoginResponses, AuthLogoutData, AuthLogoutErrors, AuthLogoutResponses, AuthRegisterData, AuthRegisterErrors, AuthRegisterResponses, AuthSessionData, AuthSessionResponses, BookingsApproveAllData, BookingsApproveAllErrors, BookingsApproveAllResponses, BookingsApproveData, BookingsApproveErrors, BookingsApproveResponses, BookingsCheckDisruptionsData, BookingsCheckDisruptionsErrors, BookingsCheckDisruptionsResponses, BookingsCompleteManuallyData, BookingsCompleteManuallyErrors, BookingsCompleteManuallyResponses, BookingsListData, BookingsListErrors, BookingsListResponses, BookingsStartAllData, BookingsStartAllErrors, BookingsStartAllResponses, BookingsStartData, BookingsStartErrors, BookingsStartResponses, ContributionsPayData, ContributionsPayErrors, ContributionsPayResponses, DemoDisruptionData, DemoDisruptionErrors, DemoDisruptionResponses, DemoLeaveData, DemoLeaveErrors, DemoLeaveResponses, DemoPayAllData, DemoPayAllErrors, DemoPayAllResponses, DemoSeedMembersData, DemoSeedMembersErrors, DemoSeedMembersResponses, DemoVoteAllData, DemoVoteAllErrors, DemoVoteAllResponses, HealthGetData, HealthGetResponses, HealthReadyData, HealthReadyErrors, HealthReadyResponses, ProposalsCloseVotingData, ProposalsCloseVotingErrors, ProposalsCloseVotingResponses, ProposalsGenerateData, ProposalsGenerateErrors, ProposalsGenerateResponses, ProposalsVoteData, ProposalsVoteErrors, ProposalsVoteResponses, TravellerDetailsReadData, TravellerDetailsReadResponses, TravellerDetailsUpdateData, TravellerDetailsUpdateErrors, TravellerDetailsUpdateResponses, TripsCreateData, TripsCreateErrors, TripsCreateResponses, TripsFeedData, TripsFeedErrors, TripsFeedResponses, TripsJoinData, TripsJoinErrors, TripsJoinResponses, TripsLeaveData, TripsLeaveErrors, TripsLeaveResponses, TripsListData, TripsListResponses, TripsPostMessageData, TripsPostMessageErrors, TripsPostMessageResponses, TripsRoomData, TripsRoomErrors, TripsRoomResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -25,6 +25,13 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
  * Run Frame
  */
 export const agentRunsFrame = <ThrowOnError extends boolean = false>(options: Options<AgentRunsFrameData, ThrowOnError>): RequestResult<AgentRunsFrameResponses, AgentRunsFrameErrors, ThrowOnError> => (options.client ?? client).get<AgentRunsFrameResponses, AgentRunsFrameErrors, ThrowOnError>({ url: '/api/agent-runs/{run_id}/frame', ...options });
+
+/**
+ * Run Graph
+ *
+ * The run's plan, for the live pipeline view. 404 until the agent has written it.
+ */
+export const agentRunsGraph = <ThrowOnError extends boolean = false>(options: Options<AgentRunsGraphData, ThrowOnError>): RequestResult<AgentRunsGraphResponses, AgentRunsGraphErrors, ThrowOnError> => (options.client ?? client).get<AgentRunsGraphResponses, AgentRunsGraphErrors, ThrowOnError>({ url: '/api/agent-runs/{run_id}/graph', ...options });
 
 /**
  * Run Status
@@ -155,12 +162,26 @@ export const tripsRoom = <ThrowOnError extends boolean = false>(options: Options
 export const bookingsList = <ThrowOnError extends boolean = false>(options: Options<BookingsListData, ThrowOnError>): RequestResult<BookingsListResponses, BookingsListErrors, ThrowOnError> => (options.client ?? client).get<BookingsListResponses, BookingsListErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings', ...options });
 
 /**
+ * Approve All Bookings
+ *
+ * Approves every summary awaiting approval at once — refused unless every share is paid.
+ */
+export const bookingsApproveAll = <ThrowOnError extends boolean = false>(options: Options<BookingsApproveAllData, ThrowOnError>): RequestResult<BookingsApproveAllResponses, BookingsApproveAllErrors, ThrowOnError> => (options.client ?? client).post<BookingsApproveAllResponses, BookingsApproveAllErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings/approve-all', ...options });
+
+/**
  * Check Disruptions
  *
  * Asks the suppliers that report disruptions about the trip's bought bookings; every
  * notice with a replacement is rebooked and re-split. Empty = nothing happened.
  */
 export const bookingsCheckDisruptions = <ThrowOnError extends boolean = false>(options: Options<BookingsCheckDisruptionsData, ThrowOnError>): RequestResult<BookingsCheckDisruptionsResponses, BookingsCheckDisruptionsErrors, ThrowOnError> => (options.client ?? client).post<BookingsCheckDisruptionsResponses, BookingsCheckDisruptionsErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings/disruptions/check', ...options });
+
+/**
+ * Start All Bookings
+ *
+ * "Book everything": starts every startable booking; refusals are reported per booking.
+ */
+export const bookingsStartAll = <ThrowOnError extends boolean = false>(options: Options<BookingsStartAllData, ThrowOnError>): RequestResult<BookingsStartAllResponses, BookingsStartAllErrors, ThrowOnError> => (options.client ?? client).post<BookingsStartAllResponses, BookingsStartAllErrors, ThrowOnError>({ url: '/api/trips/{trip_id}/bookings/start-all', ...options });
 
 /**
  * Approve Booking

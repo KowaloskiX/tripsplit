@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import { ErrorCallout } from "@/components/ui/callout";
 import { apiErrorMessage } from "@/lib/api";
 
+import { BasketCard } from "./basket-card";
+import { BookEverything } from "./book-everything";
 import { BookingsList } from "./bookings-list";
 import { DisruptionPanel } from "./disruption-panel";
 import { formatMoney } from "./money";
@@ -32,6 +34,8 @@ export function TripBookings({ tripId }: { tripId: string }): ReactNode {
           total {formatMoney(trip.total_minor, trip.currency)}
         </p>
       </div>
+      {trip.is_organizer && <BookEverything trip={trip} />}
+      <BasketCard trip={trip} />
       <BookingsList trip={trip} travellers={trip.travellers} />
       <DisruptionPanel trip={trip} />
     </div>
