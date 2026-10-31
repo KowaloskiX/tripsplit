@@ -117,9 +117,71 @@ ACTION_SCHEMA = {
 }
 
 
-def make_planner():
-    """Pick the backend from `PLANNER` (default: openai)."""
+MACRO_ADDENDUM = """
+
+MACRO MODE: instead of a single action, return {"actions":[...], "milestone":"..."} — a SHORT
+PLAN of 1 to {max_actions} actions to perform IN ORDER on the CURRENT page, each in the action
+format above (e.g. a fill_form of every visible field followed by the click on Continue).
+Each action is validated against the page before it runs; the plan is cut at the first one
+that no longer matches. End the plan at the first action that navigates or reloads the page.
+done / handoff may only be the LAST action of a plan."""
+
+# Macro plan: up to N actions on the current page, each in the single-action shape.
+PLAN_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "actions": {"type": "array", "items": None},  # filled below with ACTION_SCHEMA
+        "milestone": {"type": ["string", "null"]},
+    },
+    "required": ["actions", "milestone"],
+}
+PLAN_SCHEMA["properties"]["actions"]["items"] = ACTION_SCHEMA
+
+
+class PlannerUnavailable(RuntimeError):
+    """The model backend refused (rate limit, spend cap, auth): retrying will not help."""
+
+
+_LIMIT_HINTS = (
+    "429",
+    "rate limit",
+    "rate_limit",
+    "usage limit",
+    "limit reached",
+    "spend limit",
+    "quota",
+    "overloaded",
+)
+
+
+def _is_limit(detail: str) -> bool:
+    low = (detail or "").lower()
+    return any(h in low for h in _LIMIT_HINTS)
+
+
+def macro_enabled() -> bool:
+    return os.getenv("PLANNER_MACRO", "1") != "0"
+
+
+def macro_max_actions() -> int:
+    try:
+        return max(1, int(os.getenv("PLANNER_MAX_PLAN", "4")))
+    except ValueError:
+        return 4
+
+
+def make_planner(max_calls=None):
+    """Pick the backend from `PLANNER` (default: openai); `none` disables the LLM."""
     kind = (os.getenv("PLANNER") or "openai").lower()
+    planner = _make(kind)
+    planner.max_calls = max_calls
+    return planner
+
+
+def _make(kind):
+    if kind in ("none", "off", "disabled"):
+        return NullPlanner()
     if kind == "openai":
         return OpenAIPlanner()
     if kind in ("claude-cli", "claude"):
@@ -130,9 +192,46 @@ def make_planner():
 
 
 class BasePlanner:
+    enabled = True
+
     def __init__(self):
         self.tokens = {"in": 0, "out": 0, "total": 0}  # cumulative usage
         self.calls = 0
+        self.max_calls = None  # a hard cap on model calls for this run; None = unlimited
+
+    def budget_left(self):
+        return self.max_calls is None or self.calls < self.max_calls
+
+    def next_plan(self, goal, stop_before_pay, page_render, vault_keys, history, **kwargs):
+        """A short plan (list of actions) for the current page — macro mode — or one action.
+
+        Never exceeds `max_calls`: past the cap it returns a handoff without calling a model.
+        """
+        if not self.budget_left():
+            return [
+                {
+                    "action": "handoff",
+                    "reason": f"LLM call budget exhausted ({self.max_calls} calls)",
+                    "milestone": "blocked",
+                }
+            ]
+        macro = macro_enabled()
+        raw = self.next_action(
+            goal, stop_before_pay, page_render, vault_keys, history, _macro=macro, **kwargs
+        )
+        if not macro or not isinstance(raw.get("actions"), list):
+            return [raw]
+        plan = [_sanitize(a) for a in raw["actions"] if isinstance(a, dict) and a.get("action")]
+        plan = plan[: macro_max_actions()] or [{"action": "wait"}]
+        for action in plan:
+            action.setdefault("milestone", raw.get("milestone"))
+            if not action.get("milestone"):
+                action["milestone"] = raw.get("milestone")
+        # done / handoff end a plan.
+        for i, action in enumerate(plan):
+            if action.get("action") in ("done", "handoff"):
+                return plan[: i + 1]
+        return plan
 
     def next_action(
         self,
@@ -145,6 +244,8 @@ class BasePlanner:
         screenshot_path=None,
         site_notes="",
         preferences="",
+        hint="",
+        _macro=False,
     ):
         # No str.format here: SYSTEM contains literal JSON braces and {{vault.x}} placeholders
         # that must reach the model verbatim (act.py matches {{...}}).
@@ -160,6 +261,9 @@ class BasePlanner:
             if preferences
             else ""
         )
+        rule_note = f"RULE LAYER (deterministic, could not decide): {hint}\n\n" if hint else ""
+        has_shot = bool(screenshot_png or screenshot_path)
+        ask = "the plan" if _macro else "the single next action"
         user = (
             f"GOAL: {goal}\n"
             f"stop_before_pay: {stop_before_pay}\n\n"
@@ -167,14 +271,48 @@ class BasePlanner:
             f"{notes}"
             f"AVAILABLE VAULT KEYS: {', '.join(vault_keys)}\n\n"
             f"RECENT ACTIONS: {json.dumps(history[-6:])}\n\n"
+            f"{rule_note}"
             f"CURRENT PAGE:\n{page_render}\n\n"
-            "Look at the screenshot, then return the single next action as JSON."
+            + (
+                f"Look at the screenshot, then return {ask} as JSON."
+                if has_shot
+                else f"Return {ask} as JSON."
+            )
         )
+        system = SYSTEM
+        if _macro:
+            system += MACRO_ADDENDUM.replace("{max_actions}", str(macro_max_actions()))
         self.calls += 1
-        return _sanitize(self._complete(SYSTEM, user, screenshot_png, screenshot_path))
+        self.macro = _macro
+        return _sanitize(self._complete(system, user, screenshot_png, screenshot_path))
+
+    def schema(self):
+        return PLAN_SCHEMA if getattr(self, "macro", False) else ACTION_SCHEMA
 
     def _complete(self, system, user, screenshot_png, screenshot_path):
         raise NotImplementedError
+
+
+class NullPlanner(BasePlanner):
+    """No model at all: the deterministic layers must carry the run (evals, `--mode rules`).
+
+    Asking it for a plan is not an LLM call; it answers a handoff explaining why.
+    """
+
+    enabled = False
+
+    def next_plan(self, goal, stop_before_pay, page_render, vault_keys, history, **kwargs):
+        hint = kwargs.get("hint") or "no rule matched"
+        return [
+            {
+                "action": "handoff",
+                "reason": f"no deterministic action and the LLM is disabled ({hint})",
+                "milestone": "blocked",
+            }
+        ]
+
+    def _complete(self, system, user, screenshot_png, screenshot_path):
+        raise PlannerUnavailable("the LLM planner is disabled")
 
 
 class OpenAIPlanner(BasePlanner):
@@ -208,7 +346,7 @@ class OpenAIPlanner(BasePlanner):
             ],
             response_format={
                 "type": "json_schema",
-                "json_schema": {"name": "action", "strict": True, "schema": ACTION_SCHEMA},
+                "json_schema": {"name": "action", "strict": True, "schema": self.schema()},
             },
             max_completion_tokens=2000,
         )
@@ -223,6 +361,8 @@ class OpenAIPlanner(BasePlanner):
                 break
             except Exception as e:
                 last_err = e
+                if _is_limit(str(e)):
+                    raise PlannerUnavailable(str(e)[-400:]) from e
                 kwargs.pop("reasoning_effort", None)
                 time.sleep(1.5 * (attempt + 1))
         if resp is None:
@@ -268,7 +408,7 @@ class ClaudeCliPlanner(BasePlanner):
             # Schema-validated output: the CLI returns the action in `structured_output`, so a
             # model that "thinks out loud" around its JSON cannot derail parsing.
             "--json-schema",
-            json.dumps(ACTION_SCHEMA),
+            json.dumps(self.schema()),
             "--no-session-persistence",
         ]
         last_err = None
@@ -285,6 +425,8 @@ class ClaudeCliPlanner(BasePlanner):
                     # Claude Code reports API failures (429 spend limit, auth) in the JSON
                     # envelope on stdout, with an empty stderr.
                     detail = proc.stderr.strip() or _envelope_error(proc.stdout)
+                    if _is_limit(detail):
+                        raise PlannerUnavailable(detail[-400:])
                     raise RuntimeError(detail[-400:] or f"exit {proc.returncode}")
                 envelope = json.loads(proc.stdout)
                 usage = envelope.get("usage") or {}
@@ -292,9 +434,13 @@ class ClaudeCliPlanner(BasePlanner):
                 self.tokens["out"] += int(usage.get("output_tokens") or 0)
                 self.tokens["total"] = self.tokens["in"] + self.tokens["out"]
                 structured = envelope.get("structured_output")
-                if isinstance(structured, dict) and structured.get("action"):
+                if isinstance(structured, dict) and (
+                    structured.get("action") or isinstance(structured.get("actions"), list)
+                ):
                     return structured
                 return _parse(envelope.get("result") or "")
+            except PlannerUnavailable:
+                raise
             except Exception as e:
                 last_err = e
                 time.sleep(1.5 * (attempt + 1))
@@ -354,6 +500,8 @@ def _parse(text):
             candidate, _ = decoder.raw_decode(text, start)
         except ValueError:
             continue
-        if isinstance(candidate, dict) and candidate.get("action"):
+        if isinstance(candidate, dict) and (
+            candidate.get("action") or isinstance(candidate.get("actions"), list)
+        ):
             found = candidate
     return found or {"action": "wait"}

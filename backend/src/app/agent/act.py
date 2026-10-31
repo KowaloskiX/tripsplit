@@ -119,7 +119,9 @@ def act(browser, action, vault):
     elif kind == "goto":
         browser.goto(action["url"])
         return
-    elif kind in ("wait", "done", "handoff"):
+    elif kind == "wait":
+        page.wait_for_timeout(min(int(action.get("ms") or 0), 5000))
+    elif kind in ("done", "handoff"):
         pass
     else:
         raise ValueError(f"unknown action: {kind}")
