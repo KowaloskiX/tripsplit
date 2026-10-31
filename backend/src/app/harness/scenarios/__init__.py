@@ -4,6 +4,7 @@ from app.harness.scenario import Scenario
 from app.harness.scenarios import (
     agent_stuck_retry,
     approval_while_paying,
+    budget_fit,
     budget_guard,
     captcha_handoff,
     dearer_rebooking,
@@ -26,6 +27,7 @@ SCENARIOS: dict[str, Scenario] = {
         captcha_handoff,
         vote_tie,
         budget_guard,
+        budget_fit,
         approval_while_paying,
         dearer_rebooking,
         agent_stuck_retry,

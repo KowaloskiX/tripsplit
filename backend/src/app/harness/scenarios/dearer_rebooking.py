@@ -31,11 +31,8 @@ SCENARIO = Scenario(
         ExpectStatus(TripStatus.REBOOKING),
         StartBookings("train"),
         Approve("train"),
-        ExpectBookingStatus("train", BookingStatus.CONFIRMED),
+        ExpectBookingStatus("train", BookingStatus.CONFIRMED, count=2),
         ExpectStatus(TripStatus.BOOKED),
-    ),
-    xfail=(
-        "after the top-ups ContributionService moves PAYING -> BOOKING (it knows no other "
-        "transition), so a rebooking in progress is indistinguishable from a first booking"
+        ExpectShares(status=ContributionStatus.PAID, vs_initial="higher"),
     ),
 )

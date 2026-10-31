@@ -17,7 +17,13 @@ from beanie import PydanticObjectId
 
 from app.core.domain.bookings import format_money
 from app.core.domain.result import Err, Ok, Result
-from app.core.domain.trips import BookingKind, BookingStatus, ContributionStatus, TripStatus
+from app.core.domain.trips import (
+    BookingKind,
+    BookingStatus,
+    ContributionStatus,
+    EventActor,
+    TripStatus,
+)
 from app.db.identifiers import identifier_of, to_object_id, to_text
 from app.harness.features import Feature, all_features, feature
 from app.harness.invariants import InvariantContext, Snapshot, Violation, check_all, load_snapshot
@@ -30,13 +36,14 @@ from app.harness.scenario import (
     CloseVoting,
     CompleteManually,
     Disrupt,
+    ExpectAgentMessage,
     ExpectBookingStatus,
+    ExpectBudget,
     ExpectError,
     ExpectEvent,
     ExpectShares,
     ExpectStatus,
     ExpectWinner,
-    ExpectWithinBudget,
     GeneratePackages,
     KindSelector,
     Leave,
@@ -444,13 +451,14 @@ class Driver:
             raise StepFailed(_code(result.error), _code(result.error))
         done = result.value
         currency = done.trip.currency
-        old = format_money(done.cancelled.amount_minor, currency)
-        new = format_money(done.replacement.amount_minor, currency)
+        old = format_money(sum(b.amount_minor for b in done.cancelled), currency)
+        new = format_money(sum(b.amount_minor for b in done.replacements), currency)
         before = format_money(done.previous_total_minor, currency)
         after = format_money(sum(s.change.share_minor for s in done.shares), currency)
+        titles = ", ".join(f"“{b.title}”" for b in done.cancelled)
         return (
-            f"cancelled “{done.cancelled.title}” ({old}), replacement {new}; "
-            f"total {before} -> {after}"
+            f"cancelled {len(done.cancelled)} booking(s) {titles} ({old}), "
+            f"replacement(s) {new}; total {before} -> {after}"
         )
 
     async def _leave(self, step: Leave) -> str:
@@ -491,9 +499,13 @@ class Driver:
             case ExpectBookingStatus():
                 found = [b for b in snap.live_bookings if b.kind is BookingKind(step.kind)]
                 wrong = [b for b in found if b.status is not step.status]
-                if not found or wrong:
+                miscounted = step.count is not None and len(found) != step.count
+                if not found or wrong or miscounted:
                     seen = ", ".join(b.status.value for b in found) or "none"
-                    raise StepFailed(f"{step.kind} bookings: {seen}, expected {step.status}")
+                    wanted = f"{step.count} x " if step.count is not None else ""
+                    raise StepFailed(
+                        f"{step.kind} bookings: {seen}, expected {wanted}{step.status}"
+                    )
                 return f"{len(found)} {step.kind} booking(s) {step.status}"
             case ExpectShares():
                 return self._expect_shares(step, snap)
@@ -504,8 +516,18 @@ class Driver:
                 return f"{wanted} is in the feed"
             case ExpectWinner():
                 return await self._expect_winner(step, snap)
-            case ExpectWithinBudget():
-                return await self._expect_within_budget(snap)
+            case ExpectBudget():
+                return await self._expect_budget(step, snap)
+            case ExpectAgentMessage():
+                wanted = step.text.casefold()
+                said = [
+                    e
+                    for e in snap.events
+                    if e.actor is EventActor.AGENT and wanted in e.message.casefold()
+                ]
+                if not said:
+                    raise StepFailed(f"the agent never said “{step.text}”")
+                return said[-1].message
             case _:
                 raise StepFailed(f"unknown step {step!r}")
 
@@ -524,21 +546,32 @@ class Driver:
             )
         return f"#{step.index} “{expected.title}” won, total {expected.total_minor}"
 
-    async def _expect_within_budget(self, snap: Snapshot) -> str:
+    async def _expect_budget(self, step: ExpectBudget, snap: Snapshot) -> str:
         budget = snap.trip.budget_per_person_minor
         if budget is None:
             raise StepFailed("the brief has no budget")
         proposals = await ProposalRepository().for_trip(self.world.trip_oid)
         currency = snap.trip.currency
-        over = [p for p in proposals if p.per_person_minor > budget]
-        if over:
-            cheapest = min(p.per_person_minor for p in proposals)
-            raise StepFailed(
-                f"{len(over)}/{len(proposals)} packages exceed the budget of "
-                f"{format_money(budget, currency)} pp (cheapest "
-                f"{format_money(cheapest, currency)} pp); nothing in the feed flags it"
+        within = [p for p in proposals if p.per_person_minor <= budget]
+        misflagged = [p.title for p in proposals if p.over_budget != (p.per_person_minor > budget)]
+        problems = []
+        if len(within) != step.within:
+            cheapest = min((p.per_person_minor for p in proposals), default=0)
+            problems.append(
+                f"{len(within)}/{len(proposals)} packages fit the budget of "
+                f"{format_money(budget, currency)} pp, expected {step.within} (cheapest "
+                f"{format_money(cheapest, currency)} pp)"
             )
-        return f"all packages within {format_money(budget, currency)} pp"
+        if misflagged:
+            problems.append(f"wrong over_budget flag on {', '.join(misflagged)}")
+        if problems:
+            raise StepFailed("; ".join(problems))
+        flags = ", ".join(
+            f"#{i} {format_money(p.per_person_minor, currency)} pp"
+            f"{' OVER' if p.over_budget else ''}"
+            for i, p in enumerate(proposals)
+        )
+        return f"{step.within} within {format_money(budget, currency)} pp: {flags}"
 
     def _expect_shares(self, step: ExpectShares, snap: Snapshot) -> str:
         names = self._names()

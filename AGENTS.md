@@ -83,6 +83,14 @@ Both artifacts are committed. Never hand-edit the generated client.
 - **Every start re-quotes first** (`QUOTES=static` by default = stored amount). A price change
   beyond `PRICE_TOLERANCE_PERCENT` re-splits the shares (`services/resplit.py`); a rise sends
   the trip back to `paying` and the start answers 409 `price_changed`.
+- **A disruption replaces every purchase of the train** (all CONFIRMED parts sharing
+  `proposal_item_index`), each repriced on its own, then one re-split. After top-ups the trip
+  resumes REBOOKING while a replacement is unbought (`resume_status()`), otherwise BOOKING.
+- **Approving a summary is a purchase:** refused with 409 `trip_not_ready` unless the trip is
+  BOOKING/REBOOKING and every current share is paid; the run keeps waiting.
+- **Refunds are paid out when the trip reaches BOOKED** (`BookingService._settle_refunds`
+  through `PaymentProvider.refund`, one `refund_issued` event each) — not at re-split time,
+  because a later rebooking could still need the money.
 - **Demo bookings go to the fake rail supplier only if `DEMO_SUPPLIER_URL` is set** (dev/test,
   e.g. `http://localhost:8000`): train bookings created at voting close then point at
   `/api/demo-supplier/rail`. The stay and activity still point at real suppliers — do not start

@@ -109,6 +109,7 @@ class World:
         )
         runner = BackgroundRunner()
         quotes = ScriptedQuotes()
+        payments = FakePayments()
         extra: dict[str, Any] = {}
         if feature(Feature.QUOTES).present:
             extra["quotes"] = quotes
@@ -122,13 +123,14 @@ class World:
             proposals=ProposalService(
                 db, researcher, runner, train_supplier_url=train_supplier_url
             ),
-            contributions=ContributionService(FakePayments()),
+            contributions=ContributionService(payments),
             bookings=BookingService(
                 db,
                 launcher,
                 runs_dir,
                 max_steps=options.max_steps,
                 poll_s=options.poll_s,
+                payments=payments,
                 **extra,
             ),
             scripted=scripted,

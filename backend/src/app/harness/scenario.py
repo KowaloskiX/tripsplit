@@ -118,10 +118,12 @@ class ExpectStatus:
 
 @dataclass(frozen=True, slots=True)
 class ExpectBookingStatus:
-    """Every live (not cancelled) booking of the kind is in `status`."""
+    """Every live (not cancelled) booking of the kind is in `status`; `count` = how many live
+    bookings of the kind there must be (a train for six is two purchases)."""
 
     kind: KindName
     status: BookingStatus
+    count: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,8 +152,18 @@ class ExpectWinner:
 
 
 @dataclass(frozen=True, slots=True)
-class ExpectWithinBudget:
-    """Every package costs at most the brief's per-person budget."""
+class ExpectBudget:
+    """Exactly `within` packages cost at most the brief's per-person budget, and every
+    package's `over_budget` flag says so correctly."""
+
+    within: int
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectAgentMessage:
+    """The agent said something containing `text` (case-insensitive) in the feed."""
+
+    text: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,7 +192,8 @@ type Expectation = (
     | ExpectShares
     | ExpectEvent
     | ExpectWinner
-    | ExpectWithinBudget
+    | ExpectBudget
+    | ExpectAgentMessage
     | ExpectError
 )
 type Step = Action | Expectation
@@ -191,7 +204,8 @@ EXPECTATIONS = (
     ExpectShares,
     ExpectEvent,
     ExpectWinner,
-    ExpectWithinBudget,
+    ExpectBudget,
+    ExpectAgentMessage,
     ExpectError,
 )
 

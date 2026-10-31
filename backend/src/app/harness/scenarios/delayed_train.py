@@ -15,9 +15,10 @@ SCENARIO = Scenario(
     name="delayed_train",
     title="The booked train is delayed 140 min — a cheaper replacement",
     description=(
-        "After everything is booked the train is delayed 140 minutes. The old ticket is "
-        "cancelled, a replacement 10% cheaper is queued, shares are re-split and everyone is "
-        "owed a refund; the replacement is bought and the trip is BOOKED again."
+        "After everything is booked the train is delayed 140 minutes. Both purchases of the "
+        "train (3 + 3 passengers) are cancelled, a replacement 10% cheaper is queued for each, "
+        "shares are re-split once and everyone is owed a refund; the replacements are bought, "
+        "the trip is BOOKED again and the overpayments are refunded."
     ),
     brief=PRAGUE,
     organizer=ORGANIZER,
@@ -29,16 +30,12 @@ SCENARIO = Scenario(
         ExpectEvent(EventKind.DISRUPTION),
         ExpectEvent(EventKind.RESPLIT),
         ExpectShares(status=ContributionStatus.REFUND_DUE, vs_initial="lower"),
-        ExpectBookingStatus("train", BookingStatus.PENDING),
+        ExpectBookingStatus("train", BookingStatus.PENDING, count=2),
         StartBookings("train"),
         Approve("train"),
-        ExpectBookingStatus("train", BookingStatus.CONFIRMED),
+        ExpectBookingStatus("train", BookingStatus.CONFIRMED, count=2),
         ExpectStatus(TripStatus.BOOKED),
+        ExpectEvent(EventKind.REFUND_ISSUED),
+        ExpectShares(status=ContributionStatus.PAID, vs_initial="lower"),
     ),
-    known_violations={
-        "refunds_settled_when_booked": (
-            "product gap: PaymentProvider has no refund operation and nothing pays REFUND_DUE "
-            "back, so the cheaper rebooking leaves the overpayment with the trip forever"
-        ),
-    },
 )
