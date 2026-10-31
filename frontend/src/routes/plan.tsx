@@ -20,7 +20,7 @@ function PlanPage(): ReactNode {
   const { trip } = Route.useSearch();
   const navigate = useNavigate();
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
+    <div className="mx-auto w-full max-w-6xl px-4 py-14 sm:px-6 sm:py-20 lg:py-28">
       <QuickPlanFlow
         tripId={trip}
         onTrip={(tripId) => navigate({ to: "/plan", search: { trip: tripId } })}

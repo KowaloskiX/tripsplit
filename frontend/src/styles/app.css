@@ -85,6 +85,16 @@
   --elev-pop: 0 0 0 1px #3a332d, 0 24px 48px -16px rgb(0 0 0 / 0.7);
 }
 
+/* The warm sand scale, for large quiet surfaces (hero frames, bands). Light only: pair with a
+   `dark:` token. */
+@theme {
+  --color-sand-50: #fdfcfb;
+  --color-sand-100: #fbf9f6;
+  --color-sand-200: #f6f2eb;
+  --color-sand-300: #f0e9dd;
+  --color-sand-600: #c7ad87;
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);

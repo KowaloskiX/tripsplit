@@ -133,7 +133,7 @@ export function QuickPlan({
                         key={option}
                         type="button"
                         onClick={() => onAnswer?.(question.id, option)}
-                        className="pop ticket-mono rounded-full border border-white/20 px-3 py-1 text-xs text-agent-fg transition duration-150 hover:border-sun hover:text-sun active:scale-[0.95]"
+                        className="pop ticket-mono rounded-full border border-line bg-surface px-3 py-1 text-xs text-agent-fg transition duration-150 hover:border-ink/30 hover:text-ink active:scale-[0.97]"
                         style={{ "--i": index, "--delay": "300ms" } as CSSProperties}
                       >
                         {option}
@@ -168,7 +168,7 @@ export function QuickPlan({
 
       {(stage === "idle" || stage === "answered") && (
         <form onSubmit={onForm} className="mx-auto max-w-2xl space-y-3">
-          <div className="flex items-center gap-2 rounded-full border border-ink/15 bg-surface p-1.5 pl-5 shadow-card focus-within:border-ink/40">
+          <div className="flex items-center gap-2 rounded-[var(--radius-panel)] border border-line bg-surface p-1.5 pl-5 shadow-card focus-within:border-ink/30">
             <label htmlFor="quick-plan-input" className="sr-only">
               Where, when, how many, budget?
             </label>
@@ -194,7 +194,7 @@ export function QuickPlan({
                   key={example}
                   type="button"
                   onClick={() => submit(example)}
-                  className="rise-in rounded-full bg-surface-sunken px-3.5 py-1.5 text-sm text-muted transition duration-150 hover:text-ink active:scale-[0.97]"
+                  className="rise-in rounded-[var(--radius-control)] border border-line bg-surface px-3.5 py-1.5 text-sm text-muted transition duration-150 hover:border-ink/25 hover:text-ink active:scale-[0.98]"
                   style={{ "--i": index, "--delay": "200ms" } as CSSProperties}
                 >
                   {example}
