@@ -7,7 +7,8 @@ passengers, it breaks on a purchase of three. A flow fixes that by compiling the
   - every target is a stable DESCRIPTOR (role, accessible name, form name/id, testid, row
     context) — never the ephemeral `data-agent-ref`;
   - values are BOUND to variables: `{{vault.passenger_{i}_first_name}}`, `{{goal.date}}`,
-    `{{goal.passengers}}`; a literal equal to a vault value is replaced by its placeholder;
+    `{{goal.return_date}}`, `{{goal.passengers}}`; a literal equal to a vault value is
+    replaced by its placeholder;
   - a repeated per-passenger block of fields is recognised as a LOOP over passengers
     (the descriptor's index is templated too: `p3_first` -> `p{i}_first`), so a flow
     recorded for 6 replays for 1..9;
@@ -121,6 +122,8 @@ def _bind_literal(
         return vault_placeholder(vault_lookup[text])
     role = classify_field(_with_role(desc)) if desc else None
     kind = role.kind if role else None
+    if _ISO_DATE.match(text) and kind is FieldKind.RETURN_DATE:
+        return "{{goal.return_date}}"
     if (goal and goal.date and text == goal.date) or (
         _ISO_DATE.match(text) and kind is FieldKind.TRAVEL_DATE
     ):

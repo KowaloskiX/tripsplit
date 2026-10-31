@@ -66,3 +66,29 @@ async def test_three_passengers_one_part_of_a_split_train_go_through(client: Asy
     confirmation = await client.get(f"{BASE}/confirmation", params={**three, **people})
     assert "Booking number: DR-" in confirmation.text
     assert "for 3 passenger(s)" in confirmation.text
+
+
+async def test_a_return_journey_is_one_order_with_both_legs(client: AsyncClient) -> None:
+    trip = {**TRIP, "return": "2026-11-23", "train": TRAINS[0].code, "email": "a@b.c"}
+    people = {f"p{n}_{part}": f"X{n}" for n in range(1, 3) for part in ("first", "last")}
+    search = await client.get(BASE, params={"date": "2026-11-20", "return": "2026-11-23"})
+    assert 'name="return"' in search.text and 'value="2026-11-23"' in search.text
+
+    summary = await client.get(f"{BASE}/summary", params={**trip, **people})
+    assert "<th>Return date</th><td>2026-11-23</td>" in summary.text
+    # 189.00 PLN per person and leg, two legs, two passengers.
+    assert "Total: 756.00 PLN" in summary.text
+    assert 'name="return" value="2026-11-23"' in summary.text, "carried to the confirmation"
+
+    one_way = await client.get(f"{BASE}/confirmation", params={**TRIP, **people, "train": "EC-111"})
+    back = await client.get(f"{BASE}/confirmation", params={**trip, **people})
+    assert "Payment of 756.00 PLN received." in back.text
+    assert one_way.text != back.text
+
+
+async def test_a_fare_parameter_prices_the_journey_at_the_real_fare(client: AsyncClient) -> None:
+    trip = {**TRIP, "return": "2026-11-23", "train": TRAINS[2].code, "fare": "56700"}
+    results = await client.get(f"{BASE}/results", params=trip)
+    assert "567.00 PLN / person, return" in results.text
+    summary = await client.get(f"{BASE}/summary", params={**trip, "email": "a@b.c"})
+    assert "Total: 1 134.00 PLN" in summary.text

@@ -21,7 +21,13 @@ from app.core.domain.suppliers import (
     missing_traveller_fields,
     price_is_guaranteed,
 )
-from app.core.domain.trips import BookingStatus, ContributionStatus, SupplierChannel, TripStatus
+from app.core.domain.trips import (
+    BookingStatus,
+    ContributionStatus,
+    EventKind,
+    SupplierChannel,
+    TripStatus,
+)
 from app.core.domain.wallet import WalletTransactionKind, WalletTransactionStatus, held_minor
 from app.harness.features import Feature, feature
 from app.models.bookings import AgentRun, Booking
@@ -61,6 +67,8 @@ ALLOWED_TRANSITIONS: frozenset[tuple[TripStatus, TripStatus]] = frozenset(
     }
 )
 # A booking in one of these has started buying — Rule #1 must have held when it got there.
+# Feed events that mark a purchase starting (see `_paid_before_buying`).
+_STARTS = frozenset({EventKind.BOOKING_STARTED})
 BUYING = frozenset(
     {
         BookingStatus.RUNNING,
@@ -237,11 +245,22 @@ def _refunds_settled_when_booked(ctx: InvariantContext) -> list[str]:
     return [f"trip is {snap.trip.status} but {len(owed)} member(s) still await {back} grosze back"]
 
 
+def _paid_before_buying(ctx: InvariantContext) -> bool:
+    """In this step every share was covered (ALL_PAID) before any purchase started — the
+    AUTO_BOOK path, where the last payment and "book everything" share one step."""
+    kinds = [event.kind for event in ctx.new_events]
+    if EventKind.ALL_PAID not in kinds:
+        return False
+    paid_at = kinds.index(EventKind.ALL_PAID)
+    return all(index > paid_at for index, kind in enumerate(kinds) if kind in _STARTS)
+
+
 def _rule_one(ctx: InvariantContext) -> list[str]:
     """No booking may enter a buying state while any share is unpaid."""
     before = ctx.before
     if before is None:
         return []
+    paid_first = _paid_before_buying(ctx)
     problems = []
     for booking in ctx.after.bookings:
         previous = before.booking(booking.id)
@@ -249,7 +268,11 @@ def _rule_one(ctx: InvariantContext) -> list[str]:
         moved_forward = booking.status in BUYING and booking.status is not old
         if not moved_forward:
             continue
-        owed = max(before.outstanding_minor, ctx.after.outstanding_minor)
+        owed = (
+            ctx.after.outstanding_minor
+            if paid_first
+            else max(before.outstanding_minor, ctx.after.outstanding_minor)
+        )
         if owed > 0:
             problems.append(
                 f"{booking.kind} booking '{booking.title}' moved {old} -> {booking.status} while "

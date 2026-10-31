@@ -12,6 +12,7 @@ from enum import StrEnum
 from typing import Any, Protocol
 
 from app.core.domain.trips import NO_PREFERENCES, BookingKind, TransportMode, TravelPreferences
+from app.core.domain.trust import OfferLink, Provenance
 from app.suppliers.ports import Segment
 
 PACKAGES_PER_RESEARCH = 3
@@ -56,6 +57,9 @@ class PackageItemPlan:
     segments: tuple[Segment, ...] = ()
     refundable: bool = False
     supplier_data: Mapping[str, Any] = field(default_factory=dict)
+    links: tuple[OfferLink, ...] = ()
+    images: tuple[str, ...] = ()
+    provenance: Provenance | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -122,12 +122,21 @@ export type BookingResponse = {
      * Id
      */
     id: string;
+    /**
+     * Images
+     */
+    images?: Array<string>;
     kind: BookingKind;
+    /**
+     * Links
+     */
+    links?: Array<LinkResponse>;
     mode: TransportMode | null;
     /**
      * Passenger User Ids
      */
     passenger_user_ids: Array<string>;
+    provenance?: ProvenanceResponse | null;
     /**
      * Replaces Booking Id
      */
@@ -669,6 +678,29 @@ export type JoinTripRequest = {
 export type JsonValue = unknown;
 
 /**
+ * LinkKind
+ */
+export type LinkKind = 'book' | 'verify' | 'map' | 'status';
+
+/**
+ * LinkResponse
+ *
+ * One click to check an offer: `book` at the supplier, `verify` on an independent site,
+ * `map`, or live `status` by flight / train number.
+ */
+export type LinkResponse = {
+    kind: LinkKind;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * LiveStatusResponse
  *
  * What the runner reports in `status.json` right now.
@@ -789,6 +821,33 @@ export type OrganizationSummary = {
      * Slug
      */
     slug: string;
+};
+
+/**
+ * PayAllResponse
+ *
+ * The organizer pays for everyone. `payments` lists the shares paid now (the organizer's wallet
+ * covered the total); otherwise `top_up` (the whole shortfall) is pending and every share is
+ * paid as soon as the bank confirms it. `all_paid` = the trip moved on to booking.
+ */
+export type PayAllResponse = {
+    /**
+     * All Paid
+     */
+    all_paid: boolean;
+    /**
+     * Payments
+     */
+    payments: Array<PaymentResponse>;
+    /**
+     * Shares
+     */
+    shares: number;
+    top_up: WalletTransactionResponse | null;
+    /**
+     * Total Minor
+     */
+    total_minor: number;
 };
 
 /**
@@ -927,12 +986,21 @@ export type ProposalItemResponse = {
      * Details
      */
     details: string;
+    /**
+     * Images
+     */
+    images?: Array<string>;
     kind: BookingKind;
+    /**
+     * Links
+     */
+    links?: Array<LinkResponse>;
     mode: TransportMode | null;
     /**
      * Price Minor
      */
     price_minor: number;
+    provenance?: ProvenanceResponse | null;
     /**
      * Segments
      */
@@ -999,6 +1067,156 @@ export type ProposalResponse = {
      * Votes
      */
     votes: number;
+};
+
+/**
+ * ProvenanceResponse
+ *
+ * Where the data came from: `live` (the supplier's real data), `test` / `sandbox` (a
+ * supplier's test API) or `example` (a simulator — illustrative, not bookable for real).
+ */
+export type ProvenanceResponse = {
+    /**
+     * Checked At
+     */
+    checked_at: string;
+    source: ProvenanceSource;
+    /**
+     * Supplier
+     */
+    supplier: string;
+};
+
+/**
+ * ProvenanceSource
+ */
+export type ProvenanceSource = 'live' | 'test' | 'sandbox' | 'example';
+
+/**
+ * QuickDraftResponse
+ *
+ * What the brief says so far; null = not understood (yet).
+ */
+export type QuickDraftResponse = {
+    /**
+     * Budget Per Person Minor
+     */
+    budget_per_person_minor: number | null;
+    /**
+     * Budget Total Minor
+     */
+    budget_total_minor: number | null;
+    /**
+     * Date From
+     */
+    date_from: string | null;
+    /**
+     * Date To
+     */
+    date_to: string | null;
+    /**
+     * Destination
+     */
+    destination: string | null;
+    /**
+     * Group Size
+     */
+    group_size: number | null;
+    /**
+     * Missing
+     */
+    missing: Array<QuickFieldName>;
+    /**
+     * Origin
+     */
+    origin: string;
+    /**
+     * Title
+     */
+    title: string;
+    transport_mode: TransportMode | null;
+};
+
+export type QuickFieldName = 'destination' | 'dates' | 'group_size';
+
+/**
+ * QuickOptionResponse
+ */
+export type QuickOptionResponse = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * QuickQuestionResponse
+ */
+export type QuickQuestionResponse = {
+    field: QuickFieldName;
+    /**
+     * Options
+     */
+    options: Array<QuickOptionResponse>;
+    /**
+     * Question
+     */
+    question: string;
+};
+
+/**
+ * QuickTripRequest
+ *
+ * A one-line brief ("weekend w Pradze dla 6, 20-22.11, do 700 zł/os, pociągiem"). The
+ * optional fields answer earlier `questions` (send the chip's `value` in the field named by
+ * the question) and win over what the text says.
+ */
+export type QuickTripRequest = {
+    /**
+     * Budget Per Person Minor
+     */
+    budget_per_person_minor?: number | null;
+    /**
+     * Dates
+     */
+    dates?: string | null;
+    /**
+     * Destination
+     */
+    destination?: string | null;
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * Group Size
+     */
+    group_size?: number | null;
+    /**
+     * Origin
+     */
+    origin?: string | null;
+    /**
+     * Text
+     */
+    text: string;
+    transport_mode?: TransportMode | null;
+};
+
+/**
+ * QuickTripResponse
+ */
+export type QuickTripResponse = {
+    draft: QuickDraftResponse;
+    /**
+     * Questions
+     */
+    questions: Array<QuickQuestionResponse>;
+    trip: TripStatusResponse | null;
 };
 
 /**
@@ -1211,6 +1429,43 @@ export type ShareChangeResponse = {
      * User Id
      */
     user_id: string;
+};
+
+/**
+ * SupplierCallResponse
+ *
+ * One API call a supplier adapter made for this trip — for the live terminal. The path
+ * has every identifier replaced by `{id}` and no query string; nothing else is kept.
+ */
+export type SupplierCallResponse = {
+    /**
+     * At
+     */
+    at: string;
+    /**
+     * Method
+     */
+    method: string;
+    /**
+     * Ms
+     */
+    ms: number;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Status
+     */
+    status: number | null;
+    /**
+     * Supplier
+     */
+    supplier: string;
+    /**
+     * Supplier Id
+     */
+    supplier_id: string;
 };
 
 /**
@@ -1930,6 +2185,31 @@ export type TripsJoinResponses = {
 
 export type TripsJoinResponse = TripsJoinResponses[keyof TripsJoinResponses];
 
+export type TripsQuickCreateData = {
+    body: QuickTripRequest;
+    path?: never;
+    query?: never;
+    url: '/api/trips/quick';
+};
+
+export type TripsQuickCreateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TripsQuickCreateError = TripsQuickCreateErrors[keyof TripsQuickCreateErrors];
+
+export type TripsQuickCreateResponses = {
+    /**
+     * Successful Response
+     */
+    200: QuickTripResponse;
+};
+
+export type TripsQuickCreateResponse = TripsQuickCreateResponses[keyof TripsQuickCreateResponses];
+
 export type TripsRoomData = {
     body?: never;
     path: {
@@ -1997,6 +2277,47 @@ export type BookingsListResponses = {
 };
 
 export type BookingsListResponse = BookingsListResponses[keyof BookingsListResponses];
+
+export type BookingsActivityData = {
+    body?: never;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/trips/{trip_id}/bookings/activity';
+};
+
+export type BookingsActivityErrors = {
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type BookingsActivityError = BookingsActivityErrors[keyof BookingsActivityErrors];
+
+export type BookingsActivityResponses = {
+    /**
+     * Response Bookings-Activity
+     *
+     * Successful Response
+     */
+    200: Array<SupplierCallResponse>;
+};
+
+export type BookingsActivityResponse = BookingsActivityResponses[keyof BookingsActivityResponses];
 
 export type BookingsApproveAllData = {
     body?: never;
@@ -2301,6 +2622,48 @@ export type ContributionsPayResponses = {
 };
 
 export type ContributionsPayResponse = ContributionsPayResponses[keyof ContributionsPayResponses];
+
+export type ContributionsPayAllSharesData = {
+    body: TopUpAndPayRequest;
+    path: {
+        /**
+         * Trip Id
+         */
+        trip_id: string;
+    };
+    query?: never;
+    url: '/api/trips/{trip_id}/contributions/pay-all-shares';
+};
+
+export type ContributionsPayAllSharesErrors = {
+    /**
+     * Forbidden
+     */
+    403: ErrorResponse;
+    /**
+     * Not Found
+     */
+    404: ErrorResponse;
+    /**
+     * Conflict
+     */
+    409: InsufficientFundsResponse;
+    /**
+     * Unprocessable Entity
+     */
+    422: ErrorResponse;
+};
+
+export type ContributionsPayAllSharesError = ContributionsPayAllSharesErrors[keyof ContributionsPayAllSharesErrors];
+
+export type ContributionsPayAllSharesResponses = {
+    /**
+     * Successful Response
+     */
+    200: PayAllResponse;
+};
+
+export type ContributionsPayAllSharesResponse = ContributionsPayAllSharesResponses[keyof ContributionsPayAllSharesResponses];
 
 export type ContributionsTopUpAndPayData = {
     body: TopUpAndPayRequest;

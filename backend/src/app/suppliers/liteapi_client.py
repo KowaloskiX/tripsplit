@@ -30,7 +30,11 @@ import httpx
 from pydantic import SecretStr
 
 from app.core.domain.result import Err, Ok, Result
+from app.suppliers.call_log import CALL_LOG
 from app.suppliers.ports import SupplierUnavailableError
+
+# The supplier id its calls are logged under (`app.suppliers.call_log`).
+SUPPLIER = "liteapi"
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +198,7 @@ class LiteApiClient:
                         method, base + path, params=params, json=body, headers=headers
                     )
                 except httpx.HTTPError as exc:
+                    CALL_LOG.record(SUPPLIER, method, path, None, time.monotonic() - started)
                     if retry and attempt < self.max_retries:
                         attempt += 1
                         await asyncio.sleep(self.backoff_s * attempt)
@@ -203,6 +208,9 @@ class LiteApiClient:
                     ) from exc
                 self.calls.append(
                     Call(method, _route(path), response.status_code, time.monotonic() - started)
+                )
+                CALL_LOG.record(
+                    SUPPLIER, method, path, response.status_code, time.monotonic() - started
                 )
                 status = response.status_code
                 retriable = status == 429 or (retry and status in _RETRY_STATUSES)

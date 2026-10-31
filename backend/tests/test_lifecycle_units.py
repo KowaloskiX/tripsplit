@@ -194,8 +194,8 @@ async def test_a_capped_train_becomes_even_purchases_that_sum_exactly(
     assert parts[0].passenger_user_ids + parts[1].passenger_user_ids == party
     assert sum(part.amount_minor for part in parts) == 100_001
     assert [part.title for part in parts] == [
-        "EC 131 Warszawa -> Praha (passengers 1-3)",
-        "EC 131 Warszawa -> Praha (passengers 4-6)",
+        "EC 131 Warszawa -> Praha · passengers 1\u20133",
+        "EC 131 Warszawa -> Praha · passengers 4\u20136",
     ]
     assert all("for 3 passengers" in part.goal for part in parts)
     assert all("passenger_1..passenger_3" in part.goal for part in parts)

@@ -47,6 +47,14 @@ from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import SupplierCapabilities, TravellerField
 from app.core.domain.travellers import Gender, TravellerDetails, split_name
 from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode, TravelPreferences
+from app.core.domain.trust import (
+    LinkKind,
+    OfferLink,
+    Provenance,
+    ProvenanceSource,
+    flight_status_url,
+    google_flights_url,
+)
 from app.suppliers.airports import airport_code
 from app.suppliers.duffel_client import SEARCH_TIMEOUT_S, DuffelClient, DuffelFailure
 from app.suppliers.ports import (
@@ -397,6 +405,37 @@ class DuffelLog:
     notes: list[str] = field(default_factory=list)
 
 
+# Duffel's test airline: its flight numbers exist nowhere else, so no status link for them.
+TEST_AIRLINE_CODES = frozenset({"ZZ"})
+
+
+def flight_links(offer: FlightOffer) -> tuple[OfferLink, ...]:
+    """A Google Flights search for the same route and dates (verify), and a live-status page
+    per real flight number. Never a "buy" link: the group buys through the app."""
+    first, last = offer.slices[0], offer.slices[-1]
+    return_date = last[0].departs_at.date() if len(offer.slices) > 1 else None
+    links = [
+        OfferLink(
+            label=f"{first[0].origin} -> {first[-1].destination} on Google Flights",
+            url=google_flights_url(
+                first[0].origin, first[-1].destination, first[0].departs_at.date(), return_date
+            ),
+            kind=LinkKind.VERIFY,
+        )
+    ]
+    numbers = dict.fromkeys(
+        segment.number
+        for legs in offer.slices
+        for segment in legs
+        if segment.carrier_code and segment.carrier_code not in TEST_AIRLINE_CODES
+    )
+    links += [
+        OfferLink(label=f"{number} status", url=flight_status_url(number), kind=LinkKind.STATUS)
+        for number in numbers
+    ]
+    return tuple(links)
+
+
 def _trip_word(slices: Sequence[object]) -> str:
     return "return" if len(slices) > 1 else "one way"
 
@@ -549,6 +588,12 @@ class DuffelSupplier:
             purchase_url=DASHBOARD_URL,
             details=details,
             starts_at=segments[0].departs_at,
+            links=flight_links(offer),
+            provenance=Provenance(
+                ProvenanceSource.LIVE if self.client.live_mode else ProvenanceSource.TEST,
+                "Duffel",
+                self.clock(),
+            ),
             supplier_data={
                 "offer_id": offer.id,
                 "offer_request_id": request_id,

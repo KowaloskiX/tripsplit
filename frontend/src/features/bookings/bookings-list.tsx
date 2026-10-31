@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ErrorCallout } from "@/components/ui/callout";
 import { Panel } from "@/components/ui/panel";
@@ -12,6 +13,7 @@ import {
   type TripBookingsResponse,
   type TripStatus,
 } from "@/lib/api";
+import { formatMoney } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 import { BookingStatusBadge } from "./booking-status-badge";
@@ -22,11 +24,11 @@ import {
   ReplacedStamp,
   StrikeLine,
 } from "./booking-ticket";
+import { bookingTitle } from "./booking-title";
 import { DirectApprovalCard } from "./direct-approval-card";
 import { HoldCountdown } from "./hold-countdown";
 import { LiveAgentPanel } from "./live-agent-panel";
 import { ManualCompletionForm } from "./manual-completion-form";
-import { formatMoney } from "./money";
 import { useStartBooking } from "./mutations";
 
 /** How a purchase is made: the agent drives the site, the supplier's API, or a human. */
@@ -102,11 +104,21 @@ export function BookingsList({
               >
                 <KindIcon kind={booking.kind} mode={booking.mode} className="size-5" />
               </span>
-              <div className="min-w-[12rem] flex-1">
-                <p className="relative inline-block text-base font-medium leading-snug tracking-[-0.01em] text-ink">
-                  {booking.title}
-                  <StrikeLine active={booking.status === "cancelled"} />
-                </p>
+              <div className="min-w-0 flex-1 basis-48">
+                <div className="flex min-w-0 items-start gap-2">
+                  <p
+                    title={bookingTitle(booking.title)}
+                    className="relative line-clamp-2 min-w-0 break-words text-base font-medium leading-snug tracking-[-0.01em] text-ink"
+                  >
+                    {bookingTitle(booking.title)}
+                    <StrikeLine active={booking.status === "cancelled"} />
+                  </p>
+                  {booking.replaces_booking_id && (
+                    <Badge tone="info" className="mt-0.5 shrink-0">
+                      rebooked
+                    </Badge>
+                  )}
+                </div>
                 <p className="ticket-mono mt-0.5 text-xs text-muted">
                   {booking.supplier} ·{" "}
                   <span title="How it is bought">{CHANNEL_LABEL[booking.channel]}</span> ·{" "}

@@ -16,7 +16,7 @@ import logging
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -31,6 +31,8 @@ from app.core.domain.trips import (
     TransportMode,
     TravelPreferences,
 )
+from app.core.domain.trust import LinkKind, OfferLink, Provenance, ProvenanceSource
+from app.suppliers.demo_rail import purchase_url as demo_purchase_url
 from app.suppliers.intercity import (
     MAX_PASSENGERS_PER_PURCHASE,
     Connection,
@@ -143,6 +145,21 @@ def _in_window(
 def _cheapest(fares: Sequence[FareQuote], travel_class: int) -> FareQuote | None:
     matching = [f for f in fares if f.travel_class == travel_class and not f.refundable]
     return min(matching, key=lambda fare: fare.total_minor, default=None)
+
+
+def _links(legs: Sequence[LegQuote]) -> tuple[OfferLink, ...]:
+    """Each leg's results page on e-IC (PKP's own shop): the train, the date, the time."""
+    return tuple(
+        OfferLink(
+            label=f"{leg.connection} on e-IC ({leg.direction}, {leg.departs_at:%d %b %H:%M})",
+            url=results_url(
+                leg.departs_at.date(), leg.from_code, leg.to_code, f"{leg.departs_at:%H:%M}"
+            ),
+            kind=LinkKind.BOOK,
+        )
+        for leg in legs
+        if leg.from_code and leg.to_code
+    )
 
 
 def _local(moment: datetime) -> datetime:
@@ -261,6 +278,22 @@ class PkpIntercitySupplier:
                     best[travel_class] = quote
         return best
 
+    def _demo_purchase_url(
+        self, legs: list[LegQuote], origin: Station, destination: Station, request: SearchRequest
+    ) -> str | None:
+        """In a demo: the fake rail site's search for this journey at PKP's real fare."""
+        if self.purchase_site is None:
+            return None
+        total = sum(leg.total_minor for leg in legs)
+        return demo_purchase_url(
+            self.purchase_site,
+            origin=origin.name,
+            destination=destination.name,
+            depart=_local(legs[0].departs_at).date(),
+            back=_local(legs[-1].departs_at).date() if len(legs) > 1 else None,
+            fare_minor=round(total / max(request.party_size, 1)),
+        )
+
     def _offer(
         self,
         legs: list[LegQuote],
@@ -272,7 +305,7 @@ class PkpIntercitySupplier:
         trip = "return" if len(legs) > 1 else "one way"
         label = f"{first.travel_class}. class"
         title = (
-            f"{CARRIER} {first.connection} {origin.name} -> {destination.name} ({label}, {trip})"
+            f"{CARRIER} {first.connection} · {origin.name} → {destination.name} · {label} · {trip}"
         )
         split = "+".join(str(n) for n in first.passengers)
         segments = tuple(
@@ -300,7 +333,7 @@ class PkpIntercitySupplier:
             seller=CARRIER,
             segments=segments,
             refundable=False,
-            purchase_url=self.purchase_site
+            purchase_url=self._demo_purchase_url(legs, origin, destination, request)
             or results_url(
                 first.departs_at.date(), first.from_code, first.to_code, f"{first.departs_at:%H:%M}"
             ),
@@ -309,6 +342,8 @@ class PkpIntercitySupplier:
                 f"({CARRIER} sells at most {MAX_PASSENGERS_PER_PURCHASE} per transaction)."
             ),
             starts_at=_local(first.departs_at),
+            links=_links(legs),
+            provenance=Provenance(ProvenanceSource.LIVE, CARRIER, datetime.now(UTC)),
             supplier_data={
                 "travel_class": first.travel_class,
                 "refundable": False,

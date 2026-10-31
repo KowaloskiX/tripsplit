@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 
-import { formatMoney } from "./money";
+import { formatMoney } from "@/lib/money";
 
 type ApprovalCardProps = {
   frameUrl: string;

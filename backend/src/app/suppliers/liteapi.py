@@ -36,6 +36,13 @@ from app.core.domain.result import Err, Ok, Result
 from app.core.domain.suppliers import NAME_ONLY, SupplierCapabilities
 from app.core.domain.travellers import TravellerDetails, has_full_name, split_name
 from app.core.domain.trips import BookingKind, SupplierChannel
+from app.core.domain.trust import (
+    LinkKind,
+    OfferLink,
+    Provenance,
+    ProvenanceSource,
+    maps_search_url,
+)
 from app.suppliers.liteapi_client import Json, LiteApiClient, LiteApiFailure
 from app.suppliers.ports import (
     BookingRef,
@@ -174,6 +181,9 @@ class Hotel:
     rating: float | None = None
     review_count: int = 0
     km_from_centre: float | None = None
+    address: str = ""
+    city: str = ""
+    photos: tuple[str, ...] = ()  # https URLs from LiteAPI's hotel data (main photo first)
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,8 +229,28 @@ def parse_hotels(data: Any, city: City | None) -> dict[str, Hotel]:
             rating=_number(raw.get("rating")) or None,
             review_count=reviews if isinstance(reviews, int) else 0,
             km_from_centre=km,
+            address=str(raw.get("address") or "").strip(),
+            city=str(raw.get("city") or "").strip(),
+            photos=_photos(raw),
         )
     return hotels
+
+
+def _photos(raw: Mapping[str, Any]) -> tuple[str, ...]:
+    found = [raw.get("main_photo"), raw.get("thumbnail")]
+    return tuple(
+        dict.fromkeys(url for url in found if isinstance(url, str) and url.startswith("https://"))
+    )
+
+
+def hotel_links(hotel: Hotel) -> tuple[OfferLink, ...]:
+    """LiteAPI gives no hotel website: a Google Maps search by name and address instead."""
+    where = ", ".join(part for part in (hotel.name, hotel.address, hotel.city) if part)
+    return (
+        OfferLink(
+            label=f"{hotel.name} on Google Maps", url=maps_search_url(where), kind=LinkKind.MAP
+        ),
+    )
 
 
 def _room_offer(hotel_id: str, raw: Mapping[str, Any], currency: str) -> RoomOffer | None:
@@ -473,6 +503,9 @@ def offer_of(pick: Pick, request: SearchRequest, now: datetime) -> Offer:
         refundable=room.refundable,
         expires_at=now + QUOTE_TTL,
         details=details,
+        links=hotel_links(hotel),
+        images=hotel.photos,
+        provenance=Provenance(ProvenanceSource.SANDBOX, "LiteAPI", now),
         supplier_data={
             "hotel_id": hotel.id,
             "hotel_name": hotel.name,

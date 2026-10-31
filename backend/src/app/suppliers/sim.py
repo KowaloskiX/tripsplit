@@ -26,6 +26,7 @@ from app.core.domain.suppliers import (
 )
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
+from app.core.domain.trust import Provenance, ProvenanceSource
 from app.suppliers.ports import (
     BookingRef,
     DisruptionKind,
@@ -152,8 +153,8 @@ class SimSupplier:
                 self._offer(
                     ref=f"{first.number}:{request.depart_date}:{label}:{len(legs)}",
                     title=(
-                        f"{RAIL_CARRIER} {first.number} {first.name} {segments[0].origin} -> "
-                        f"{segments[0].destination} ({label} class, {trip})"
+                        f"{RAIL_CARRIER} {first.number} {first.name} · {segments[0].origin} → "
+                        f"{segments[0].destination} · {label} class · {trip}"
                     ),
                     seller=RAIL_CARRIER,
                     per_person=per_person,
@@ -215,8 +216,8 @@ class SimSupplier:
                 self._offer(
                     ref=f"{carrier.code}:{numbers}:{request.depart_date}:{len(legs)}",
                     title=(
-                        f"{carrier.name} {numbers} {segments[0].origin} -> "
-                        f"{segments[0].destination} ({trip})"
+                        f"{carrier.name} {numbers} · {segments[0].origin} → "
+                        f"{segments[0].destination} · {trip}"
                     ),
                     seller=carrier.name,
                     per_person=per_person,
@@ -316,6 +317,8 @@ class SimSupplier:
             purchase_url=f"{SIM_URL}/{self.id}/book?offer={offer_ref}",
             details=details,
             starts_at=starts_at or (segments[0].departs_at if segments else None),
+            # Illustrative data: no links pretending to be a real carrier or hotel.
+            provenance=Provenance(ProvenanceSource.EXAMPLE, self.display_name, self.clock()),
             supplier_data={
                 "price_per_person_minor": per_person,
                 "carrier": carrier,
@@ -434,6 +437,7 @@ class SimSupplier:
             refundable=self.capabilities.refund_policy_known,
             purchase_url=f"{SIM_URL}/{self.id}/book?offer={ref}",
             supplier_data=supplier_data,
+            provenance=Provenance(ProvenanceSource.EXAMPLE, self.display_name, self.clock()),
         )
 
 

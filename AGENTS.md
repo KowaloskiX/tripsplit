@@ -128,6 +128,19 @@ PKP_TRANSPORT=browser                                   # the default
 - One click each in the room: **Book everything** (`POST /trips/{id}/bookings/start-all`) and
   **Approve basket** (`POST /trips/{id}/bookings/approve-all`, refused unless every share is
   paid). The live agent panel draws the run's plan from `GET /agent-runs/{run_id}/graph`.
+- **One sentence to tickets:** `POST /trips/quick {text}` parses a Polish/English brief
+  ("weekend w Pradze dla 6, 20-22.11, do 700 zł/os, pociągiem") deterministically
+  (`ai/quick_brief.py`); complete -> the trip exists and research runs, else `questions` with
+  chips. `AUTO_BOOK` (default on in dev) starts every purchase when the last share is paid;
+  the organizer still approves the basket. `POST /trips/{id}/contributions/pay-all-shares`:
+  the organizer pays every outstanding share from their wallet.
+- **Trust:** offers, package items and bookings carry `links` (book / verify / map / status),
+  `provenance` (live / test / sandbox / example) and `images`; a research-time link check
+  (`ai/link_check.py`, `LINK_CHECK`, <= ~1.5 s) drops 404/410 links and fills photos from
+  og:image. `GET /trips/{id}/bookings/activity` = the trip's Duffel/LiteAPI calls (no ids, no
+  bodies) for the mission-control terminal.
+- `uv run seed-demo` (dev/test only, idempotent): demo@tripsplit.app / TripSplitDemo2026!
+  with 5 000 zł in the wallet.
 
 ## API bridge
 

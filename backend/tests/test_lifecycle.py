@@ -18,6 +18,7 @@ from httpx import ASGITransport, AsyncClient
 from app.agent.launcher import LaunchSpec
 from app.core.config import Settings, get_settings
 from app.core.deps import SettingsDep
+from app.core.domain.bookings import format_money
 from app.core.domain.errors import BookingError, TripError
 from app.core.domain.result import Err, Result
 from app.core.domain.suppliers import SupplierCapabilities
@@ -372,6 +373,64 @@ async def test_a_change_within_the_tolerance_is_ignored(
     assert not await _events(trip, EventKind.PRICE_CHANGED)
 
 
+async def _split_quoted_train(organizer: Person, friend: Person) -> tuple[Trip, Booking, Booking]:
+    """The seeded train as TWO purchases of the same package item (one passenger each)."""
+    trip, train, _ = await _seed_trip(organizer, [friend], TripStatus.BOOKING)
+    half = TRAIN_MINOR // 2
+    first_passenger, second_passenger = train.passenger_user_ids
+    await train.set(
+        {
+            "proposal_item_index": 0,
+            "amount_minor": half,
+            "passenger_user_ids": [first_passenger],
+            "supplier_data": {"listed_minor": half},
+        }
+    )
+    second = await Booking(
+        **{
+            **train.model_dump(exclude={"id", "revision_id"}),
+            "offer_ref": "offer:EC 131 part 2",
+            "passenger_user_ids": [second_passenger],
+        }
+    ).insert()
+    return trip, train, second
+
+
+async def test_a_split_train_with_one_part_gone_starts_none_of_its_parts(
+    people: list[Person], quotes: ScriptedQuotes, launcher: RecordingLauncher
+) -> None:
+    organizer, friend = people
+    trip, first, second = await _split_quoted_train(organizer, friend)
+    quotes.prices[second.offer_ref] = None  # the second half's seats are gone
+
+    response = await organizer.post(f"/api/trips/{trip.id}/bookings/{first.id}/start")
+    assert response.status_code == 409, response.text
+    assert response.json()["code"] == BookingError.SOLD_OUT
+    assert launcher.started == []
+    for part in (first, second):
+        stored = await Booking.get(identifier_of(part))
+        assert stored is not None and stored.status is BookingStatus.FAILED
+    (event,) = await _events(trip, EventKind.BOOKING_FAILED)
+    assert event.payload["sold_out"] is True
+    assert len(event.payload["booking_ids"]) == 2  # both purchases
+    assert "bought none" in event.message
+
+
+async def test_a_split_train_requotes_every_part_before_the_first_starts(
+    people: list[Person], quotes: ScriptedQuotes, launcher: RecordingLauncher
+) -> None:
+    organizer, friend = people
+    trip, first, second = await _split_quoted_train(organizer, friend)
+
+    response = await organizer.post(f"/api/trips/{trip.id}/bookings/{first.id}/start")
+    assert response.status_code == 202, response.text
+    assert len(launcher.started) == 1
+    waiting = await Booking.get(identifier_of(second))
+    assert waiting is not None
+    assert waiting.status is BookingStatus.PENDING
+    assert waiting.quoted_at is not None  # checked with the first, not started
+
+
 # ---- purchases capped per supplier ---------------------------------------------------------
 
 
@@ -431,11 +490,13 @@ async def test_six_travellers_become_two_train_purchases_with_their_own_vaults(
     chosen = next(p for p in room["proposals"] if p["chosen"])
     train_item = next(i for i in chosen["items"] if i.get("mode") == TransportMode.RAIL)
     assert sum(t.amount_minor for t in trains) == train_item["price_minor"]
-    assert [t.title.endswith(s) for t, s in zip(trains, ("1-3)", "4-6)"), strict=True)] == [
+    assert [t.title.endswith(s) for t, s in zip(trains, ("1\u20133", "4\u20136"), strict=True)] == [
         True,
         True,
     ]
-    assert all(t.supplier_url == "http://localhost:8400/api/demo-supplier/rail" for t in trains)
+    assert all(
+        t.supplier_url.startswith("http://localhost:8400/api/demo-supplier/rail?") for t in trains
+    )
     assert all(len(b.passenger_user_ids) == 6 for b in bookings if b.mode is not TransportMode.RAIL)
 
     await _pay_everyone(organizer, friend, trip_id)
@@ -452,6 +513,8 @@ async def test_six_travellers_become_two_train_purchases_with_their_own_vaults(
         assert [vault[f"passenger_{n}_first_name"] for n in (1, 2, 3)] == expected
         assert vault["email"] == "anna@example.com"
         assert "Passengers on this purchase: 3." in spec.goal
+        # The agent checks the supplier's total against what the group paid (QA finding 1).
+        assert f"Expected total: {format_money(train.amount_minor, 'PLN')}" in spec.goal
 
 
 async def test_five_travellers_are_one_train_purchase(
@@ -463,7 +526,7 @@ async def test_five_travellers_are_one_train_purchase(
     trains = [b for b in await _bookings(trip_id) if b.mode is TransportMode.RAIL]
     assert len(trains) == 1
     assert len(trains[0].passenger_user_ids) == 5
-    assert "(passengers" not in trains[0].title
+    assert "passengers" not in trains[0].title
 
 
 # ---- leaving a trip ---------------------------------------------------------------------
