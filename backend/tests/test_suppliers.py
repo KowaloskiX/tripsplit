@@ -232,6 +232,7 @@ async def test_a_demo_rail_return_is_one_order_for_both_legs() -> None:
         "to": "Praha",
         "date": "2026-11-30",
         "return": "2026-12-03",
+        "passengers": "3",  # the party is preselected: the agent buys for all of them
     }
 
 

@@ -292,6 +292,7 @@ class PkpIntercitySupplier:
             depart=_local(legs[0].departs_at).date(),
             back=_local(legs[-1].departs_at).date() if len(legs) > 1 else None,
             fare_minor=round(total / max(request.party_size, 1)),
+            passengers=request.party_size,
         )
 
     def _offer(

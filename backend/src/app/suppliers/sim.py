@@ -27,6 +27,7 @@ from app.core.domain.suppliers import (
 from app.core.domain.travellers import TravellerDetails
 from app.core.domain.trips import BookingKind, SupplierChannel, TransportMode
 from app.core.domain.trust import Provenance, ProvenanceSource
+from app.suppliers.demo_rail import purchase_url as demo_purchase_url
 from app.suppliers.ports import (
     BookingRef,
     DisruptionKind,
@@ -88,6 +89,8 @@ class SimSupplier:
     capabilities: SupplierCapabilities
     clock: Clock
     behaviour: SimBehaviour = field(default_factory=SimBehaviour)
+    # In a demo: the fake rail site the agent BUYS on (like PKP's trains), not SIM_URL.
+    purchase_site: str | None = None
     holds: dict[str, tuple[datetime, int]] = field(default_factory=dict)
     purchases: list[str] = field(default_factory=list)
 
@@ -162,9 +165,24 @@ class SimSupplier:
                     segments=segments,
                     details=" ".join(s.describe() + "." for s in segments)
                     + f" Super Promo International, {label} class.",
+                    purchase_url=self._site_url(segments, per_person, request.party_size),
                 )
             )
         return offers
+
+    def _site_url(self, segments: tuple[Segment, ...], per_person: int, party: int) -> str | None:
+        """The fake rail site's search for this journey at this fare (None outside a demo)."""
+        if self.purchase_site is None or not segments:
+            return None
+        return demo_purchase_url(
+            self.purchase_site,
+            origin=segments[0].origin,
+            destination=segments[0].destination,
+            depart=segments[0].departs_at.date(),
+            back=segments[-1].departs_at.date() if len(segments) > 1 else None,
+            fare_minor=per_person,
+            passengers=party,
+        )
 
     def _carriers(
         self,
@@ -302,6 +320,7 @@ class SimSupplier:
         details: str = "",
         starts_at: datetime | None = None,
         carrier: str = "",
+        purchase_url: str | None = None,
     ) -> Offer:
         offer_ref = f"{self.id}:{ref}"
         return Offer(
@@ -314,7 +333,7 @@ class SimSupplier:
             segments=segments,
             refundable=self.capabilities.refund_policy_known,
             expires_at=self.clock() + self.capabilities.quote_ttl,
-            purchase_url=f"{SIM_URL}/{self.id}/book?offer={offer_ref}",
+            purchase_url=purchase_url or f"{SIM_URL}/{self.id}/book?offer={offer_ref}",
             details=details,
             starts_at=starts_at or (segments[0].departs_at if segments else None),
             # Illustrative data: no links pretending to be a real carrier or hotel.
@@ -549,6 +568,7 @@ def sim_supplier(
     clock: Clock,
     behaviour: SimBehaviour | None = None,
     capabilities: SupplierCapabilities | None = None,
+    purchase_site: str | None = None,
 ) -> SimSupplier:
     """One of the standard simulators by id (`SIM_CAPABILITIES`), optionally reconfigured."""
     display_name, standard = SIM_CAPABILITIES[supplier_id]
@@ -558,4 +578,5 @@ def sim_supplier(
         capabilities=replace(capabilities or standard, simulated=True),
         clock=clock,
         behaviour=behaviour or SimBehaviour(),
+        purchase_site=purchase_site,
     )

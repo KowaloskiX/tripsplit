@@ -75,10 +75,15 @@ def purchase_url(
     depart: date,
     back: date | None,
     fare_minor: int | None = None,
+    passengers: int | None = None,
 ) -> str:
     """The site's search page for this journey: a return is bought as ONE order. `fare_minor`
-    (per person, whole journey) makes the site charge that instead of its list price."""
+    (per person, whole journey) makes the site charge that instead of its list price.
+    `passengers` preselects the party when one purchase can carry it all (a bigger group is
+    split into several purchases, each choosing its own count)."""
     params = {"from": origin, "to": destination, "date": depart.isoformat()}
+    if passengers is not None and 1 < passengers <= MAX_PASSENGERS_PER_PURCHASE:
+        params["passengers"] = str(passengers)
     if back is not None:
         params["return"] = back.isoformat()
     if fare_minor is not None:
@@ -130,6 +135,7 @@ class DemoRailSupplier:
                         destination=request.destination,
                         depart=request.depart_date,
                         back=request.return_date,
+                        passengers=request.party_size,
                     ),
                     details=" ".join(segment.describe() + "." for segment in segments),
                     starts_at=segments[0].departs_at,
