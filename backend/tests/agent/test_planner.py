@@ -69,6 +69,14 @@ def test_the_null_planner_never_counts_a_call() -> None:
     assert "LLM is disabled" in plan[0]["reason"]
 
 
+def test_openai_without_a_key_falls_back_to_the_null_planner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("PLANNER", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    assert isinstance(planner_mod.make_planner(max_calls=3), NullPlanner)
+
+
 def _fake_claude(tmp_path: Path, stdout: dict[str, Any], code: int) -> Path:
     script = tmp_path / "claude"
     args_file = tmp_path / "args.json"

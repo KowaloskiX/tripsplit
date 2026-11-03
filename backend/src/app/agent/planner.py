@@ -174,7 +174,7 @@ def macro_max_actions() -> int:
         return 4
 
 
-def make_planner(max_calls=None):
+def make_planner(max_calls: int | None = None) -> "BasePlanner":
     """Pick the backend from `PLANNER` (default: openai); `none` disables the LLM."""
     kind = (os.getenv("PLANNER") or "openai").lower()
     planner = _make(kind)
@@ -182,10 +182,14 @@ def make_planner(max_calls=None):
     return planner
 
 
-def _make(kind):
+def _make(kind: str) -> "BasePlanner":
     if kind in ("none", "off", "disabled"):
         return NullPlanner()
     if kind == "openai":
+        if not os.getenv("OPENAI_API_KEY"):
+            # Flows and rules can still finish a known checkout; the planner hands off otherwise.
+            print("planner: OPENAI_API_KEY is not set, running without the LLM", file=sys.stderr)
+            return NullPlanner()
         return OpenAIPlanner()
     if kind in ("claude-cli", "claude"):
         return ClaudeCliPlanner()
